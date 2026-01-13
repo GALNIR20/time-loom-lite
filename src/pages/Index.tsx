@@ -1,10 +1,11 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import { parseISO, subDays, format } from 'date-fns';
 import { ControlsPanel } from '@/components/ControlsPanel';
 import { SummaryCards } from '@/components/SummaryCards';
 import { MilestoneTable } from '@/components/MilestoneTable';
 import { JsonExportModal } from '@/components/JsonExportModal';
+import { TimelineView } from '@/components/TimelineView';
 import {
   DEFAULT_MILESTONES,
   calculateTimeline,
@@ -35,6 +36,7 @@ const Index = () => {
   const [showDetailed, setShowDetailed] = useState(true);
   const [overrides, setOverrides] = useState<Record<string, number | null>>({});
   const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
+  const [isTimelineViewOpen, setIsTimelineViewOpen] = useState(false);
   
   // Track the user's intended dev start date (null = not manually set)
   const [lockedDevStart, setLockedDevStart] = useState<string | null>(null);
@@ -133,6 +135,7 @@ const Index = () => {
     setShowDetailed(true);
     setOverrides({});
     setLockedDevStart(null);
+    setIsTimelineViewOpen(false);
     toast.success('Timeline reset to defaults');
   }, []);
 
@@ -164,6 +167,7 @@ const Index = () => {
           onShowDetailedChange={setShowDetailed}
           onCopyJson={handleCopyJson}
           onReset={handleReset}
+          onShowTimeline={() => setIsTimelineViewOpen(true)}
         />
 
         <SummaryCards
@@ -186,6 +190,13 @@ const Index = () => {
         data={exportData}
         isOpen={isJsonModalOpen}
         onClose={() => setIsJsonModalOpen(false)}
+      />
+
+      {/* Timeline View Modal */}
+      <TimelineView
+        milestones={milestones}
+        isOpen={isTimelineViewOpen}
+        onClose={() => setIsTimelineViewOpen(false)}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-import { Calendar, RefreshCw } from 'lucide-react';
+import { Calendar, RefreshCw, BarChart3 } from 'lucide-react';
 import { PresetType } from '@/types/timeline';
 
 interface ControlsPanelProps {
@@ -12,6 +12,7 @@ interface ControlsPanelProps {
   onShowDetailedChange: (show: boolean) => void;
   onCopyJson: () => void;
   onReset: () => void;
+  onShowTimeline: () => void;
 }
 
 const PRESET_OPTIONS: { value: PresetType; label: string; description: string }[] = [
@@ -31,6 +32,7 @@ export function ControlsPanel({
   onShowDetailedChange,
   onCopyJson,
   onReset,
+  onShowTimeline,
 }: ControlsPanelProps) {
   return (
     <div className="card-elevated p-4 sm:p-5">
@@ -110,8 +112,12 @@ export function ControlsPanel({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-2">
-            <button onClick={onCopyJson} className="btn-primary flex-1 sm:flex-none">
+          <div className="flex flex-wrap gap-2">
+            <button onClick={onShowTimeline} className="btn-primary flex-1 sm:flex-none">
+              <BarChart3 className="w-4 h-4" />
+              <span>Timeline View</span>
+            </button>
+            <button onClick={onCopyJson} className="btn-secondary flex-1 sm:flex-none">
               Copy JSON
             </button>
             <button onClick={onReset} className="btn-secondary">
