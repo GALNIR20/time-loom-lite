@@ -1,8 +1,10 @@
 import { MilestoneState } from '@/types/timeline';
 import { formatDateDisplay } from '@/lib/timeline';
 import { X, Pencil } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { GanttBar } from '@/components/GanttBar';
+import { useGanttDrag } from '@/hooks/useGanttDrag';
 import { parseISO, differenceInDays, addDays, startOfWeek, format, differenceInWeeks, addWeeks, startOfQuarter, differenceInQuarters, addQuarters } from 'date-fns';
 
 interface TimelineViewProps {
@@ -17,6 +19,10 @@ type ViewMode = 'days' | 'weeks' | 'quarters' | 'milestones';
 export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: TimelineViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('weeks');
   const [editMode, setEditMode] = useState(false);
+
+  const handleDaysUpdate = useCallback((id: string, days: number) => {
+    onDaysChange(id, days);
+  }, [onDaysChange]);
 
   const { totalDays, startDate, endDate, weeks, quarters } = useMemo(() => {
     if (milestones.length === 0) return { totalDays: 0, startDate: new Date(), endDate: new Date(), weeks: [], quarters: [] };
@@ -43,6 +49,12 @@ export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: Time
       quarters: quartersArr,
     };
   }, [milestones]);
+
+  // Initialize drag hook
+  const { handleDragStart, getPreviewDays, isDraggingMilestone, isDragging } = useGanttDrag({
+    totalDays,
+    onDaysChange: handleDaysUpdate,
+  });
 
   if (!isOpen) return null;
 
@@ -280,7 +292,11 @@ export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: Time
 
               {/* Milestone rows */}
               {milestones.map((milestone, index) => {
-                const { offsetPercent, widthPercent } = getBarPosition(milestone);
+                const previewDays = editMode ? getPreviewDays(milestone.id, milestone.durationDays) : milestone.durationDays;
+                const milestoneStart = parseISO(milestone.start);
+                const offsetDays = differenceInDays(milestoneStart, startDate);
+                const offsetPercent = totalDays > 0 ? (offsetDays / totalDays) * 100 : 0;
+                const widthPercent = totalDays > 0 ? (previewDays / totalDays) * 100 : 0;
                 const nextMilestone = index < milestones.length - 1 ? milestones[index + 1] : null;
 
                 return (
@@ -302,7 +318,7 @@ export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: Time
                           type="number"
                           min="0"
                           step="1"
-                          value={milestone.durationDays}
+                          value={previewDays}
                           onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
                           className="input-field w-14 text-center text-xs py-1"
                           aria-label={`Days for ${milestone.name}`}
@@ -336,20 +352,17 @@ export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: Time
                           />
                         ))}
                         
-                        {/* Bar */}
-                        {milestone.durationDays > 0 && (
-                          <div
-                            className={`absolute top-1 bottom-1 rounded ${getPhaseColor(milestone.phase)} flex items-center transition-all shadow-sm`}
-                            style={{
-                              left: `${offsetPercent}%`,
-                              width: `${Math.max(widthPercent, 1)}%`,
-                            }}
-                          >
-                            <span className="text-[10px] font-medium text-white px-2 truncate">
-                              {widthPercent > 8 ? `${milestone.durationDays}d` : ''}
-                            </span>
-                          </div>
-                        )}
+                        {/* Bar with drag support */}
+                        <GanttBar
+                          milestoneId={milestone.id}
+                          phaseName={milestone.phase}
+                          durationDays={previewDays}
+                          offsetPercent={offsetPercent}
+                          widthPercent={widthPercent}
+                          editMode={editMode}
+                          isDragging={isDraggingMilestone(milestone.id)}
+                          onDragStart={handleDragStart}
+                        />
                       </div>
                     </div>
                   </div>
