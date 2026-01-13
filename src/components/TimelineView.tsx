@@ -233,10 +233,12 @@ export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: Time
                 <div className="w-32 flex-shrink-0 p-2 border-r border-border">
                   <span className="text-xs font-medium text-muted-foreground">Milestone</span>
                 </div>
-                {/* Days column header */}
-                <div className="w-16 flex-shrink-0 p-2 border-r border-border">
-                  <span className="text-xs font-medium text-muted-foreground">Days</span>
-                </div>
+                {/* Days column header - only show in edit mode */}
+                {editMode && (
+                  <div className="w-16 flex-shrink-0 p-2 border-r border-border">
+                    <span className="text-xs font-medium text-muted-foreground">Days</span>
+                  </div>
+                )}
                 {/* Next column header */}
                 <div className="w-28 flex-shrink-0 p-2 border-r border-border">
                   <span className="text-xs font-medium text-muted-foreground">Next</span>
@@ -293,18 +295,20 @@ export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: Time
                       </span>
                     </div>
                     
-                    {/* Days input */}
-                    <div className="w-16 flex-shrink-0 p-2 border-r border-border flex items-center justify-center">
-                      <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={milestone.durationDays}
-                        onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
-                        className="input-field w-14 text-center text-xs py-1"
-                        aria-label={`Days for ${milestone.name}`}
-                      />
-                    </div>
+                    {/* Days input - only show in edit mode */}
+                    {editMode && (
+                      <div className="w-16 flex-shrink-0 p-2 border-r border-border flex items-center justify-center">
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={milestone.durationDays}
+                          onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
+                          className="input-field w-14 text-center text-xs py-1"
+                          aria-label={`Days for ${milestone.name}`}
+                        />
+                      </div>
+                    )}
 
                     {/* Next milestone */}
                     <div className="w-28 flex-shrink-0 p-3 border-r border-border flex items-center">
