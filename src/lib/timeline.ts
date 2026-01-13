@@ -2,13 +2,13 @@ import { MilestoneConfig, MilestoneState } from '@/types/timeline';
 import { format, addDays, parseISO } from 'date-fns';
 
 export const DEFAULT_MILESTONES: MilestoneConfig[] = [
-  { id: 'brief', phase: 'PLC', name: 'Brief', defaultMinDays: 7, defaultMaxDays: 14 },
-  { id: 'pre-concept', phase: 'PLC', name: 'Pre-Concept', defaultMinDays: 21, defaultMaxDays: 21 },
-  { id: 'concept', phase: 'PLC', name: 'Concept', defaultMinDays: 5, defaultMaxDays: 5 },
-  { id: 'art-sketch', phase: 'PLC', name: 'Art Sketch', defaultMinDays: 28, defaultMaxDays: 42 },
-  { id: 'sketch', phase: 'PLC', name: 'Sketch', defaultMinDays: 7, defaultMaxDays: 14 },
-  { id: 'i-phase', phase: 'PLC', name: 'I-Phase', defaultMinDays: 7, defaultMaxDays: 14 },
-  { id: 'sprint-1', phase: 'Delivery', name: 'Sprint 1', defaultMinDays: 14, defaultMaxDays: 14 },
+  { id: 'brief', phase: 'Concept Phase', name: 'Brief', defaultMinDays: 7, defaultMaxDays: 14 },
+  { id: 'pre-concept', phase: 'Concept Phase', name: 'Pre-Concept', defaultMinDays: 21, defaultMaxDays: 21 },
+  { id: 'concept', phase: 'Concept Phase', name: 'Concept', defaultMinDays: 5, defaultMaxDays: 5 },
+  { id: 'art-sketch', phase: 'Sketch Phase', name: 'Art Sketch', defaultMinDays: 28, defaultMaxDays: 42 },
+  { id: 'sketch', phase: 'Sketch Phase', name: 'Sketch', defaultMinDays: 7, defaultMaxDays: 14 },
+  { id: 'i-phase', phase: 'Execution Phase', name: 'I-Phase', defaultMinDays: 7, defaultMaxDays: 14 },
+  { id: 'sprint-1', phase: 'Execution Phase', name: 'Sprint 1', defaultMinDays: 14, defaultMaxDays: 14 },
 ];
 
 export function calculateDuration(
