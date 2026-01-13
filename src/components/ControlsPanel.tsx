@@ -1,25 +1,32 @@
 import { Calendar, RefreshCw } from 'lucide-react';
+import { PresetType } from '@/types/timeline';
 
 interface ControlsPanelProps {
   projectStart: string;
   onProjectStartChange: (date: string) => void;
   devStart: string;
   onDevStartChange: (date: string) => void;
-  speed: number;
-  onSpeedChange: (speed: number) => void;
+  preset: PresetType;
+  onPresetChange: (preset: PresetType) => void;
   showDetailed: boolean;
   onShowDetailedChange: (show: boolean) => void;
   onCopyJson: () => void;
   onReset: () => void;
 }
 
+const PRESET_OPTIONS: { value: PresetType; label: string; description: string }[] = [
+  { value: 'Big', label: 'Big PLC', description: '112 days' },
+  { value: 'Medium', label: 'Medium PLC', description: '77 days' },
+  { value: 'BLITZ', label: 'BLITZ', description: '46 days' },
+];
+
 export function ControlsPanel({
   projectStart,
   onProjectStartChange,
   devStart,
   onDevStartChange,
-  speed,
-  onSpeedChange,
+  preset,
+  onPresetChange,
   showDetailed,
   onShowDetailedChange,
   onCopyJson,
@@ -64,30 +71,23 @@ export function ControlsPanel({
           </div>
         </div>
 
-        {/* Speed Slider */}
+        {/* Preset Selector */}
         <div className="flex flex-col gap-2">
-          <label htmlFor="speed" className="text-xs font-medium text-muted-foreground">
-            Global Speed
+          <label htmlFor="preset" className="text-xs font-medium text-muted-foreground">
+            Timeline Preset
           </label>
-          <div className="flex flex-col gap-1.5">
-            <input
-              type="range"
-              id="speed"
-              min="0.5"
-              max="2.0"
-              step="0.05"
-              value={speed}
-              onChange={(e) => onSpeedChange(parseFloat(e.target.value))}
-              className="w-full"
-            />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>0.5x</span>
-              <span className="font-semibold text-foreground bg-secondary px-2 py-0.5 rounded">
-                {speed.toFixed(2)}x
-              </span>
-              <span>2.0x</span>
-            </div>
-          </div>
+          <select
+            id="preset"
+            value={preset}
+            onChange={(e) => onPresetChange(e.target.value as PresetType)}
+            className="input-field w-full"
+          >
+            {PRESET_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label} ({option.description})
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Show Detailed Checkbox */}

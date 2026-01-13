@@ -1,47 +1,73 @@
-import { MilestoneConfig, MilestoneState } from '@/types/timeline';
+import { MilestoneConfig, MilestoneState, PresetType } from '@/types/timeline';
 import { format, addDays, parseISO } from 'date-fns';
 
+export const PRESET_CONFIGS: Record<PresetType, Record<string, number>> = {
+  Big: {
+    'brief': 14,
+    'pre-concept': 21,
+    'concept': 42,
+    'art-sketch': 7,
+    'sketch': 14,
+    'i-phase': 14,
+    'sprint-1': 0,
+  },
+  Medium: {
+    'brief': 7,
+    'pre-concept': 21,
+    'concept': 28,
+    'art-sketch': 7,
+    'sketch': 7,
+    'i-phase': 7,
+    'sprint-1': 0,
+  },
+  BLITZ: {
+    'brief': 5,
+    'pre-concept': 10,
+    'concept': 14,
+    'art-sketch': 3,
+    'sketch': 7,
+    'i-phase': 7,
+    'sprint-1': 0,
+  },
+};
+
 export const DEFAULT_MILESTONES: MilestoneConfig[] = [
-  { id: 'brief', phase: 'Concept Phase', name: 'Brief', defaultMinDays: 14, defaultMaxDays: 14 },
-  { id: 'pre-concept', phase: 'Concept Phase', name: 'Pre-Concept', defaultMinDays: 21, defaultMaxDays: 21 },
-  { id: 'concept', phase: 'Concept Phase', name: 'Concept', defaultMinDays: 42, defaultMaxDays: 42 },
-  { id: 'art-sketch', phase: 'Sketch Phase', name: 'Art Sketch', defaultMinDays: 7, defaultMaxDays: 7 },
-  { id: 'sketch', phase: 'Sketch Phase', name: 'Sketch', defaultMinDays: 14, defaultMaxDays: 14 },
-  { id: 'i-phase', phase: 'Execution Phase', name: 'I-Phase', defaultMinDays: 14, defaultMaxDays: 14 },
-  { id: 'sprint-1', phase: 'Execution Phase', name: 'Sprint 1', defaultMinDays: 0, defaultMaxDays: 0 },
+  { id: 'brief', phase: 'Concept Phase', name: 'Brief' },
+  { id: 'pre-concept', phase: 'Concept Phase', name: 'Pre-Concept' },
+  { id: 'concept', phase: 'Concept Phase', name: 'Concept' },
+  { id: 'art-sketch', phase: 'Sketch Phase', name: 'Art Sketch' },
+  { id: 'sketch', phase: 'Sketch Phase', name: 'Sketch' },
+  { id: 'i-phase', phase: 'Execution Phase', name: 'I-Phase' },
+  { id: 'sprint-1', phase: 'Execution Phase', name: 'Sprint 1' },
 ];
 
-export function calculateDuration(
-  minDays: number,
-  maxDays: number,
-  speed: number,
+export function getPresetDuration(
+  milestoneId: string,
+  preset: PresetType,
   overrideDays: number | null
 ): number {
   if (overrideDays !== null && overrideDays >= 0) {
     return overrideDays;
   }
-  const midpoint = (minDays + maxDays) / 2;
-  return Math.round(midpoint * speed);
+  return PRESET_CONFIGS[preset][milestoneId] ?? 0;
 }
 
 export function calculateTimeline(
   configs: MilestoneConfig[],
   overrides: Record<string, number | null>,
   projectStart: string,
-  speed: number
+  preset: PresetType
 ): MilestoneState[] {
   const startDate = parseISO(projectStart);
   let currentDate = startDate;
 
   return configs.map((config) => {
     const overrideDays = overrides[config.id] ?? null;
-    const minDays = config.defaultMinDays;
-    const maxDays = config.defaultMaxDays;
+    const defaultDays = PRESET_CONFIGS[preset][config.id] ?? 0;
     
-    const durationDays = calculateDuration(
-      minDays,
-      maxDays,
-      speed,
+    const durationDays = getPresetDuration(
+      config.id,
+      preset,
       overrideDays
     );
 
@@ -53,8 +79,7 @@ export function calculateTimeline(
 
     return {
       ...config,
-      minDays,
-      maxDays,
+      defaultDays,
       overrideDays,
       durationDays,
       start,
