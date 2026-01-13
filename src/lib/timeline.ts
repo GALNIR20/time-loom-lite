@@ -13,7 +13,7 @@ export const PRESET_CONFIGS: Record<PresetType, Record<string, number>> = {
   },
   Medium: {
     'brief': 7,
-    'pre-concept': 21,
+    'pre-concept': 17,
     'concept': 28,
     'art-sketch': 7,
     'sketch': 7,
