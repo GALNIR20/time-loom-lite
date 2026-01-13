@@ -34,15 +34,15 @@ const Index = () => {
     [milestones, projectStart]
   );
 
-  const iPhaseData = useMemo(() => {
-    const iPhase = milestones.find((m) => m.id === 'i-phase');
-    if (!iPhase) return { start: null, daysTo: null };
+  const sprint1Data = useMemo(() => {
+    const sprint1 = milestones.find((m) => m.id === 'sprint-1');
+    if (!sprint1) return { start: null, daysTo: null };
     
-    const daysToIPhase = milestones
-      .filter((m) => milestones.indexOf(m) < milestones.indexOf(iPhase))
+    const daysToSprint1 = milestones
+      .filter((m) => milestones.indexOf(m) < milestones.indexOf(sprint1))
       .reduce((sum, m) => sum + m.durationDays, 0);
     
-    return { start: iPhase.start, daysTo: daysToIPhase };
+    return { start: sprint1.start, daysTo: daysToSprint1 };
   }, [milestones]);
 
   const exportData: TimelineExport = useMemo(
@@ -116,8 +116,8 @@ const Index = () => {
         <SummaryCards
           totalDays={totalDays}
           projectedEnd={projectedEnd}
-          iPhaseStart={iPhaseData.start}
-          daysToIPhase={iPhaseData.daysTo}
+          sprint1Start={sprint1Data.start}
+          daysToSprint1={sprint1Data.daysTo}
           showDetailed={showDetailed}
         />
 
