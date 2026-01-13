@@ -119,12 +119,12 @@ export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: Time
                       {nextMilestone ? (
                         <>
                           <ArrowRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                          <span className="text-xs text-muted-foreground truncate">
+                          <span className="text-sm font-medium text-foreground truncate">
                             {nextMilestone.name}
                           </span>
                         </>
                       ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
+                        <span className="text-sm text-muted-foreground">—</span>
                       )}
                     </div>
 
