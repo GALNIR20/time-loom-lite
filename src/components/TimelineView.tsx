@@ -1,11 +1,18 @@
 import { MilestoneState } from '@/types/timeline';
 import { formatDateDisplay } from '@/lib/timeline';
-import { X, Pencil } from 'lucide-react';
-import { useMemo, useState, useCallback } from 'react';
+import { X, Pencil, Download, Image, FileText } from 'lucide-react';
+import { useMemo, useState, useCallback, useRef } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { GanttBar } from '@/components/GanttBar';
 import { useGanttDrag } from '@/hooks/useGanttDrag';
+import { useTimelineExport } from '@/hooks/useTimelineExport';
 import { parseISO, differenceInDays, addDays, startOfWeek, format, differenceInWeeks, addWeeks, startOfQuarter, differenceInQuarters, addQuarters } from 'date-fns';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface TimelineViewProps {
   milestones: MilestoneState[];
@@ -19,6 +26,8 @@ type ViewMode = 'days' | 'weeks' | 'quarters' | 'milestones';
 export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: TimelineViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('weeks');
   const [editMode, setEditMode] = useState(false);
+  const exportContentRef = useRef<HTMLDivElement>(null);
+  const { exportTimeline } = useTimelineExport(exportContentRef);
 
   const handleDaysUpdate = useCallback((id: string, days: number) => {
     onDaysChange(id, days);
@@ -97,6 +106,25 @@ export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: Time
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="text-lg font-semibold text-foreground">Timeline View</h2>
           <div className="flex items-center gap-4">
+            {/* Export Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors">
+                  <Download className="w-3.5 h-3.5" />
+                  Export
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => exportTimeline({ format: 'png', filename: 'timeline-whatsapp-teams' })}>
+                  <Image className="w-4 h-4 mr-2" />
+                  PNG (WhatsApp/Teams)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportTimeline({ format: 'pdf', filename: 'timeline' })}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  PDF Document
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {/* Edit Mode Toggle */}
             <label className="flex items-center gap-2 cursor-pointer">
               <Checkbox 
@@ -178,7 +206,7 @@ export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: Time
         </div>
 
         {/* Timeline Content */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto" ref={exportContentRef}>
           {viewMode === 'milestones' ? (
             /* Visual Milestones View */
             <div className="p-6 overflow-x-auto">
