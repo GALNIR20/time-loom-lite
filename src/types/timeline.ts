@@ -15,12 +15,9 @@ export interface MilestoneState extends MilestoneConfig {
   end: string;
 }
 
-export interface MinMaxOverrides {
-  [id: string]: { min?: number; max?: number };
-}
-
 export interface TimelineExport {
   projectStart: string;
+  devStart: string;
   speed: number;
   totalDays: number;
   projectedEnd: string;
@@ -28,11 +25,7 @@ export interface TimelineExport {
     id: string;
     phase: string;
     name: string;
-    minDays: number;
-    maxDays: number;
-    overrideDays?: number;
     durationDays: number;
-    start: string;
-    end: string;
+    date: string;
   }>;
 }

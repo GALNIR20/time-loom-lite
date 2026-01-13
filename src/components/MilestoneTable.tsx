@@ -4,36 +4,23 @@ import { X } from 'lucide-react';
 
 interface MilestoneTableProps {
   milestones: MilestoneState[];
-  showWeeks: boolean;
-  onOverrideChange: (id: string, value: number | null) => void;
-  onMinMaxChange: (id: string, field: 'min' | 'max', value: number | null) => void;
+  showDetailed: boolean;
+  onDaysChange: (id: string, value: number | null) => void;
 }
 
 export function MilestoneTable({
   milestones,
-  showWeeks,
-  onOverrideChange,
-  onMinMaxChange,
+  showDetailed,
+  onDaysChange,
 }: MilestoneTableProps) {
-  const handleOverrideInput = (id: string, value: string) => {
+  const handleDaysInput = (id: string, value: string) => {
     if (value === '') {
-      onOverrideChange(id, null);
+      onDaysChange(id, null);
       return;
     }
     const parsed = parseInt(value, 10);
     if (!isNaN(parsed) && parsed >= 0) {
-      onOverrideChange(id, parsed);
-    }
-  };
-
-  const handleMinMaxInput = (id: string, field: 'min' | 'max', value: string, defaultValue: number) => {
-    if (value === '') {
-      onMinMaxChange(id, field, null);
-      return;
-    }
-    const parsed = parseInt(value, 10);
-    if (!isNaN(parsed) && parsed >= 0) {
-      onMinMaxChange(id, field, parsed);
+      onDaysChange(id, parsed);
     }
   };
 
@@ -50,22 +37,13 @@ export function MilestoneTable({
                 Milestone
               </th>
               <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
-                Min
-              </th>
-              <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
-                Max
-              </th>
-              <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
-                Override
+                Days
               </th>
               <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
                 Duration
               </th>
               <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
-                Start Date
-              </th>
-              <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
-                End Date
+                Date
               </th>
             </tr>
           </thead>
@@ -94,50 +72,21 @@ export function MilestoneTable({
                   {milestone.name}
                 </td>
                 <td className="px-4 py-3">
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={milestone.minDays}
-                    onChange={(e) =>
-                      handleMinMaxInput(milestone.id, 'min', e.target.value, milestone.defaultMinDays)
-                    }
-                    className="input-field w-16 text-center"
-                    aria-label={`Min days for ${milestone.name}`}
-                  />
-                </td>
-                <td className="px-4 py-3">
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={milestone.maxDays}
-                    onChange={(e) =>
-                      handleMinMaxInput(milestone.id, 'max', e.target.value, milestone.defaultMaxDays)
-                    }
-                    className="input-field w-16 text-center"
-                    aria-label={`Max days for ${milestone.name}`}
-                  />
-                </td>
-                <td className="px-4 py-3">
                   <div className="flex items-center gap-1">
                     <input
                       type="number"
                       min="0"
                       step="1"
-                      value={milestone.overrideDays ?? ''}
-                      onChange={(e) =>
-                        handleOverrideInput(milestone.id, e.target.value)
-                      }
-                      placeholder="—"
+                      value={milestone.durationDays}
+                      onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
                       className="input-field w-20 text-center"
-                      aria-label={`Override days for ${milestone.name}`}
+                      aria-label={`Days for ${milestone.name}`}
                     />
                     {milestone.overrideDays !== null && (
                       <button
-                        onClick={() => onOverrideChange(milestone.id, null)}
+                        onClick={() => onDaysChange(milestone.id, null)}
                         className="btn-ghost"
-                        aria-label={`Clear override for ${milestone.name}`}
+                        aria-label={`Reset days for ${milestone.name}`}
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -145,13 +94,10 @@ export function MilestoneTable({
                   </div>
                 </td>
                 <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap">
-                  {formatDuration(milestone.durationDays, showWeeks)}
+                  {formatDuration(milestone.durationDays, showDetailed)}
                 </td>
                 <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                   {formatDateDisplay(milestone.start)}
-                </td>
-                <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                  {formatDateDisplay(milestone.end)}
                 </td>
               </tr>
             ))}

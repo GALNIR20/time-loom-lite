@@ -9,19 +9,19 @@ import {
   calculateTimeline,
   getTodayISO,
 } from '@/lib/timeline';
-import { TimelineExport, MinMaxOverrides } from '@/types/timeline';
+import { TimelineExport } from '@/types/timeline';
 
 const Index = () => {
   const [projectStart, setProjectStart] = useState(getTodayISO);
+  const [devStart, setDevStart] = useState(getTodayISO);
   const [speed, setSpeed] = useState(1.0);
-  const [showWeeks, setShowWeeks] = useState(true);
+  const [showDetailed, setShowDetailed] = useState(true);
   const [overrides, setOverrides] = useState<Record<string, number | null>>({});
-  const [minMaxOverrides, setMinMaxOverrides] = useState<MinMaxOverrides>({});
   const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
 
   const milestones = useMemo(
-    () => calculateTimeline(DEFAULT_MILESTONES, overrides, minMaxOverrides, projectStart, speed),
-    [overrides, minMaxOverrides, projectStart, speed]
+    () => calculateTimeline(DEFAULT_MILESTONES, overrides, projectStart, speed),
+    [overrides, projectStart, speed]
   );
 
   const totalDays = useMemo(
@@ -48,6 +48,7 @@ const Index = () => {
   const exportData: TimelineExport = useMemo(
     () => ({
       projectStart,
+      devStart,
       speed,
       totalDays,
       projectedEnd,
@@ -55,29 +56,15 @@ const Index = () => {
         id: m.id,
         phase: m.phase,
         name: m.name,
-        minDays: m.minDays,
-        maxDays: m.maxDays,
-        ...(m.overrideDays !== null && { overrideDays: m.overrideDays }),
         durationDays: m.durationDays,
-        start: m.start,
-        end: m.end,
+        date: m.start,
       })),
     }),
-    [projectStart, speed, totalDays, projectedEnd, milestones]
+    [projectStart, devStart, speed, totalDays, projectedEnd, milestones]
   );
 
-  const handleOverrideChange = useCallback((id: string, value: number | null) => {
+  const handleDaysChange = useCallback((id: string, value: number | null) => {
     setOverrides((prev) => ({ ...prev, [id]: value }));
-  }, []);
-
-  const handleMinMaxChange = useCallback((id: string, field: 'min' | 'max', value: number | null) => {
-    setMinMaxOverrides((prev) => ({
-      ...prev,
-      [id]: {
-        ...prev[id],
-        [field]: value,
-      },
-    }));
   }, []);
 
   const handleCopyJson = useCallback(async () => {
@@ -92,10 +79,10 @@ const Index = () => {
 
   const handleReset = useCallback(() => {
     setProjectStart(getTodayISO());
+    setDevStart(getTodayISO());
     setSpeed(1.0);
-    setShowWeeks(true);
+    setShowDetailed(true);
     setOverrides({});
-    setMinMaxOverrides({});
     toast.success('Timeline reset to defaults');
   }, []);
 
@@ -116,10 +103,12 @@ const Index = () => {
         <ControlsPanel
           projectStart={projectStart}
           onProjectStartChange={setProjectStart}
+          devStart={devStart}
+          onDevStartChange={setDevStart}
           speed={speed}
           onSpeedChange={setSpeed}
-          showWeeks={showWeeks}
-          onShowWeeksChange={setShowWeeks}
+          showDetailed={showDetailed}
+          onShowDetailedChange={setShowDetailed}
           onCopyJson={handleCopyJson}
           onReset={handleReset}
         />
@@ -129,14 +118,13 @@ const Index = () => {
           projectedEnd={projectedEnd}
           iPhaseStart={iPhaseData.start}
           daysToIPhase={iPhaseData.daysTo}
-          showWeeks={showWeeks}
+          showDetailed={showDetailed}
         />
 
         <MilestoneTable
           milestones={milestones}
-          showWeeks={showWeeks}
-          onOverrideChange={handleOverrideChange}
-          onMinMaxChange={handleMinMaxChange}
+          showDetailed={showDetailed}
+          onDaysChange={handleDaysChange}
         />
       </main>
 

@@ -6,7 +6,7 @@ interface SummaryCardsProps {
   projectedEnd: string;
   iPhaseStart: string | null;
   daysToIPhase: number | null;
-  showWeeks: boolean;
+  showDetailed: boolean;
 }
 
 export function SummaryCards({ 
@@ -14,7 +14,7 @@ export function SummaryCards({
   projectedEnd, 
   iPhaseStart, 
   daysToIPhase, 
-  showWeeks 
+  showDetailed 
 }: SummaryCardsProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -26,7 +26,7 @@ export function SummaryCards({
           <span className="summary-label">Total Duration</span>
         </div>
         <div className="mt-2">
-          <span className="summary-value">{formatDuration(totalDays, showWeeks)}</span>
+          <span className="summary-value">{formatDuration(totalDays, showDetailed)}</span>
           <span className="summary-subtext ml-2">days</span>
         </div>
       </div>
@@ -41,7 +41,7 @@ export function SummaryCards({
         <div className="mt-2">
           {daysToIPhase !== null && iPhaseStart ? (
             <>
-              <span className="summary-value">{formatDuration(daysToIPhase, showWeeks)}</span>
+              <span className="summary-value">{formatDuration(daysToIPhase, showDetailed)}</span>
               <span className="summary-subtext ml-2">days ({formatDateDisplay(iPhaseStart)})</span>
             </>
           ) : (
