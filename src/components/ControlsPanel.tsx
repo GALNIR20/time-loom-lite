@@ -35,7 +35,7 @@ export function ControlsPanel({
   onShowTimeline,
 }: ControlsPanelProps) {
   return (
-    <div className="card-elevated p-3 sm:p-5">
+    <div className="card-elevated p-3 sm:p-5 overflow-hidden">
       <h2 className="text-xs sm:text-sm font-semibold text-foreground mb-3 sm:mb-4">Configuration</h2>
       
       <div className="space-y-3 sm:space-y-4">
@@ -72,7 +72,7 @@ export function ControlsPanel({
                 id="dev-start"
                 value={devStart}
                 onChange={(e) => onDevStartChange(e.target.value)}
-                className="input-field w-full pl-8 sm:pl-9 text-sm"
+                className="input-field w-full pl-8 sm:pl-9 text-sm min-w-0"
               />
             </div>
           </div>
@@ -89,7 +89,7 @@ export function ControlsPanel({
                 id="project-start"
                 value={projectStart}
                 onChange={(e) => onProjectStartChange(e.target.value)}
-                className="input-field w-full pl-8 sm:pl-9 text-sm"
+                className="input-field w-full pl-8 sm:pl-9 text-sm min-w-0"
               />
             </div>
           </div>
