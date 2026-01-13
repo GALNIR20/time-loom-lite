@@ -144,16 +144,16 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card">
-        <div className="container max-w-6xl mx-auto px-4 py-4 sm:py-6">
-          <img src={predictorLogo} alt="Predictor" className="h-8 sm:h-10" />
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+        <div className="container max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-6">
+          <img src={predictorLogo} alt="Predictor" className="h-6 sm:h-10" />
+          <p className="text-[10px] sm:text-sm text-muted-foreground mt-1">
             Plan your product lifecycle with flexible milestone durations
           </p>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container max-w-6xl mx-auto px-4 py-6 space-y-6">
+      <main className="container max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
         <ControlsPanel
           projectStart={projectStart}
           onProjectStartChange={(date) => {

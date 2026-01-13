@@ -117,45 +117,45 @@ export function MilestoneTable({
       {/* Mobile Card View */}
       <div className="md:hidden divide-y divide-border">
         {milestones.map((milestone, index) => (
-          <div key={milestone.id} className="p-4 space-y-3">
+          <div key={milestone.id} className="p-3 space-y-2">
             {/* Header row */}
             <div className="flex items-start justify-between gap-2">
-              <div>
+              <div className="min-w-0 flex-1">
                 <span
-                  className={
+                  className={`text-[10px] ${
                     milestone.phase === 'Concept Phase'
                       ? 'phase-badge-concept'
                       : milestone.phase === 'Sketch Phase'
                       ? 'phase-badge-sketch'
                       : 'phase-badge-execution'
-                  }
+                  }`}
                 >
                   {milestone.phase}
                 </span>
-                <h3 className="font-medium text-foreground mt-1">{milestone.name}</h3>
+                <h3 className="font-medium text-foreground text-sm mt-1 truncate">{milestone.name}</h3>
               </div>
-              <span className="text-sm text-muted-foreground whitespace-nowrap">
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap flex-shrink-0">
                 {formatDateDisplay(milestone.start)}
               </span>
             </div>
 
             {/* Days input row */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
                 <input
                   type="number"
                   min="0"
                   step="1"
                   value={milestone.durationDays}
                   onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
-                  className="input-field w-16 text-center text-sm"
+                  className="input-field w-14 text-center text-xs py-1"
                   aria-label={`Days for ${milestone.name}`}
                 />
-                <span className="text-sm text-muted-foreground">days</span>
+                <span className="text-xs text-muted-foreground">days</span>
                 {milestone.overrideDays !== null && (
                   <button
                     onClick={() => onDaysChange(milestone.id, null)}
-                    className="btn-ghost"
+                    className="btn-ghost p-1"
                     aria-label={`Reset days for ${milestone.name}`}
                   >
                     <X className="w-3 h-3" />
@@ -163,7 +163,7 @@ export function MilestoneTable({
                 )}
               </div>
               {showDetailed && (
-                <span className="text-xs text-muted-foreground">
+                <span className="text-[10px] text-muted-foreground">
                   ({formatDuration(milestone.durationDays, true).split('(')[1]?.replace(')', '') || ''})
                 </span>
               )}
@@ -171,9 +171,9 @@ export function MilestoneTable({
 
             {/* Next milestone */}
             {index < milestones.length - 1 && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <ArrowRight className="w-3 h-3" />
-                <span>{milestones[index + 1].name}</span>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <ArrowRight className="w-3 h-3 flex-shrink-0" />
+                <span className="truncate">{milestones[index + 1].name}</span>
               </div>
             )}
           </div>
