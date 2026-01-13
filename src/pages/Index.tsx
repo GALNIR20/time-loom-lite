@@ -13,7 +13,6 @@ import { TimelineExport } from '@/types/timeline';
 
 const Index = () => {
   const [projectStart, setProjectStart] = useState(getTodayISO);
-  const [devStart, setDevStart] = useState(getTodayISO);
   const [speed, setSpeed] = useState(1.0);
   const [showDetailed, setShowDetailed] = useState(true);
   const [overrides, setOverrides] = useState<Record<string, number | null>>({});
@@ -34,21 +33,24 @@ const Index = () => {
     [milestones, projectStart]
   );
 
-  const sprint1Data = useMemo(() => {
+  const sprint1Start = useMemo(() => {
     const sprint1 = milestones.find((m) => m.id === 'sprint-1');
-    if (!sprint1) return { start: null, daysTo: null };
+    return sprint1?.start ?? null;
+  }, [milestones]);
+
+  const daysToSprint1 = useMemo(() => {
+    const sprint1 = milestones.find((m) => m.id === 'sprint-1');
+    if (!sprint1) return null;
     
-    const daysToSprint1 = milestones
+    return milestones
       .filter((m) => milestones.indexOf(m) < milestones.indexOf(sprint1))
       .reduce((sum, m) => sum + m.durationDays, 0);
-    
-    return { start: sprint1.start, daysTo: daysToSprint1 };
   }, [milestones]);
 
   const exportData: TimelineExport = useMemo(
     () => ({
       projectStart,
-      devStart,
+      devStart: sprint1Start ?? projectStart,
       speed,
       totalDays,
       projectedEnd,
@@ -60,7 +62,7 @@ const Index = () => {
         date: m.start,
       })),
     }),
-    [projectStart, devStart, speed, totalDays, projectedEnd, milestones]
+    [projectStart, sprint1Start, speed, totalDays, projectedEnd, milestones]
   );
 
   const handleDaysChange = useCallback((id: string, value: number | null) => {
@@ -79,7 +81,6 @@ const Index = () => {
 
   const handleReset = useCallback(() => {
     setProjectStart(getTodayISO());
-    setDevStart(getTodayISO());
     setSpeed(1.0);
     setShowDetailed(true);
     setOverrides({});
@@ -103,8 +104,7 @@ const Index = () => {
         <ControlsPanel
           projectStart={projectStart}
           onProjectStartChange={setProjectStart}
-          devStart={devStart}
-          onDevStartChange={setDevStart}
+          devStart={sprint1Start ?? projectStart}
           speed={speed}
           onSpeedChange={setSpeed}
           showDetailed={showDetailed}
@@ -116,8 +116,8 @@ const Index = () => {
         <SummaryCards
           totalDays={totalDays}
           projectedEnd={projectedEnd}
-          sprint1Start={sprint1Data.start}
-          daysToSprint1={sprint1Data.daysTo}
+          sprint1Start={sprint1Start}
+          daysToSprint1={daysToSprint1}
           showDetailed={showDetailed}
         />
 
