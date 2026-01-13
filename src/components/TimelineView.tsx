@@ -156,57 +156,58 @@ export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: Time
         <div className="flex-1 overflow-auto">
           {viewMode === 'milestones' ? (
             /* Visual Milestones View */
-            <div className="p-6">
-              <div className="relative">
-                {/* Horizontal connecting line */}
-                <div className="absolute top-16 left-8 right-8 h-1 bg-border rounded-full" />
-                
-                {/* Milestone nodes */}
-                <div className="flex justify-between items-start relative">
+            <div className="p-6 overflow-x-auto">
+              <div className="relative min-w-[800px]">
+                {/* Milestone nodes with connectors */}
+                <div className="flex items-start relative">
                   {milestones.map((milestone, index) => (
-                    <div key={milestone.id} className="flex flex-col items-center flex-1 relative">
-                      {/* Node circle */}
-                      <div 
-                        className={`w-12 h-12 rounded-full ${getPhaseColor(milestone.phase)} flex items-center justify-center shadow-lg z-10 border-4 border-card`}
-                      >
-                        <span className="text-xs font-bold text-white">{index + 1}</span>
+                    <div key={milestone.id} className="flex items-start">
+                      {/* Milestone node */}
+                      <div className="flex flex-col items-center">
+                        {/* Node circle */}
+                        <div 
+                          className={`w-12 h-12 rounded-full ${getPhaseColor(milestone.phase)} flex items-center justify-center shadow-lg z-10 border-4 border-card`}
+                        >
+                          <span className="text-xs font-bold text-white">{index + 1}</span>
+                        </div>
+                        
+                        {/* Milestone info */}
+                        <div className="mt-3 text-center max-w-[100px]">
+                          <span className="text-sm font-semibold text-foreground block truncate">
+                            {milestone.name}
+                          </span>
+                          <span className="text-xs text-muted-foreground block mt-1">
+                            {formatDateDisplay(milestone.start)}
+                          </span>
+                          {/* Phase label */}
+                          <div className={`mt-2 px-2 py-1 rounded-full text-[10px] font-medium text-white ${getPhaseColor(milestone.phase)}`}>
+                            {milestone.phase.replace(' Phase', '')}
+                          </div>
+                        </div>
                       </div>
                       
-                      {/* Connecting arrow for non-last items */}
+                      {/* Connector with days input between nodes */}
                       {index < milestones.length - 1 && (
-                        <div className="absolute top-5 left-1/2 w-full h-2 flex items-center justify-center">
-                          <div className={`h-1 flex-1 ${getPhaseColor(milestone.phase)} ml-6 mr-[-50%]`} />
+                        <div className="flex flex-col items-center mx-2" style={{ marginTop: '20px' }}>
+                          {/* Line and days input */}
+                          <div className="flex items-center">
+                            <div className={`h-1 w-8 ${getPhaseColor(milestone.phase)}`} />
+                            <div className="flex flex-col items-center mx-1">
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={milestone.durationDays}
+                                onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
+                                className="input-field w-14 text-center text-xs py-1"
+                                aria-label={`Days for ${milestone.name}`}
+                              />
+                              <span className="text-[10px] text-muted-foreground mt-0.5">days</span>
+                            </div>
+                            <div className={`h-1 w-8 ${getPhaseColor(milestones[index + 1].phase)}`} />
+                          </div>
                         </div>
                       )}
-                      
-                      {/* Milestone info card */}
-                      <div className="mt-4 text-center px-2 max-w-[120px]">
-                        <span className="text-sm font-semibold text-foreground block truncate">
-                          {milestone.name}
-                        </span>
-                        <span className="text-xs text-muted-foreground block mt-1">
-                          {formatDateDisplay(milestone.start)}
-                        </span>
-                        
-                        {/* Duration badge */}
-                        <div className="mt-2">
-                          <input
-                            type="number"
-                            min="0"
-                            step="1"
-                            value={milestone.durationDays}
-                            onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
-                            className="input-field w-16 text-center text-xs py-1"
-                            aria-label={`Days for ${milestone.name}`}
-                          />
-                          <span className="text-[10px] text-muted-foreground block mt-1">days</span>
-                        </div>
-                        
-                        {/* Phase label */}
-                        <div className={`mt-2 px-2 py-1 rounded-full text-[10px] font-medium text-white ${getPhaseColor(milestone.phase)}`}>
-                          {milestone.phase.replace(' Phase', '')}
-                        </div>
-                      </div>
                     </div>
                   ))}
                 </div>
