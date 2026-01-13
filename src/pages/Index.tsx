@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
+import { parseISO, subDays, format } from 'date-fns';
 import { ControlsPanel } from '@/components/ControlsPanel';
 import { SummaryCards } from '@/components/SummaryCards';
 import { MilestoneTable } from '@/components/MilestoneTable';
@@ -7,6 +8,7 @@ import { JsonExportModal } from '@/components/JsonExportModal';
 import {
   DEFAULT_MILESTONES,
   calculateTimeline,
+  calculateDuration,
   getTodayISO,
 } from '@/lib/timeline';
 import { TimelineExport } from '@/types/timeline';
@@ -46,6 +48,30 @@ const Index = () => {
       .filter((m) => milestones.indexOf(m) < milestones.indexOf(sprint1))
       .reduce((sum, m) => sum + m.durationDays, 0);
   }, [milestones]);
+
+  // Calculate days before Sprint 1 based on current config
+  const daysBeforeSprint1 = useMemo(() => {
+    const sprint1Index = DEFAULT_MILESTONES.findIndex((m) => m.id === 'sprint-1');
+    if (sprint1Index === -1) return 0;
+    
+    return DEFAULT_MILESTONES.slice(0, sprint1Index).reduce((sum, config) => {
+      const overrideDays = overrides[config.id] ?? null;
+      const duration = calculateDuration(
+        config.defaultMinDays,
+        config.defaultMaxDays,
+        speed,
+        overrideDays
+      );
+      return sum + duration;
+    }, 0);
+  }, [overrides, speed]);
+
+  const handleDevStartChange = useCallback((devStartDate: string) => {
+    // Calculate project start by going back from dev start
+    const devStart = parseISO(devStartDate);
+    const newProjectStart = subDays(devStart, daysBeforeSprint1);
+    setProjectStart(format(newProjectStart, 'yyyy-MM-dd'));
+  }, [daysBeforeSprint1]);
 
   const exportData: TimelineExport = useMemo(
     () => ({
@@ -105,6 +131,7 @@ const Index = () => {
           projectStart={projectStart}
           onProjectStartChange={setProjectStart}
           devStart={sprint1Start ?? projectStart}
+          onDevStartChange={handleDevStartChange}
           speed={speed}
           onSpeedChange={setSpeed}
           showDetailed={showDetailed}
