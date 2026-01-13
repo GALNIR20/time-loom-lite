@@ -39,40 +39,6 @@ export function ControlsPanel({
       <div className="space-y-4">
         {/* Date inputs row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Project Start Date */}
-          <div className="flex flex-col gap-2">
-            <label htmlFor="project-start" className="text-xs font-medium text-muted-foreground">
-              Project Start Date
-            </label>
-            <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-              <input
-                type="date"
-                id="project-start"
-                value={projectStart}
-                onChange={(e) => onProjectStartChange(e.target.value)}
-                className="input-field w-full pl-9"
-              />
-            </div>
-          </div>
-
-          {/* Dev Start Date (editable - calculates backwards) */}
-          <div className="flex flex-col gap-2">
-            <label htmlFor="dev-start" className="text-xs font-medium text-muted-foreground">
-              Dev Start Date (Sprint 1)
-            </label>
-            <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-              <input
-                type="date"
-                id="dev-start"
-                value={devStart}
-                onChange={(e) => onDevStartChange(e.target.value)}
-                className="input-field w-full pl-9"
-              />
-            </div>
-          </div>
-
           {/* Preset Selector */}
           <div className="flex flex-col gap-2">
             <label htmlFor="preset" className="text-xs font-medium text-muted-foreground">
@@ -90,6 +56,40 @@ export function ControlsPanel({
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Dev Start Date (editable - calculates backwards) */}
+          <div className="flex flex-col gap-2">
+            <label htmlFor="dev-start" className="text-xs font-medium text-muted-foreground">
+              Development Start (Sprint 1)
+            </label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <input
+                type="date"
+                id="dev-start"
+                value={devStart}
+                onChange={(e) => onDevStartChange(e.target.value)}
+                className="input-field w-full pl-9"
+              />
+            </div>
+          </div>
+
+          {/* Project Start Date */}
+          <div className="flex flex-col gap-2">
+            <label htmlFor="project-start" className="text-xs font-medium text-muted-foreground">
+              Project Start Date
+            </label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <input
+                type="date"
+                id="project-start"
+                value={projectStart}
+                onChange={(e) => onProjectStartChange(e.target.value)}
+                className="input-field w-full pl-9"
+              />
+            </div>
           </div>
         </div>
 
