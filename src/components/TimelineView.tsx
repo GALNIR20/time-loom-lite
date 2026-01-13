@@ -8,9 +8,10 @@ interface TimelineViewProps {
   milestones: MilestoneState[];
   isOpen: boolean;
   onClose: () => void;
+  onDaysChange: (id: string, value: number | null) => void;
 }
 
-export function TimelineView({ milestones, isOpen, onClose }: TimelineViewProps) {
+export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: TimelineViewProps) {
   const { totalDays, startDate } = useMemo(() => {
     if (milestones.length === 0) return { totalDays: 0, startDate: new Date() };
     
@@ -24,6 +25,17 @@ export function TimelineView({ milestones, isOpen, onClose }: TimelineViewProps)
 
   if (!isOpen) return null;
 
+  const handleDaysInput = (id: string, value: string) => {
+    if (value === '') {
+      onDaysChange(id, null);
+      return;
+    }
+    const parsed = parseInt(value, 10);
+    if (!isNaN(parsed) && parsed >= 0) {
+      onDaysChange(id, parsed);
+    }
+  };
+
   const getPhaseColor = (phase: string) => {
     switch (phase) {
       case 'Concept Phase':
@@ -34,19 +46,6 @@ export function TimelineView({ milestones, isOpen, onClose }: TimelineViewProps)
         return 'bg-success';
       default:
         return 'bg-muted';
-    }
-  };
-
-  const getPhaseColorLight = (phase: string) => {
-    switch (phase) {
-      case 'Concept Phase':
-        return 'bg-primary/20';
-      case 'Sketch Phase':
-        return 'bg-warning/20';
-      case 'Execution Phase':
-        return 'bg-success/20';
-      default:
-        return 'bg-muted/20';
     }
   };
 
@@ -94,14 +93,20 @@ export function TimelineView({ milestones, isOpen, onClose }: TimelineViewProps)
 
                 return (
                   <div key={milestone.id} className="flex items-center gap-3">
-                    {/* Milestone name */}
-                    <div className="w-28 flex-shrink-0 text-right">
-                      <span className="text-sm font-medium text-foreground truncate block">
+                    {/* Milestone name and days input */}
+                    <div className="w-36 flex-shrink-0 flex items-center gap-2">
+                      <span className="text-sm font-medium text-foreground truncate flex-1 text-right">
                         {milestone.name}
                       </span>
-                      <span className="text-xs text-muted-foreground">
-                        {milestone.durationDays}d
-                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={milestone.durationDays}
+                        onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
+                        className="input-field w-14 text-center text-xs py-1 px-1"
+                        aria-label={`Days for ${milestone.name}`}
+                      />
                     </div>
 
                     {/* Bar container */}
@@ -116,13 +121,13 @@ export function TimelineView({ milestones, isOpen, onClose }: TimelineViewProps)
                           }}
                         >
                           <span className="text-xs font-medium text-white px-1 truncate">
-                            {widthPercent > 8 ? formatDateDisplay(milestone.start) : ''}
+                            {widthPercent > 10 ? formatDateDisplay(milestone.start) : ''}
                           </span>
                         </div>
                       )}
                     </div>
 
-                    {/* End date */}
+                    {/* Date */}
                     <div className="w-24 flex-shrink-0 text-left">
                       <span className="text-xs text-muted-foreground">
                         {formatDateDisplay(milestone.start)}
