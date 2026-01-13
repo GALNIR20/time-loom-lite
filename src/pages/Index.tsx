@@ -14,6 +14,7 @@ import {
   getTodayISO,
 } from '@/lib/timeline';
 import { TimelineExport, PresetType } from '@/types/timeline';
+import predictorLogo from '@/assets/predictor-logo.png';
 
 // Calculate days before Sprint 1 for a given preset and overrides
 function calculateDaysBeforeSprint1(
@@ -144,7 +145,7 @@ const Index = () => {
       {/* Header */}
       <header className="border-b border-border bg-card">
         <div className="container max-w-6xl mx-auto px-4 py-4 sm:py-6">
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Predictor</h1>
+          <img src={predictorLogo} alt="Predictor" className="h-8 sm:h-10" />
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Plan your product lifecycle with flexible milestone durations
           </p>
