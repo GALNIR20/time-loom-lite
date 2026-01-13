@@ -146,7 +146,7 @@ const Index = () => {
       <header className="border-b border-border bg-card">
         <div className="container max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-6">
           <div className="flex items-center gap-2 sm:gap-3">
-            <img src={predictorLogo} alt="Predictor" className="h-10 sm:h-14" />
+            <img src={predictorLogo} alt="Predictor" className="h-[52px] sm:h-[72px]" />
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Plan your product lifecycle with flexible milestone durations
