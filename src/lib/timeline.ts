@@ -1,4 +1,4 @@
-import { MilestoneConfig, MilestoneState, MinMaxOverrides } from '@/types/timeline';
+import { MilestoneConfig, MilestoneState } from '@/types/timeline';
 import { format, addDays, parseISO } from 'date-fns';
 
 export const DEFAULT_MILESTONES: MilestoneConfig[] = [
@@ -27,7 +27,6 @@ export function calculateDuration(
 export function calculateTimeline(
   configs: MilestoneConfig[],
   overrides: Record<string, number | null>,
-  minMaxOverrides: MinMaxOverrides,
   projectStart: string,
   speed: number
 ): MilestoneState[] {
@@ -36,8 +35,8 @@ export function calculateTimeline(
 
   return configs.map((config) => {
     const overrideDays = overrides[config.id] ?? null;
-    const minDays = minMaxOverrides[config.id]?.min ?? config.defaultMinDays;
-    const maxDays = minMaxOverrides[config.id]?.max ?? config.defaultMaxDays;
+    const minDays = config.defaultMinDays;
+    const maxDays = config.defaultMaxDays;
     
     const durationDays = calculateDuration(
       minDays,
@@ -69,19 +68,24 @@ export function formatDateDisplay(isoDate: string): string {
   return format(date, 'MMM d, yyyy');
 }
 
-export function daysToWeeks(days: number): string {
-  const weeks = Math.floor(days / 7);
-  const remainingDays = days % 7;
+export function daysToMonthsWeeksDays(days: number): string {
+  const months = Math.floor(days / 30);
+  const remainingAfterMonths = days % 30;
+  const weeks = Math.floor(remainingAfterMonths / 7);
+  const remainingDays = remainingAfterMonths % 7;
   
-  if (weeks === 0) return '';
-  if (remainingDays === 0) return `${weeks}w`;
-  return `${weeks}w ${remainingDays}d`;
+  const parts: string[] = [];
+  if (months > 0) parts.push(`${months}m`);
+  if (weeks > 0) parts.push(`${weeks}w`);
+  if (remainingDays > 0) parts.push(`${remainingDays}d`);
+  
+  return parts.length > 0 ? parts.join(' ') : '';
 }
 
-export function formatDuration(days: number, showWeeks: boolean): string {
-  if (!showWeeks) return `${days}`;
-  const weeksStr = daysToWeeks(days);
-  return weeksStr ? `${days} (${weeksStr})` : `${days}`;
+export function formatDuration(days: number, showDetailed: boolean): string {
+  if (!showDetailed) return `${days}`;
+  const detailedStr = daysToMonthsWeeksDays(days);
+  return detailedStr ? `${days} (${detailedStr})` : `${days}`;
 }
 
 export function getTodayISO(): string {

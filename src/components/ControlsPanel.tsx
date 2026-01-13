@@ -3,10 +3,12 @@ import { Calendar, RefreshCw } from 'lucide-react';
 interface ControlsPanelProps {
   projectStart: string;
   onProjectStartChange: (date: string) => void;
+  devStart: string;
+  onDevStartChange: (date: string) => void;
   speed: number;
   onSpeedChange: (speed: number) => void;
-  showWeeks: boolean;
-  onShowWeeksChange: (show: boolean) => void;
+  showDetailed: boolean;
+  onShowDetailedChange: (show: boolean) => void;
   onCopyJson: () => void;
   onReset: () => void;
 }
@@ -14,10 +16,12 @@ interface ControlsPanelProps {
 export function ControlsPanel({
   projectStart,
   onProjectStartChange,
+  devStart,
+  onDevStartChange,
   speed,
   onSpeedChange,
-  showWeeks,
-  onShowWeeksChange,
+  showDetailed,
+  onShowDetailedChange,
   onCopyJson,
   onReset,
 }: ControlsPanelProps) {
@@ -25,7 +29,7 @@ export function ControlsPanel({
     <div className="card-elevated p-5">
       <h2 className="text-sm font-semibold text-foreground mb-4">Configuration</h2>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
         {/* Project Start Date */}
         <div className="flex flex-col gap-2">
           <label htmlFor="project-start" className="text-xs font-medium text-muted-foreground">
@@ -38,6 +42,23 @@ export function ControlsPanel({
               id="project-start"
               value={projectStart}
               onChange={(e) => onProjectStartChange(e.target.value)}
+              className="input-field w-full pl-9"
+            />
+          </div>
+        </div>
+
+        {/* Dev Start Date */}
+        <div className="flex flex-col gap-2">
+          <label htmlFor="dev-start" className="text-xs font-medium text-muted-foreground">
+            Dev Start Date
+          </label>
+          <div className="relative">
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <input
+              type="date"
+              id="dev-start"
+              value={devStart}
+              onChange={(e) => onDevStartChange(e.target.value)}
               className="input-field w-full pl-9"
             />
           </div>
@@ -69,17 +90,17 @@ export function ControlsPanel({
           </div>
         </div>
 
-        {/* Show Weeks Checkbox */}
+        {/* Show Detailed Checkbox */}
         <div className="flex flex-col gap-2">
           <span className="text-xs font-medium text-muted-foreground">Display Options</span>
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <input
               type="checkbox"
-              checked={showWeeks}
-              onChange={(e) => onShowWeeksChange(e.target.checked)}
+              checked={showDetailed}
+              onChange={(e) => onShowDetailedChange(e.target.checked)}
               className="w-4 h-4 rounded border-input text-primary focus:ring-ring focus:ring-offset-1"
             />
-            <span className="text-sm text-foreground">Show weeks next to days</span>
+            <span className="text-sm text-foreground">Show months/weeks/days</span>
           </label>
         </div>
 
