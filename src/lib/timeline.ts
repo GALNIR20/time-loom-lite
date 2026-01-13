@@ -2,7 +2,7 @@ import { MilestoneConfig, MilestoneState } from '@/types/timeline';
 import { format, addDays, parseISO } from 'date-fns';
 
 export const DEFAULT_MILESTONES: MilestoneConfig[] = [
-  { id: 'brief', phase: 'Concept Phase', name: 'Brief', defaultMinDays: 7, defaultMaxDays: 14 },
+  { id: 'brief', phase: 'Concept Phase', name: 'Brief', defaultMinDays: 14, defaultMaxDays: 14 },
   { id: 'pre-concept', phase: 'Concept Phase', name: 'Pre-Concept', defaultMinDays: 21, defaultMaxDays: 21 },
   { id: 'concept', phase: 'Concept Phase', name: 'Concept', defaultMinDays: 42, defaultMaxDays: 42 },
   { id: 'art-sketch', phase: 'Sketch Phase', name: 'Art Sketch', defaultMinDays: 7, defaultMaxDays: 7 },
