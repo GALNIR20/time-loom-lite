@@ -179,10 +179,6 @@ export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: Time
                           <span className="text-xs text-muted-foreground block mt-1">
                             {formatDateDisplay(milestone.start)}
                           </span>
-                          {/* Phase label */}
-                          <div className={`mt-2 px-2 py-1 rounded-full text-[10px] font-medium text-white ${getPhaseColor(milestone.phase)}`}>
-                            {milestone.phase.replace(' Phase', '')}
-                          </div>
                         </div>
                       </div>
                       
