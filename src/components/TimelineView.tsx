@@ -1,8 +1,8 @@
 import { MilestoneState } from '@/types/timeline';
 import { formatDateDisplay } from '@/lib/timeline';
 import { X } from 'lucide-react';
-import { useMemo } from 'react';
-import { parseISO, differenceInDays } from 'date-fns';
+import { useMemo, useState } from 'react';
+import { parseISO, differenceInDays, addDays, startOfWeek, format, differenceInWeeks, addWeeks, startOfQuarter, differenceInQuarters, addQuarters } from 'date-fns';
 
 interface TimelineViewProps {
   milestones: MilestoneState[];
@@ -11,15 +11,34 @@ interface TimelineViewProps {
   onDaysChange: (id: string, value: number | null) => void;
 }
 
+type ViewMode = 'days' | 'weeks' | 'quarters';
+
 export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: TimelineViewProps) {
-  const { totalDays, startDate } = useMemo(() => {
-    if (milestones.length === 0) return { totalDays: 0, startDate: new Date() };
+  const [viewMode, setViewMode] = useState<ViewMode>('weeks');
+
+  const { totalDays, startDate, endDate, weeks, quarters } = useMemo(() => {
+    if (milestones.length === 0) return { totalDays: 0, startDate: new Date(), endDate: new Date(), weeks: [], quarters: [] };
     
     const start = parseISO(milestones[0].start);
     const end = parseISO(milestones[milestones.length - 1].end);
+    const days = differenceInDays(end, start);
+    
+    // Generate weeks
+    const weekStart = startOfWeek(start, { weekStartsOn: 1 });
+    const weekCount = Math.ceil(differenceInDays(end, weekStart) / 7) + 1;
+    const weeksArr = Array.from({ length: weekCount }, (_, i) => addWeeks(weekStart, i));
+    
+    // Generate quarters
+    const qStart = startOfQuarter(start);
+    const qCount = differenceInQuarters(end, qStart) + 2;
+    const quartersArr = Array.from({ length: qCount }, (_, i) => addQuarters(qStart, i));
+    
     return {
-      totalDays: differenceInDays(end, start),
+      totalDays: days,
       startDate: start,
+      endDate: end,
+      weeks: weeksArr,
+      quarters: quartersArr,
     };
   }, [milestones]);
 
@@ -49,19 +68,62 @@ export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: Time
     }
   };
 
+  const getBarPosition = (milestone: MilestoneState) => {
+    const milestoneStart = parseISO(milestone.start);
+    const offsetDays = differenceInDays(milestoneStart, startDate);
+    const offsetPercent = totalDays > 0 ? (offsetDays / totalDays) * 100 : 0;
+    const widthPercent = totalDays > 0 ? (milestone.durationDays / totalDays) * 100 : 0;
+    return { offsetPercent, widthPercent };
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="bg-card rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-card rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="text-lg font-semibold text-foreground">Timeline View</h2>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-md hover:bg-accent transition-colors"
-            aria-label="Close timeline view"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-4">
+            {/* View Mode Toggle */}
+            <div className="flex rounded-lg border border-border overflow-hidden">
+              <button
+                onClick={() => setViewMode('days')}
+                className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                  viewMode === 'days' 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'bg-background text-foreground hover:bg-muted'
+                }`}
+              >
+                Days
+              </button>
+              <button
+                onClick={() => setViewMode('weeks')}
+                className={`px-3 py-1.5 text-xs font-medium transition-colors border-x border-border ${
+                  viewMode === 'weeks' 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'bg-background text-foreground hover:bg-muted'
+                }`}
+              >
+                Weeks
+              </button>
+              <button
+                onClick={() => setViewMode('quarters')}
+                className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                  viewMode === 'quarters' 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'bg-background text-foreground hover:bg-muted'
+                }`}
+              >
+                Quarters
+              </button>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-md hover:bg-accent transition-colors"
+              aria-label="Close timeline view"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Legend */}
@@ -81,112 +143,156 @@ export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: Time
         </div>
 
         {/* Timeline Content */}
-        <div className="flex-1 overflow-auto p-4">
-          <div className="flex gap-6">
-            {/* Left side: Milestone list with next milestone */}
-            <div className="w-44 flex-shrink-0">
-              {milestones.map((milestone, index) => {
-                const nextMilestone = index < milestones.length - 1 ? milestones[index + 1] : null;
-                
-                return (
-                  <div key={milestone.id} className="border-b border-border last:border-b-0">
-                    {/* Current Milestone */}
-                    <div className="py-3">
-                      <span className="text-base font-medium text-foreground block">
-                        {milestone.name}
-                      </span>
-                    </div>
-                    {/* Next Milestone (shown below, lighter) */}
-                    {nextMilestone && (
-                      <div className="pb-3">
-                        <span className="text-base text-muted-foreground block">
-                          {nextMilestone.name}
-                        </span>
-                      </div>
-                    )}
+        <div className="flex-1 overflow-auto">
+          <div className="min-w-[900px]">
+            {/* Calendar Header */}
+            <div className="flex border-b border-border sticky top-0 bg-card z-10">
+              {/* Milestone column header */}
+              <div className="w-32 flex-shrink-0 p-2 border-r border-border">
+                <span className="text-xs font-medium text-muted-foreground">Milestone</span>
+              </div>
+              {/* Days column header */}
+              <div className="w-16 flex-shrink-0 p-2 border-r border-border">
+                <span className="text-xs font-medium text-muted-foreground">Days</span>
+              </div>
+              {/* Next column header */}
+              <div className="w-28 flex-shrink-0 p-2 border-r border-border">
+                <span className="text-xs font-medium text-muted-foreground">Next</span>
+              </div>
+              {/* Calendar columns */}
+              <div className="flex-1 flex">
+                {viewMode === 'weeks' && weeks.map((week, i) => (
+                  <div 
+                    key={i} 
+                    className="flex-1 min-w-[60px] p-2 text-center border-r border-border last:border-r-0 bg-muted/20"
+                  >
+                    <span className="text-[10px] font-medium text-muted-foreground block">
+                      W{format(week, 'w')}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {format(week, 'MMM d')}
+                    </span>
                   </div>
-                );
-              })}
+                ))}
+                {viewMode === 'quarters' && quarters.map((q, i) => (
+                  <div 
+                    key={i} 
+                    className="flex-1 min-w-[80px] p-2 text-center border-r border-border last:border-r-0 bg-muted/20"
+                  >
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Q{Math.ceil((parseISO(format(q, 'yyyy-MM-dd')).getMonth() + 1) / 3)} {format(q, 'yyyy')}
+                    </span>
+                  </div>
+                ))}
+                {viewMode === 'days' && (
+                  <div className="flex-1 p-2 text-center bg-muted/20">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {format(startDate, 'MMM d')} — {format(endDate, 'MMM d, yyyy')}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Middle: Days input */}
-            <div className="w-20 flex-shrink-0">
-              <div className="text-xs font-medium text-muted-foreground mb-2">Days</div>
-              {milestones.map((milestone, index) => {
-                const nextMilestone = index < milestones.length - 1 ? milestones[index + 1] : null;
-                const rowHeight = nextMilestone ? 'h-[88px]' : 'h-[52px]';
-                
-                return (
-                  <div key={milestone.id} className={`${rowHeight} flex items-start pt-3 border-b border-border last:border-b-0`}>
+            {/* Milestone rows */}
+            {milestones.map((milestone, index) => {
+              const { offsetPercent, widthPercent } = getBarPosition(milestone);
+              const nextMilestone = index < milestones.length - 1 ? milestones[index + 1] : null;
+
+              return (
+                <div key={milestone.id} className="flex border-b border-border hover:bg-muted/10 transition-colors">
+                  {/* Milestone name */}
+                  <div className="w-32 flex-shrink-0 p-3 border-r border-border">
+                    <span className="text-sm font-medium text-foreground block truncate">
+                      {milestone.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatDateDisplay(milestone.start)}
+                    </span>
+                  </div>
+                  
+                  {/* Days input */}
+                  <div className="w-16 flex-shrink-0 p-2 border-r border-border flex items-center justify-center">
                     <input
                       type="number"
                       min="0"
                       step="1"
                       value={milestone.durationDays}
                       onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
-                      className="input-field w-16 text-center text-sm py-1"
+                      className="input-field w-14 text-center text-xs py-1"
                       aria-label={`Days for ${milestone.name}`}
                     />
                   </div>
-                );
-              })}
-            </div>
 
-            {/* Right side: Gantt chart */}
-            <div className="flex-1 min-w-[300px]">
-              <div className="text-xs font-medium text-muted-foreground mb-2">Timeline</div>
-              {milestones.map((milestone, index) => {
-                const milestoneStart = parseISO(milestone.start);
-                const offsetDays = differenceInDays(milestoneStart, startDate);
-                const offsetPercent = totalDays > 0 ? (offsetDays / totalDays) * 100 : 0;
-                const widthPercent = totalDays > 0 ? (milestone.durationDays / totalDays) * 100 : 0;
-                const nextMilestone = index < milestones.length - 1 ? milestones[index + 1] : null;
-                const rowHeight = nextMilestone ? 'h-[88px]' : 'h-[52px]';
+                  {/* Next milestone */}
+                  <div className="w-28 flex-shrink-0 p-3 border-r border-border flex items-center">
+                    <span className="text-sm font-medium text-foreground truncate">
+                      {nextMilestone ? nextMilestone.name : '—'}
+                    </span>
+                  </div>
 
-                return (
-                  <div key={milestone.id} className={`${rowHeight} flex flex-col justify-start pt-3 border-b border-border last:border-b-0`}>
-                    <div className="h-8 bg-muted/30 rounded-md relative overflow-hidden">
+                  {/* Gantt bar */}
+                  <div className="flex-1 p-2 relative">
+                    <div className="h-8 w-full relative">
+                      {/* Grid lines for weeks/quarters */}
+                      {viewMode === 'weeks' && weeks.map((_, i) => (
+                        <div
+                          key={i}
+                          className="absolute top-0 bottom-0 border-r border-border/50"
+                          style={{ left: `${((i + 1) / weeks.length) * 100}%` }}
+                        />
+                      ))}
+                      {viewMode === 'quarters' && quarters.map((_, i) => (
+                        <div
+                          key={i}
+                          className="absolute top-0 bottom-0 border-r border-border/50"
+                          style={{ left: `${((i + 1) / quarters.length) * 100}%` }}
+                        />
+                      ))}
+                      
+                      {/* Bar */}
                       {milestone.durationDays > 0 && (
                         <div
-                          className={`absolute top-1 bottom-1 rounded ${getPhaseColor(milestone.phase)} flex items-center transition-all`}
+                          className={`absolute top-1 bottom-1 rounded ${getPhaseColor(milestone.phase)} flex items-center transition-all shadow-sm`}
                           style={{
                             left: `${offsetPercent}%`,
-                            width: `${Math.max(widthPercent, 3)}%`,
+                            width: `${Math.max(widthPercent, 1)}%`,
                           }}
                         >
                           <span className="text-[10px] font-medium text-white px-2 truncate">
-                            {widthPercent > 10 ? `${milestone.durationDays}d` : ''}
+                            {widthPercent > 8 ? `${milestone.durationDays}d` : ''}
                           </span>
                         </div>
                       )}
                     </div>
-                    <span className="text-xs text-muted-foreground mt-1">
-                      {formatDateDisplay(milestone.start)}
-                    </span>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
           </div>
+        </div>
 
-          {/* Summary */}
-          <div className="mt-6 pt-4 border-t border-border flex flex-wrap gap-6">
-            <div>
-              <span className="text-xs text-muted-foreground block">Project Start</span>
-              <span className="text-sm font-medium text-foreground">
-                {milestones[0] ? formatDateDisplay(milestones[0].start) : '—'}
-              </span>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground block">Project End</span>
-              <span className="text-sm font-medium text-foreground">
-                {milestones[milestones.length - 1] ? formatDateDisplay(milestones[milestones.length - 1].end) : '—'}
-              </span>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground block">Total Duration</span>
-              <span className="text-sm font-medium text-foreground">{totalDays} days</span>
-            </div>
+        {/* Summary Footer */}
+        <div className="p-4 border-t border-border bg-muted/30 flex flex-wrap gap-6">
+          <div>
+            <span className="text-xs text-muted-foreground block">Project Start</span>
+            <span className="text-sm font-medium text-foreground">
+              {milestones[0] ? formatDateDisplay(milestones[0].start) : '—'}
+            </span>
+          </div>
+          <div>
+            <span className="text-xs text-muted-foreground block">Project End</span>
+            <span className="text-sm font-medium text-foreground">
+              {milestones[milestones.length - 1] ? formatDateDisplay(milestones[milestones.length - 1].end) : '—'}
+            </span>
+          </div>
+          <div>
+            <span className="text-xs text-muted-foreground block">Total Duration</span>
+            <span className="text-sm font-medium text-foreground">{totalDays} days</span>
+          </div>
+          <div>
+            <span className="text-xs text-muted-foreground block">Total Weeks</span>
+            <span className="text-sm font-medium text-foreground">{Math.ceil(totalDays / 7)} weeks</span>
           </div>
         </div>
       </div>
