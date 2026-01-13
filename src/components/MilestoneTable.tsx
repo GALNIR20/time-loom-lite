@@ -40,7 +40,7 @@ export function MilestoneTable({
                 Days
               </th>
               <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
-                After Previous
+                Next Milestone
               </th>
               <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
                 Duration
@@ -99,7 +99,7 @@ export function MilestoneTable({
                   </div>
                 </td>
                 <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                  {index > 0 ? formatDuration(milestones[index - 1].durationDays, showDetailed) : '—'}
+                  {index < milestones.length - 1 ? milestones[index + 1].name : '—'}
                 </td>
                 <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap">
                   {formatDuration(milestone.durationDays, showDetailed)}
