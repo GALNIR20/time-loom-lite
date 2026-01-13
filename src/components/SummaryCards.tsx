@@ -4,16 +4,16 @@ import { CalendarCheck, Clock, Target } from 'lucide-react';
 interface SummaryCardsProps {
   totalDays: number;
   projectedEnd: string;
-  iPhaseStart: string | null;
-  daysToIPhase: number | null;
+  sprint1Start: string | null;
+  daysToSprint1: number | null;
   showDetailed: boolean;
 }
 
 export function SummaryCards({ 
   totalDays, 
   projectedEnd, 
-  iPhaseStart, 
-  daysToIPhase, 
+  sprint1Start, 
+  daysToSprint1, 
   showDetailed 
 }: SummaryCardsProps) {
   return (
@@ -36,13 +36,13 @@ export function SummaryCards({
           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
             <Target className="w-4 h-4 text-primary" />
           </div>
-          <span className="summary-label">Start → I-Phase</span>
+          <span className="summary-label">Start → Sprint 1 (Dev Start)</span>
         </div>
         <div className="mt-2">
-          {daysToIPhase !== null && iPhaseStart ? (
+          {daysToSprint1 !== null && sprint1Start ? (
             <>
-              <span className="summary-value">{formatDuration(daysToIPhase, showDetailed)}</span>
-              <span className="summary-subtext ml-2">days ({formatDateDisplay(iPhaseStart)})</span>
+              <span className="summary-value">{formatDuration(daysToSprint1, showDetailed)}</span>
+              <span className="summary-subtext ml-2">days ({formatDateDisplay(sprint1Start)})</span>
             </>
           ) : (
             <span className="summary-subtext">N/A</span>
