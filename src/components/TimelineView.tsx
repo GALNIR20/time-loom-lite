@@ -1,6 +1,6 @@
 import { MilestoneState } from '@/types/timeline';
 import { formatDateDisplay } from '@/lib/timeline';
-import { X } from 'lucide-react';
+import { X, ArrowRight } from 'lucide-react';
 import { useMemo } from 'react';
 import { parseISO, differenceInDays } from 'date-fns';
 
@@ -82,7 +82,7 @@ export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: Time
 
         {/* Timeline Content */}
         <div className="flex-1 overflow-auto p-4">
-          <div className="min-w-[600px]">
+          <div className="min-w-[700px]">
             {/* Timeline bars */}
             <div className="space-y-2">
               {milestones.map((milestone, index) => {
@@ -90,27 +90,46 @@ export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: Time
                 const offsetDays = differenceInDays(milestoneStart, startDate);
                 const offsetPercent = totalDays > 0 ? (offsetDays / totalDays) * 100 : 0;
                 const widthPercent = totalDays > 0 ? (milestone.durationDays / totalDays) * 100 : 0;
+                const nextMilestone = index < milestones.length - 1 ? milestones[index + 1] : null;
 
                 return (
-                  <div key={milestone.id} className="flex items-center gap-3">
-                    {/* Milestone name and days input */}
-                    <div className="w-36 flex-shrink-0 flex items-center gap-2">
-                      <span className="text-sm font-medium text-foreground truncate flex-1 text-right">
+                  <div key={milestone.id} className="flex items-center gap-2">
+                    {/* Milestone name */}
+                    <div className="w-24 flex-shrink-0 text-right">
+                      <span className="text-sm font-medium text-foreground truncate block">
                         {milestone.name}
                       </span>
+                    </div>
+
+                    {/* Days input */}
+                    <div className="w-16 flex-shrink-0">
                       <input
                         type="number"
                         min="0"
                         step="1"
                         value={milestone.durationDays}
                         onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
-                        className="input-field w-14 text-center text-xs py-1 px-1"
+                        className="input-field w-full text-center text-xs py-1 px-1"
                         aria-label={`Days for ${milestone.name}`}
                       />
                     </div>
 
+                    {/* Arrow and Next Milestone */}
+                    <div className="w-28 flex-shrink-0 flex items-center gap-1">
+                      {nextMilestone ? (
+                        <>
+                          <ArrowRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                          <span className="text-xs text-muted-foreground truncate">
+                            {nextMilestone.name}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </div>
+
                     {/* Bar container */}
-                    <div className="flex-1 h-10 bg-muted/30 rounded-md relative overflow-hidden">
+                    <div className="flex-1 h-8 bg-muted/30 rounded-md relative overflow-hidden">
                       {/* Bar */}
                       {milestone.durationDays > 0 && (
                         <div
@@ -120,8 +139,8 @@ export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: Time
                             width: `${Math.max(widthPercent, 2)}%`,
                           }}
                         >
-                          <span className="text-xs font-medium text-white px-1 truncate">
-                            {widthPercent > 10 ? formatDateDisplay(milestone.start) : ''}
+                          <span className="text-[10px] font-medium text-white px-1 truncate">
+                            {widthPercent > 12 ? `${milestone.durationDays}d` : ''}
                           </span>
                         </div>
                       )}
