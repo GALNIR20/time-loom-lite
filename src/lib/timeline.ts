@@ -7,8 +7,8 @@ export const DEFAULT_MILESTONES: MilestoneConfig[] = [
   { id: 'concept', phase: 'Concept Phase', name: 'Concept', defaultMinDays: 42, defaultMaxDays: 42 },
   { id: 'art-sketch', phase: 'Sketch Phase', name: 'Art Sketch', defaultMinDays: 7, defaultMaxDays: 7 },
   { id: 'sketch', phase: 'Sketch Phase', name: 'Sketch', defaultMinDays: 14, defaultMaxDays: 14 },
-  { id: 'i-phase', phase: 'Execution Phase', name: 'I-Phase', defaultMinDays: 7, defaultMaxDays: 7 },
-  { id: 'sprint-1', phase: 'Execution Phase', name: 'Sprint 1', defaultMinDays: 14, defaultMaxDays: 14 },
+  { id: 'i-phase', phase: 'Execution Phase', name: 'I-Phase', defaultMinDays: 14, defaultMaxDays: 14 },
+  { id: 'sprint-1', phase: 'Execution Phase', name: 'Sprint 1', defaultMinDays: 0, defaultMaxDays: 0 },
 ];
 
 export function calculateDuration(
