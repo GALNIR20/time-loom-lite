@@ -1,6 +1,6 @@
 import { MilestoneState } from '@/types/timeline';
 import { formatDateDisplay, formatDuration } from '@/lib/timeline';
-import { X } from 'lucide-react';
+import { X, ArrowRight } from 'lucide-react';
 
 interface MilestoneTableProps {
   milestones: MilestoneState[];
@@ -26,7 +26,8 @@ export function MilestoneTable({
 
   return (
     <div className="card-elevated overflow-hidden">
-      <div className="table-container">
+      {/* Desktop Table */}
+      <div className="hidden md:block table-container">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-table-header border-b border-table-border">
@@ -111,6 +112,72 @@ export function MilestoneTable({
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden divide-y divide-border">
+        {milestones.map((milestone, index) => (
+          <div key={milestone.id} className="p-4 space-y-3">
+            {/* Header row */}
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <span
+                  className={
+                    milestone.phase === 'Concept Phase'
+                      ? 'phase-badge-concept'
+                      : milestone.phase === 'Sketch Phase'
+                      ? 'phase-badge-sketch'
+                      : 'phase-badge-execution'
+                  }
+                >
+                  {milestone.phase}
+                </span>
+                <h3 className="font-medium text-foreground mt-1">{milestone.name}</h3>
+              </div>
+              <span className="text-sm text-muted-foreground whitespace-nowrap">
+                {formatDateDisplay(milestone.start)}
+              </span>
+            </div>
+
+            {/* Days input row */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={milestone.durationDays}
+                  onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
+                  className="input-field w-16 text-center text-sm"
+                  aria-label={`Days for ${milestone.name}`}
+                />
+                <span className="text-sm text-muted-foreground">days</span>
+                {milestone.overrideDays !== null && (
+                  <button
+                    onClick={() => onDaysChange(milestone.id, null)}
+                    className="btn-ghost"
+                    aria-label={`Reset days for ${milestone.name}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+              {showDetailed && (
+                <span className="text-xs text-muted-foreground">
+                  ({formatDuration(milestone.durationDays, true).split('(')[1]?.replace(')', '') || ''})
+                </span>
+              )}
+            </div>
+
+            {/* Next milestone */}
+            {index < milestones.length - 1 && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <ArrowRight className="w-3 h-3" />
+                <span>{milestones[index + 1].name}</span>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
