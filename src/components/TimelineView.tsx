@@ -1,7 +1,8 @@
 import { MilestoneState } from '@/types/timeline';
 import { formatDateDisplay } from '@/lib/timeline';
-import { X } from 'lucide-react';
+import { X, Pencil } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { parseISO, differenceInDays, addDays, startOfWeek, format, differenceInWeeks, addWeeks, startOfQuarter, differenceInQuarters, addQuarters } from 'date-fns';
 
 interface TimelineViewProps {
@@ -15,6 +16,7 @@ type ViewMode = 'days' | 'weeks' | 'quarters' | 'milestones';
 
 export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: TimelineViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('weeks');
+  const [editMode, setEditMode] = useState(false);
 
   const { totalDays, startDate, endDate, weeks, quarters } = useMemo(() => {
     if (milestones.length === 0) return { totalDays: 0, startDate: new Date(), endDate: new Date(), weeks: [], quarters: [] };
@@ -83,6 +85,17 @@ export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: Time
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="text-lg font-semibold text-foreground">Timeline View</h2>
           <div className="flex items-center gap-4">
+            {/* Edit Mode Toggle */}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Checkbox 
+                checked={editMode} 
+                onCheckedChange={(checked) => setEditMode(checked === true)}
+              />
+              <span className="text-sm text-muted-foreground flex items-center gap-1">
+                <Pencil className="w-3 h-3" />
+                Edit Mode
+              </span>
+            </label>
             {/* View Mode Toggle */}
             <div className="flex rounded-lg border border-border overflow-hidden">
               <button
@@ -182,25 +195,27 @@ export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: Time
                         </div>
                       </div>
                       
-                      {/* Connector with days input between nodes */}
+                      {/* Connector between nodes */}
                       {index < milestones.length - 1 && (
                         <div className="flex flex-col items-center mx-2" style={{ marginTop: '20px' }}>
                           {/* Line and days input */}
                           <div className="flex items-center">
-                            <div className={`h-1 w-8 ${getPhaseColor(milestone.phase)}`} />
-                            <div className="flex flex-col items-center mx-1">
-                              <input
-                                type="number"
-                                min="0"
-                                step="1"
-                                value={milestone.durationDays}
-                                onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
-                                className="input-field w-14 text-center text-xs py-1"
-                                aria-label={`Days for ${milestone.name}`}
-                              />
-                              <span className="text-[10px] text-muted-foreground mt-0.5">days</span>
-                            </div>
-                            <div className={`h-1 w-8 ${getPhaseColor(milestones[index + 1].phase)}`} />
+                            <div className={`h-1 ${editMode ? 'w-8' : 'w-16'} ${getPhaseColor(milestone.phase)}`} />
+                            {editMode && (
+                              <div className="flex flex-col items-center mx-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  value={milestone.durationDays}
+                                  onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
+                                  className="input-field w-14 text-center text-xs py-1"
+                                  aria-label={`Days for ${milestone.name}`}
+                                />
+                                <span className="text-[10px] text-muted-foreground mt-0.5">days</span>
+                              </div>
+                            )}
+                            <div className={`h-1 ${editMode ? 'w-8' : 'w-16'} ${getPhaseColor(milestones[index + 1].phase)}`} />
                           </div>
                         </div>
                       )}
