@@ -1,6 +1,8 @@
+export type PhaseType = 'Concept Phase' | 'Sketch Phase' | 'Execution Phase';
+
 export interface MilestoneConfig {
   id: string;
-  phase: 'PLC' | 'Delivery';
+  phase: PhaseType;
   name: string;
   defaultMinDays: number;
   defaultMaxDays: number;

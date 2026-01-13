@@ -60,9 +60,11 @@ export function MilestoneTable({
                 <td className="px-4 py-3">
                   <span
                     className={
-                      milestone.phase === 'PLC'
-                        ? 'phase-badge-plc'
-                        : 'phase-badge-delivery'
+                      milestone.phase === 'Concept Phase'
+                        ? 'phase-badge-concept'
+                        : milestone.phase === 'Sketch Phase'
+                        ? 'phase-badge-sketch'
+                        : 'phase-badge-execution'
                     }
                   >
                     {milestone.phase}

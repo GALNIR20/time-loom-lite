@@ -43,8 +43,9 @@
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --phase-plc: 217 91% 50%;
-    --phase-delivery: 142 71% 45%;
+    --phase-concept: 217 91% 50%;
+    --phase-sketch: 38 92% 50%;
+    --phase-execution: 142 71% 45%;
 
     --table-header: 210 40% 96%;
     --table-row-hover: 210 40% 98%;
@@ -113,12 +114,18 @@
     @apply overflow-x-auto rounded-lg border border-table-border;
   }
 
-  .phase-badge-plc {
+  .phase-badge-concept {
     @apply inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium
            bg-primary/10 text-primary;
   }
 
-  .phase-badge-delivery {
+  .phase-badge-sketch {
+    @apply inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium;
+    background-color: hsl(var(--warning) / 0.1);
+    color: hsl(var(--warning));
+  }
+
+  .phase-badge-execution {
     @apply inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium;
     background-color: hsl(var(--success) / 0.1);
     color: hsl(var(--success));
