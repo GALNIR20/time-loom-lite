@@ -197,6 +197,7 @@ const Index = () => {
         milestones={milestones}
         isOpen={isTimelineViewOpen}
         onClose={() => setIsTimelineViewOpen(false)}
+        onDaysChange={handleDaysChange}
       />
     </div>
   );
