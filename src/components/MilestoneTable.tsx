@@ -6,12 +6,14 @@ interface MilestoneTableProps {
   milestones: MilestoneState[];
   showWeeks: boolean;
   onOverrideChange: (id: string, value: number | null) => void;
+  onMinMaxChange: (id: string, field: 'min' | 'max', value: number | null) => void;
 }
 
 export function MilestoneTable({
   milestones,
   showWeeks,
   onOverrideChange,
+  onMinMaxChange,
 }: MilestoneTableProps) {
   const handleOverrideInput = (id: string, value: string) => {
     if (value === '') {
@@ -21,6 +23,17 @@ export function MilestoneTable({
     const parsed = parseInt(value, 10);
     if (!isNaN(parsed) && parsed >= 0) {
       onOverrideChange(id, parsed);
+    }
+  };
+
+  const handleMinMaxInput = (id: string, field: 'min' | 'max', value: string, defaultValue: number) => {
+    if (value === '') {
+      onMinMaxChange(id, field, null);
+      return;
+    }
+    const parsed = parseInt(value, 10);
+    if (!isNaN(parsed) && parsed >= 0) {
+      onMinMaxChange(id, field, parsed);
     }
   };
 
@@ -37,7 +50,10 @@ export function MilestoneTable({
                 Milestone
               </th>
               <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
-                Min–Max
+                Min
+              </th>
+              <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
+                Max
               </th>
               <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
                 Override
@@ -77,8 +93,31 @@ export function MilestoneTable({
                 <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap">
                   {milestone.name}
                 </td>
-                <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                  {milestone.minDays}–{milestone.maxDays} days
+                <td className="px-4 py-3">
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={milestone.minDays}
+                    onChange={(e) =>
+                      handleMinMaxInput(milestone.id, 'min', e.target.value, milestone.defaultMinDays)
+                    }
+                    className="input-field w-16 text-center"
+                    aria-label={`Min days for ${milestone.name}`}
+                  />
+                </td>
+                <td className="px-4 py-3">
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={milestone.maxDays}
+                    onChange={(e) =>
+                      handleMinMaxInput(milestone.id, 'max', e.target.value, milestone.defaultMaxDays)
+                    }
+                    className="input-field w-16 text-center"
+                    aria-label={`Max days for ${milestone.name}`}
+                  />
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1">

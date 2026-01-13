@@ -9,18 +9,19 @@ import {
   calculateTimeline,
   getTodayISO,
 } from '@/lib/timeline';
-import { TimelineExport } from '@/types/timeline';
+import { TimelineExport, MinMaxOverrides } from '@/types/timeline';
 
 const Index = () => {
   const [projectStart, setProjectStart] = useState(getTodayISO);
   const [speed, setSpeed] = useState(1.0);
   const [showWeeks, setShowWeeks] = useState(true);
   const [overrides, setOverrides] = useState<Record<string, number | null>>({});
+  const [minMaxOverrides, setMinMaxOverrides] = useState<MinMaxOverrides>({});
   const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
 
   const milestones = useMemo(
-    () => calculateTimeline(DEFAULT_MILESTONES, overrides, projectStart, speed),
-    [overrides, projectStart, speed]
+    () => calculateTimeline(DEFAULT_MILESTONES, overrides, minMaxOverrides, projectStart, speed),
+    [overrides, minMaxOverrides, projectStart, speed]
   );
 
   const totalDays = useMemo(
@@ -32,6 +33,17 @@ const Index = () => {
     () => milestones[milestones.length - 1]?.end ?? projectStart,
     [milestones, projectStart]
   );
+
+  const iPhaseData = useMemo(() => {
+    const iPhase = milestones.find((m) => m.id === 'i-phase');
+    if (!iPhase) return { start: null, daysTo: null };
+    
+    const daysToIPhase = milestones
+      .filter((m) => milestones.indexOf(m) < milestones.indexOf(iPhase))
+      .reduce((sum, m) => sum + m.durationDays, 0);
+    
+    return { start: iPhase.start, daysTo: daysToIPhase };
+  }, [milestones]);
 
   const exportData: TimelineExport = useMemo(
     () => ({
@@ -58,6 +70,16 @@ const Index = () => {
     setOverrides((prev) => ({ ...prev, [id]: value }));
   }, []);
 
+  const handleMinMaxChange = useCallback((id: string, field: 'min' | 'max', value: number | null) => {
+    setMinMaxOverrides((prev) => ({
+      ...prev,
+      [id]: {
+        ...prev[id],
+        [field]: value,
+      },
+    }));
+  }, []);
+
   const handleCopyJson = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(JSON.stringify(exportData, null, 2));
@@ -73,6 +95,7 @@ const Index = () => {
     setSpeed(1.0);
     setShowWeeks(true);
     setOverrides({});
+    setMinMaxOverrides({});
     toast.success('Timeline reset to defaults');
   }, []);
 
@@ -104,6 +127,8 @@ const Index = () => {
         <SummaryCards
           totalDays={totalDays}
           projectedEnd={projectedEnd}
+          iPhaseStart={iPhaseData.start}
+          daysToIPhase={iPhaseData.daysTo}
           showWeeks={showWeeks}
         />
 
@@ -111,6 +136,7 @@ const Index = () => {
           milestones={milestones}
           showWeeks={showWeeks}
           onOverrideChange={handleOverrideChange}
+          onMinMaxChange={handleMinMaxChange}
         />
       </main>
 

@@ -1,14 +1,14 @@
-import { MilestoneConfig, MilestoneState } from '@/types/timeline';
+import { MilestoneConfig, MilestoneState, MinMaxOverrides } from '@/types/timeline';
 import { format, addDays, parseISO } from 'date-fns';
 
 export const DEFAULT_MILESTONES: MilestoneConfig[] = [
-  { id: 'brief', phase: 'PLC', name: 'Brief', minDays: 7, maxDays: 14 },
-  { id: 'pre-concept', phase: 'PLC', name: 'Pre-Concept', minDays: 21, maxDays: 21 },
-  { id: 'concept', phase: 'PLC', name: 'Concept', minDays: 5, maxDays: 5 },
-  { id: 'art-sketch', phase: 'PLC', name: 'Art Sketch', minDays: 28, maxDays: 42 },
-  { id: 'sketch', phase: 'PLC', name: 'Sketch', minDays: 7, maxDays: 14 },
-  { id: 'i-phase', phase: 'PLC', name: 'I-Phase', minDays: 7, maxDays: 14 },
-  { id: 'sprint-1', phase: 'Delivery', name: 'Sprint 1', minDays: 14, maxDays: 14 },
+  { id: 'brief', phase: 'PLC', name: 'Brief', defaultMinDays: 7, defaultMaxDays: 14 },
+  { id: 'pre-concept', phase: 'PLC', name: 'Pre-Concept', defaultMinDays: 21, defaultMaxDays: 21 },
+  { id: 'concept', phase: 'PLC', name: 'Concept', defaultMinDays: 5, defaultMaxDays: 5 },
+  { id: 'art-sketch', phase: 'PLC', name: 'Art Sketch', defaultMinDays: 28, defaultMaxDays: 42 },
+  { id: 'sketch', phase: 'PLC', name: 'Sketch', defaultMinDays: 7, defaultMaxDays: 14 },
+  { id: 'i-phase', phase: 'PLC', name: 'I-Phase', defaultMinDays: 7, defaultMaxDays: 14 },
+  { id: 'sprint-1', phase: 'Delivery', name: 'Sprint 1', defaultMinDays: 14, defaultMaxDays: 14 },
 ];
 
 export function calculateDuration(
@@ -27,6 +27,7 @@ export function calculateDuration(
 export function calculateTimeline(
   configs: MilestoneConfig[],
   overrides: Record<string, number | null>,
+  minMaxOverrides: MinMaxOverrides,
   projectStart: string,
   speed: number
 ): MilestoneState[] {
@@ -35,9 +36,12 @@ export function calculateTimeline(
 
   return configs.map((config) => {
     const overrideDays = overrides[config.id] ?? null;
+    const minDays = minMaxOverrides[config.id]?.min ?? config.defaultMinDays;
+    const maxDays = minMaxOverrides[config.id]?.max ?? config.defaultMaxDays;
+    
     const durationDays = calculateDuration(
-      config.minDays,
-      config.maxDays,
+      minDays,
+      maxDays,
       speed,
       overrideDays
     );
@@ -50,6 +54,8 @@ export function calculateTimeline(
 
     return {
       ...config,
+      minDays,
+      maxDays,
       overrideDays,
       durationDays,
       start,
