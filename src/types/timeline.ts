@@ -1,16 +1,14 @@
 export type PhaseType = 'Concept Phase' | 'Sketch Phase' | 'Execution Phase';
+export type PresetType = 'Big' | 'Medium' | 'BLITZ';
 
 export interface MilestoneConfig {
   id: string;
   phase: PhaseType;
   name: string;
-  defaultMinDays: number;
-  defaultMaxDays: number;
 }
 
 export interface MilestoneState extends MilestoneConfig {
-  minDays: number;
-  maxDays: number;
+  defaultDays: number;
   overrideDays: number | null;
   durationDays: number;
   start: string;
@@ -20,7 +18,7 @@ export interface MilestoneState extends MilestoneConfig {
 export interface TimelineExport {
   projectStart: string;
   devStart: string;
-  speed: number;
+  preset: PresetType;
   totalDays: number;
   projectedEnd: string;
   milestones: Array<{

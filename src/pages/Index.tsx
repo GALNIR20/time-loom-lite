@@ -8,21 +8,21 @@ import { JsonExportModal } from '@/components/JsonExportModal';
 import {
   DEFAULT_MILESTONES,
   calculateTimeline,
-  calculateDuration,
+  getPresetDuration,
   getTodayISO,
 } from '@/lib/timeline';
-import { TimelineExport } from '@/types/timeline';
+import { TimelineExport, PresetType } from '@/types/timeline';
 
 const Index = () => {
   const [projectStart, setProjectStart] = useState(getTodayISO);
-  const [speed, setSpeed] = useState(1.0);
+  const [preset, setPreset] = useState<PresetType>('Big');
   const [showDetailed, setShowDetailed] = useState(true);
   const [overrides, setOverrides] = useState<Record<string, number | null>>({});
   const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
 
   const milestones = useMemo(
-    () => calculateTimeline(DEFAULT_MILESTONES, overrides, projectStart, speed),
-    [overrides, projectStart, speed]
+    () => calculateTimeline(DEFAULT_MILESTONES, overrides, projectStart, preset),
+    [overrides, projectStart, preset]
   );
 
   const totalDays = useMemo(
@@ -56,15 +56,10 @@ const Index = () => {
     
     return DEFAULT_MILESTONES.slice(0, sprint1Index).reduce((sum, config) => {
       const overrideDays = overrides[config.id] ?? null;
-      const duration = calculateDuration(
-        config.defaultMinDays,
-        config.defaultMaxDays,
-        speed,
-        overrideDays
-      );
+      const duration = getPresetDuration(config.id, preset, overrideDays);
       return sum + duration;
     }, 0);
-  }, [overrides, speed]);
+  }, [overrides, preset]);
 
   const handleDevStartChange = useCallback((devStartDate: string) => {
     // Calculate project start by going back from dev start
@@ -77,7 +72,7 @@ const Index = () => {
     () => ({
       projectStart,
       devStart: sprint1Start ?? projectStart,
-      speed,
+      preset,
       totalDays,
       projectedEnd,
       milestones: milestones.map((m) => ({
@@ -88,7 +83,7 @@ const Index = () => {
         date: m.start,
       })),
     }),
-    [projectStart, sprint1Start, speed, totalDays, projectedEnd, milestones]
+    [projectStart, sprint1Start, preset, totalDays, projectedEnd, milestones]
   );
 
   const handleDaysChange = useCallback((id: string, value: number | null) => {
@@ -107,7 +102,7 @@ const Index = () => {
 
   const handleReset = useCallback(() => {
     setProjectStart(getTodayISO());
-    setSpeed(1.0);
+    setPreset('Big');
     setShowDetailed(true);
     setOverrides({});
     toast.success('Timeline reset to defaults');
@@ -132,8 +127,8 @@ const Index = () => {
           onProjectStartChange={setProjectStart}
           devStart={sprint1Start ?? projectStart}
           onDevStartChange={handleDevStartChange}
-          speed={speed}
-          onSpeedChange={setSpeed}
+          preset={preset}
+          onPresetChange={setPreset}
           showDetailed={showDetailed}
           onShowDetailedChange={setShowDetailed}
           onCopyJson={handleCopyJson}
