@@ -4,7 +4,6 @@ interface ControlsPanelProps {
   projectStart: string;
   onProjectStartChange: (date: string) => void;
   devStart: string;
-  onDevStartChange: (date: string) => void;
   speed: number;
   onSpeedChange: (speed: number) => void;
   showDetailed: boolean;
@@ -17,7 +16,6 @@ export function ControlsPanel({
   projectStart,
   onProjectStartChange,
   devStart,
-  onDevStartChange,
   speed,
   onSpeedChange,
   showDetailed,
@@ -47,10 +45,10 @@ export function ControlsPanel({
           </div>
         </div>
 
-        {/* Dev Start Date */}
+        {/* Dev Start Date (Read-only, calculated from Sprint 1) */}
         <div className="flex flex-col gap-2">
           <label htmlFor="dev-start" className="text-xs font-medium text-muted-foreground">
-            Dev Start Date
+            Dev Start Date (Sprint 1)
           </label>
           <div className="relative">
             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
@@ -58,8 +56,8 @@ export function ControlsPanel({
               type="date"
               id="dev-start"
               value={devStart}
-              onChange={(e) => onDevStartChange(e.target.value)}
-              className="input-field w-full pl-9"
+              readOnly
+              className="input-field w-full pl-9 bg-muted cursor-not-allowed"
             />
           </div>
         </div>
