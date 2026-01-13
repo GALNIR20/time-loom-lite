@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { parseISO, subDays, format } from 'date-fns';
 import { ControlsPanel } from '@/components/ControlsPanel';
@@ -9,9 +9,25 @@ import {
   DEFAULT_MILESTONES,
   calculateTimeline,
   getPresetDuration,
+  PRESET_CONFIGS,
   getTodayISO,
 } from '@/lib/timeline';
 import { TimelineExport, PresetType } from '@/types/timeline';
+
+// Calculate days before Sprint 1 for a given preset and overrides
+function calculateDaysBeforeSprint1(
+  presetType: PresetType,
+  overrides: Record<string, number | null>
+): number {
+  const sprint1Index = DEFAULT_MILESTONES.findIndex((m) => m.id === 'sprint-1');
+  if (sprint1Index === -1) return 0;
+  
+  return DEFAULT_MILESTONES.slice(0, sprint1Index).reduce((sum, config) => {
+    const overrideDays = overrides[config.id] ?? null;
+    const duration = getPresetDuration(config.id, presetType, overrideDays);
+    return sum + duration;
+  }, 0);
+}
 
 const Index = () => {
   const [projectStart, setProjectStart] = useState(getTodayISO);
@@ -19,6 +35,9 @@ const Index = () => {
   const [showDetailed, setShowDetailed] = useState(true);
   const [overrides, setOverrides] = useState<Record<string, number | null>>({});
   const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
+  
+  // Track the user's intended dev start date (null = not manually set)
+  const [lockedDevStart, setLockedDevStart] = useState<string | null>(null);
 
   const milestones = useMemo(
     () => calculateTimeline(DEFAULT_MILESTONES, overrides, projectStart, preset),
@@ -49,24 +68,32 @@ const Index = () => {
       .reduce((sum, m) => sum + m.durationDays, 0);
   }, [milestones]);
 
-  // Calculate days before Sprint 1 based on current config
-  const daysBeforeSprint1 = useMemo(() => {
-    const sprint1Index = DEFAULT_MILESTONES.findIndex((m) => m.id === 'sprint-1');
-    if (sprint1Index === -1) return 0;
-    
-    return DEFAULT_MILESTONES.slice(0, sprint1Index).reduce((sum, config) => {
-      const overrideDays = overrides[config.id] ?? null;
-      const duration = getPresetDuration(config.id, preset, overrideDays);
-      return sum + duration;
-    }, 0);
-  }, [overrides, preset]);
+  const daysBeforeSprint1 = useMemo(
+    () => calculateDaysBeforeSprint1(preset, overrides),
+    [overrides, preset]
+  );
 
   const handleDevStartChange = useCallback((devStartDate: string) => {
+    // Lock this dev start date
+    setLockedDevStart(devStartDate);
     // Calculate project start by going back from dev start
     const devStart = parseISO(devStartDate);
-    const newProjectStart = subDays(devStart, daysBeforeSprint1);
+    const daysBack = calculateDaysBeforeSprint1(preset, overrides);
+    const newProjectStart = subDays(devStart, daysBack);
     setProjectStart(format(newProjectStart, 'yyyy-MM-dd'));
-  }, [daysBeforeSprint1]);
+  }, [preset, overrides]);
+
+  const handlePresetChange = useCallback((newPreset: PresetType) => {
+    setPreset(newPreset);
+    
+    // If user has locked a dev start date, recalculate project start
+    if (lockedDevStart) {
+      const devStart = parseISO(lockedDevStart);
+      const daysBack = calculateDaysBeforeSprint1(newPreset, overrides);
+      const newProjectStart = subDays(devStart, daysBack);
+      setProjectStart(format(newProjectStart, 'yyyy-MM-dd'));
+    }
+  }, [lockedDevStart, overrides]);
 
   const exportData: TimelineExport = useMemo(
     () => ({
@@ -105,6 +132,7 @@ const Index = () => {
     setPreset('Big');
     setShowDetailed(true);
     setOverrides({});
+    setLockedDevStart(null);
     toast.success('Timeline reset to defaults');
   }, []);
 
@@ -124,11 +152,14 @@ const Index = () => {
       <main className="container max-w-6xl mx-auto px-4 py-6 space-y-6">
         <ControlsPanel
           projectStart={projectStart}
-          onProjectStartChange={setProjectStart}
+          onProjectStartChange={(date) => {
+            setProjectStart(date);
+            setLockedDevStart(null); // Clear locked dev start when project start is manually changed
+          }}
           devStart={sprint1Start ?? projectStart}
           onDevStartChange={handleDevStartChange}
           preset={preset}
-          onPresetChange={setPreset}
+          onPresetChange={handlePresetChange}
           showDetailed={showDetailed}
           onShowDetailedChange={setShowDetailed}
           onCopyJson={handleCopyJson}
