@@ -33,6 +33,7 @@ const getPhaseColor = (phase: string) => {
       return 'bg-primary';
     case 'Sketch Phase':
       return 'bg-warning';
+    case 'Development':
     case 'Execution Phase':
       return 'bg-success';
     default:

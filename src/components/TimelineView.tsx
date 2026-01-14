@@ -78,6 +78,7 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
         return 'bg-primary';
       case 'Sketch Phase':
         return 'bg-warning';
+      case 'Development':
       case 'Execution Phase':
         return 'bg-success';
       default:
@@ -182,10 +183,10 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
             <div className="w-3 h-3 rounded bg-warning" />
             <span className="text-xs text-muted-foreground">Sketch Phase</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-success" />
-            <span className="text-xs text-muted-foreground">Execution Phase</span>
-          </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded bg-success" />
+          <span className="text-xs text-muted-foreground">Development</span>
+        </div>
         </div>
 
         {/* Timeline Content */}
