@@ -6,6 +6,7 @@ import { SummaryCards } from '@/components/SummaryCards';
 import { MilestoneTable } from '@/components/MilestoneTable';
 import { JsonExportModal } from '@/components/JsonExportModal';
 import { TimelineView } from '@/components/TimelineView';
+import { ProjectSidebar, SavedProject } from '@/components/ProjectSidebar';
 import {
   DEFAULT_MILESTONES,
   calculateTimeline,
@@ -31,17 +32,10 @@ function calculateDaysBeforeIPhase(
   }, 0);
 }
 
-const STORAGE_KEY = 'timeline-predictor-config';
+const PROJECTS_STORAGE_KEY = 'timeline-predictor-projects';
 
-interface SavedConfig {
-  featureName: string;
-  isFeatureNameSet: boolean;
-  projectStart: string;
-  preset: PresetType;
-  showDetailed: boolean;
-  overrides: Record<string, number | null>;
-  hiddenMilestones: string[];
-  lockedDevStart: string | null;
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
 const Index = () => {
@@ -58,48 +52,51 @@ const Index = () => {
   // Track the user's intended dev start date (null = not manually set)
   const [lockedDevStart, setLockedDevStart] = useState<string | null>(null);
   
-  // Track if there's a saved config to restore to
-  const [savedConfig, setSavedConfig] = useState<SavedConfig | null>(null);
+  // Multi-project management
+  const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  // Load saved config on mount
+  // Load saved projects on mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = localStorage.getItem(PROJECTS_STORAGE_KEY);
       if (saved) {
-        const config: SavedConfig = JSON.parse(saved);
-        setSavedConfig(config);
-        setFeatureName(config.featureName || '');
-        setIsFeatureNameSet(config.isFeatureNameSet || false);
-        setProjectStart(config.projectStart || getTodayISO());
-        setPreset(config.preset || 'Big');
-        setShowDetailed(config.showDetailed ?? true);
-        setOverrides(config.overrides || {});
-        setHiddenMilestones(new Set(config.hiddenMilestones || []));
-        setLockedDevStart(config.lockedDevStart || null);
+        const projects: SavedProject[] = JSON.parse(saved);
+        setSavedProjects(projects);
       }
     } catch (e) {
-      console.error('Failed to load saved config:', e);
+      console.error('Failed to load saved projects:', e);
     }
   }, []);
 
-  // Check if current state differs from saved config
+  // Get the current project from saved projects
+  const currentSavedProject = useMemo(() => {
+    return savedProjects.find((p) => p.id === currentProjectId) || null;
+  }, [savedProjects, currentProjectId]);
+
+  // Check if current state differs from saved project
   const hasUnsavedChanges = useMemo(() => {
-    if (!savedConfig) return false;
+    if (!currentSavedProject) return false;
     
     return (
-      featureName !== savedConfig.featureName ||
-      isFeatureNameSet !== savedConfig.isFeatureNameSet ||
-      projectStart !== savedConfig.projectStart ||
-      preset !== savedConfig.preset ||
-      showDetailed !== savedConfig.showDetailed ||
-      JSON.stringify(overrides) !== JSON.stringify(savedConfig.overrides) ||
-      JSON.stringify(Array.from(hiddenMilestones).sort()) !== JSON.stringify([...savedConfig.hiddenMilestones].sort()) ||
-      lockedDevStart !== savedConfig.lockedDevStart
+      featureName !== currentSavedProject.featureName ||
+      isFeatureNameSet !== currentSavedProject.isFeatureNameSet ||
+      projectStart !== currentSavedProject.projectStart ||
+      preset !== currentSavedProject.preset ||
+      showDetailed !== currentSavedProject.showDetailed ||
+      JSON.stringify(overrides) !== JSON.stringify(currentSavedProject.overrides) ||
+      JSON.stringify(Array.from(hiddenMilestones).sort()) !== JSON.stringify([...currentSavedProject.hiddenMilestones].sort()) ||
+      lockedDevStart !== currentSavedProject.lockedDevStart
     );
-  }, [savedConfig, featureName, isFeatureNameSet, projectStart, preset, showDetailed, overrides, hiddenMilestones, lockedDevStart]);
+  }, [currentSavedProject, featureName, isFeatureNameSet, projectStart, preset, showDetailed, overrides, hiddenMilestones, lockedDevStart]);
 
   const handleSave = useCallback(() => {
-    const config: SavedConfig = {
+    const now = new Date().toISOString();
+    const projectId = currentProjectId || generateId();
+    
+    const project: SavedProject = {
+      id: projectId,
       featureName,
       isFeatureNameSet,
       projectStart,
@@ -108,25 +105,75 @@ const Index = () => {
       overrides,
       hiddenMilestones: Array.from(hiddenMilestones),
       lockedDevStart,
+      savedAt: now,
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-    setSavedConfig(config);
-    toast.success('Configuration saved!');
-  }, [featureName, isFeatureNameSet, projectStart, preset, showDetailed, overrides, hiddenMilestones, lockedDevStart]);
+    
+    setSavedProjects((prev) => {
+      const existingIndex = prev.findIndex((p) => p.id === projectId);
+      let updated: SavedProject[];
+      if (existingIndex >= 0) {
+        updated = [...prev];
+        updated[existingIndex] = project;
+      } else {
+        updated = [project, ...prev];
+      }
+      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+    
+    setCurrentProjectId(projectId);
+    toast.success('Project saved!');
+  }, [currentProjectId, featureName, isFeatureNameSet, projectStart, preset, showDetailed, overrides, hiddenMilestones, lockedDevStart]);
 
   const handleRestore = useCallback(() => {
-    if (!savedConfig) return;
+    if (!currentSavedProject) return;
     
-    setFeatureName(savedConfig.featureName || '');
-    setIsFeatureNameSet(savedConfig.isFeatureNameSet || false);
-    setProjectStart(savedConfig.projectStart || getTodayISO());
-    setPreset(savedConfig.preset || 'Big');
-    setShowDetailed(savedConfig.showDetailed ?? true);
-    setOverrides(savedConfig.overrides || {});
-    setHiddenMilestones(new Set(savedConfig.hiddenMilestones || []));
-    setLockedDevStart(savedConfig.lockedDevStart || null);
-    toast.success('Configuration restored!');
-  }, [savedConfig]);
+    setFeatureName(currentSavedProject.featureName || '');
+    setIsFeatureNameSet(currentSavedProject.isFeatureNameSet || false);
+    setProjectStart(currentSavedProject.projectStart || getTodayISO());
+    setPreset(currentSavedProject.preset || 'Big');
+    setShowDetailed(currentSavedProject.showDetailed ?? true);
+    setOverrides(currentSavedProject.overrides || {});
+    setHiddenMilestones(new Set(currentSavedProject.hiddenMilestones || []));
+    setLockedDevStart(currentSavedProject.lockedDevStart || null);
+    toast.success('Project restored!');
+  }, [currentSavedProject]);
+
+  const handleSelectProject = useCallback((project: SavedProject) => {
+    setCurrentProjectId(project.id);
+    setFeatureName(project.featureName || '');
+    setIsFeatureNameSet(project.isFeatureNameSet || false);
+    setProjectStart(project.projectStart || getTodayISO());
+    setPreset(project.preset || 'Big');
+    setShowDetailed(project.showDetailed ?? true);
+    setOverrides(project.overrides || {});
+    setHiddenMilestones(new Set(project.hiddenMilestones || []));
+    setLockedDevStart(project.lockedDevStart || null);
+  }, []);
+
+  const handleCreateNewProject = useCallback(() => {
+    setCurrentProjectId(null);
+    setFeatureName('');
+    setIsFeatureNameSet(false);
+    setProjectStart(getTodayISO());
+    setPreset('Big');
+    setShowDetailed(true);
+    setOverrides({});
+    setHiddenMilestones(new Set());
+    setLockedDevStart(null);
+  }, []);
+
+  const handleDeleteProject = useCallback((id: string) => {
+    setSavedProjects((prev) => {
+      const updated = prev.filter((p) => p.id !== id);
+      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+    if (currentProjectId === id) {
+      setCurrentProjectId(null);
+    }
+    toast.success('Project deleted');
+  }, [currentProjectId]);
 
   // Filter out hidden milestones from the config before calculating
   const activeMilestoneConfigs = useMemo(
@@ -267,21 +314,34 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card">
-        <div className="container max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-6">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <img src={predictorLogo} alt="Predictor" className="h-[42px] sm:h-[58px]" />
-          </div>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Plan your product lifecycle with flexible milestone durations
-          </p>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background flex">
+      {/* Project Sidebar */}
+      <ProjectSidebar
+        projects={savedProjects}
+        currentProjectId={currentProjectId}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        onSelectProject={handleSelectProject}
+        onCreateNew={handleCreateNewProject}
+        onDeleteProject={handleDeleteProject}
+      />
 
-      {/* Main Content */}
-      <main className="container max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
+      {/* Main Area */}
+      <div className="flex-1 min-h-screen overflow-auto">
+        {/* Header */}
+        <header className="border-b border-border bg-card">
+          <div className="container max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-6">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <img src={predictorLogo} alt="Predictor" className="h-[42px] sm:h-[58px]" />
+            </div>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+              Plan your product lifecycle with flexible milestone durations
+            </p>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className="container max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
         <ControlsPanel
           featureName={featureName}
           onFeatureNameChange={setFeatureName}
@@ -324,25 +384,26 @@ const Index = () => {
           allMilestones={DEFAULT_MILESTONES}
           onRestoreMilestone={handleRestoreMilestone}
         />
-      </main>
+        </main>
 
-      {/* JSON Modal */}
-      <JsonExportModal
-        data={exportData}
-        isOpen={isJsonModalOpen}
-        onClose={() => setIsJsonModalOpen(false)}
-      />
+        {/* JSON Modal */}
+        <JsonExportModal
+          data={exportData}
+          isOpen={isJsonModalOpen}
+          onClose={() => setIsJsonModalOpen(false)}
+        />
 
-      {/* Timeline View Modal */}
-      <TimelineView
-        milestones={milestones}
-        featureName={isFeatureNameSet ? featureName : undefined}
-        preset={preset}
-        isOpen={isTimelineViewOpen}
-        onClose={() => setIsTimelineViewOpen(false)}
-        onDaysChange={handleDaysChange}
-        onRemoveMilestone={handleRemoveMilestone}
-      />
+        {/* Timeline View Modal */}
+        <TimelineView
+          milestones={milestones}
+          featureName={isFeatureNameSet ? featureName : undefined}
+          preset={preset}
+          isOpen={isTimelineViewOpen}
+          onClose={() => setIsTimelineViewOpen(false)}
+          onDaysChange={handleDaysChange}
+          onRemoveMilestone={handleRemoveMilestone}
+        />
+      </div>
     </div>
   );
 };
