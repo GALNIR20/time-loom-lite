@@ -1,6 +1,6 @@
 import { MilestoneState } from '@/types/timeline';
 import { formatDateDisplay } from '@/lib/timeline';
-import { X, Pencil } from 'lucide-react';
+import { X, Pencil, Trash2 } from 'lucide-react';
 import { useMemo, useState, useCallback } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { GanttBar } from '@/components/GanttBar';
@@ -12,11 +12,12 @@ interface TimelineViewProps {
   isOpen: boolean;
   onClose: () => void;
   onDaysChange: (id: string, value: number | null) => void;
+  onRemoveMilestone: (id: string) => void;
 }
 
 type ViewMode = 'days' | 'weeks' | 'quarters' | 'milestones';
 
-export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: TimelineViewProps) {
+export function TimelineView({ milestones, isOpen, onClose, onDaysChange, onRemoveMilestone }: TimelineViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('weeks');
   const [editMode, setEditMode] = useState(false);
 
@@ -332,6 +333,20 @@ export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: Time
                         {nextMilestone ? nextMilestone.name : '—'}
                       </span>
                     </div>
+
+                    {/* Remove button - only show in edit mode */}
+                    {editMode && (
+                      <div className="w-10 flex-shrink-0 p-2 border-r border-border flex items-center justify-center">
+                        <button
+                          onClick={() => onRemoveMilestone(milestone.id)}
+                          className="btn-ghost text-muted-foreground hover:text-destructive p-1"
+                          aria-label={`Remove ${milestone.name}`}
+                          title="Remove milestone"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
 
                     {/* Gantt bar */}
                     <div className="flex-1 p-2 relative">
