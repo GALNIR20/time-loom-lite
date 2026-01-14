@@ -74,6 +74,9 @@ export function MilestoneTable({
               <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
                 Milestone
               </th>
+              <th className="text-center px-2 py-3 font-semibold text-foreground whitespace-nowrap w-10">
+                
+              </th>
               <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
                 Days
               </th>
@@ -104,6 +107,23 @@ export function MilestoneTable({
                   </td>
                   <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap">
                     {milestone.name}
+                  </td>
+                  <td className="px-2 py-3 text-center">
+                    {DISCOVERY_MEETINGS[milestone.id] ? (
+                      <button
+                        onClick={() => toggleDiscovery(milestone.id)}
+                        className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                        aria-label={`Toggle discovery meetings for ${milestone.name}`}
+                      >
+                        {expandedDiscovery.has(milestone.id) ? (
+                          <ChevronUp className="w-4 h-4" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4" />
+                        )}
+                      </button>
+                    ) : (
+                      <ArrowRight className="w-4 h-4 text-muted-foreground/30 mx-auto" />
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
@@ -155,45 +175,30 @@ export function MilestoneTable({
                   </td>
                 </tr>
                 {/* Discovery meetings expandable row */}
-                {DISCOVERY_MEETINGS[milestone.id] && (
-                  <tr key={`${milestone.id}-discovery`} className="border-b border-table-border">
-                    <td colSpan={6} className="p-0">
-                      <button
-                        onClick={() => toggleDiscovery(milestone.id)}
-                        className="w-full flex items-center justify-between px-4 py-2 text-sm text-muted-foreground hover:bg-muted/50 transition-colors"
-                      >
-                        <span>Discovery meetings ({DISCOVERY_MEETINGS[milestone.id].length})</span>
-                        {expandedDiscovery.has(milestone.id) ? (
-                          <ChevronUp className="w-4 h-4" />
-                        ) : (
-                          <ChevronDown className="w-4 h-4" />
-                        )}
-                      </button>
-                      {expandedDiscovery.has(milestone.id) && (
-                        <div className="px-4 pb-3 space-y-2">
-                          {DISCOVERY_MEETINGS[milestone.id].map((meeting) => (
-                            <div
-                              key={meeting}
-                              className="flex items-center justify-between p-2 rounded-md bg-muted/30"
+                {DISCOVERY_MEETINGS[milestone.id] && expandedDiscovery.has(milestone.id) && (
+                  <tr key={`${milestone.id}-discovery`} className="border-b border-table-border bg-muted/20">
+                    <td colSpan={7} className="px-4 py-3">
+                      <div className="space-y-2">
+                        {DISCOVERY_MEETINGS[milestone.id].map((meeting) => (
+                          <div
+                            key={meeting}
+                            className="flex items-center gap-2 p-2 rounded-md bg-background/50"
+                          >
+                            <span
+                              className={`text-[10px] ${
+                                milestone.phase === 'Concept Phase'
+                                  ? 'phase-badge-concept'
+                                  : milestone.phase === 'Sketch Phase'
+                                  ? 'phase-badge-sketch'
+                                  : 'phase-badge-execution'
+                              }`}
                             >
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={`text-[10px] ${
-                                    milestone.phase === 'Concept Phase'
-                                      ? 'phase-badge-concept'
-                                      : milestone.phase === 'Sketch Phase'
-                                      ? 'phase-badge-sketch'
-                                      : 'phase-badge-execution'
-                                  }`}
-                                >
-                                  Discovery
-                                </span>
-                                <span className="text-sm font-medium">{meeting}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                              Discovery
+                            </span>
+                            <span className="text-sm font-medium">{meeting}</span>
+                          </div>
+                        ))}
+                      </div>
                     </td>
                   </tr>
                 )}
