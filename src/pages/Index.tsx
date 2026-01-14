@@ -128,8 +128,20 @@ const Index = () => {
   }, []);
 
   const handleRemoveMilestone = useCallback((id: string) => {
+    const milestone = DEFAULT_MILESTONES.find((m) => m.id === id);
     setHiddenMilestones((prev) => new Set([...prev, id]));
-    toast.success('Milestone removed');
+    toast.success(`${milestone?.name || 'Milestone'} removed`, {
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          setHiddenMilestones((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+        },
+      },
+    });
   }, []);
 
   const handleRestoreMilestone = useCallback((id: string) => {
