@@ -49,46 +49,46 @@ export function ControlsPanel({
       <h2 className="text-xs sm:text-sm font-semibold text-foreground mb-3 sm:mb-4">Configuration</h2>
       
       <div className="space-y-3 sm:space-y-4">
-        {/* Feature Name */}
-        <div className="flex flex-col gap-1.5 sm:gap-2">
-          <label htmlFor="feature-name" className="text-[10px] sm:text-xs font-medium text-muted-foreground">
-            Feature Name
-          </label>
-          {isFeatureNameSet ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-foreground flex-1 truncate">
-                {featureName}
-              </span>
-              <button
-                onClick={onEditFeatureName}
-                className="btn-secondary text-xs py-1.5 px-3"
-              >
-                Edit
-              </button>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <input
-                type="text"
-                id="feature-name"
-                value={featureName}
-                onChange={(e) => onFeatureNameChange(e.target.value)}
-                placeholder="Enter feature name..."
-                className="input-field flex-1 text-sm"
-              />
-              <button
-                onClick={onSetFeatureName}
-                disabled={!featureName.trim()}
-                className="btn-primary text-xs py-1.5 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Set
-              </button>
-            </div>
-          )}
-        </div>
+        {/* Feature Name and Preset row */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+          {/* Feature Name */}
+          <div className="flex flex-col gap-1.5 sm:gap-2">
+            <label htmlFor="feature-name" className="text-[10px] sm:text-xs font-medium text-muted-foreground">
+              Feature Name
+            </label>
+            {isFeatureNameSet ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-foreground flex-1 truncate">
+                  {featureName}
+                </span>
+                <button
+                  onClick={onEditFeatureName}
+                  className="btn-secondary text-xs py-1.5 px-3"
+                >
+                  Edit
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  id="feature-name"
+                  value={featureName}
+                  onChange={(e) => onFeatureNameChange(e.target.value)}
+                  placeholder="Enter feature name..."
+                  className="input-field flex-1 text-sm"
+                />
+                <button
+                  onClick={onSetFeatureName}
+                  disabled={!featureName.trim()}
+                  className="btn-primary text-xs py-1.5 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Set
+                </button>
+              </div>
+            )}
+          </div>
 
-        {/* Date inputs row */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
           {/* Preset Selector */}
           <div className="flex flex-col gap-1.5 sm:gap-2">
             <label htmlFor="preset" className="text-[10px] sm:text-xs font-medium text-muted-foreground">
@@ -107,6 +107,10 @@ export function ControlsPanel({
               ))}
             </select>
           </div>
+        </div>
+
+        {/* Date inputs row */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
 
           {/* Development Start Date (editable - calculates backwards) */}
           <div className="flex flex-col gap-1.5 sm:gap-2">
