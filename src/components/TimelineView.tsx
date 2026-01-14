@@ -10,6 +10,7 @@ import { parseISO, differenceInDays, addDays, startOfWeek, format, differenceInW
 interface TimelineViewProps {
   milestones: MilestoneState[];
   featureName?: string;
+  preset?: string;
   isOpen: boolean;
   onClose: () => void;
   onDaysChange: (id: string, value: number | null) => void;
@@ -18,7 +19,7 @@ interface TimelineViewProps {
 
 type ViewMode = 'days' | 'weeks' | 'quarters' | 'milestones';
 
-export function TimelineView({ milestones, featureName, isOpen, onClose, onDaysChange, onRemoveMilestone }: TimelineViewProps) {
+export function TimelineView({ milestones, featureName, preset, isOpen, onClose, onDaysChange, onRemoveMilestone }: TimelineViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('weeks');
   const [editMode, setEditMode] = useState(false);
 
@@ -99,9 +100,10 @@ export function TimelineView({ milestones, featureName, isOpen, onClose, onDaysC
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-semibold text-foreground">Timeline View</h2>
-            {featureName && (
+            {(featureName || preset) && (
               <span className="text-sm text-muted-foreground">
-                — <span className="font-medium text-foreground">{featureName}</span>
+                —{featureName && <span className="font-medium text-foreground"> {featureName}</span>}
+                {preset && <span className="ml-1">({preset} PLC)</span>}
               </span>
             )}
           </div>

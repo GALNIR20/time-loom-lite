@@ -251,6 +251,7 @@ const Index = () => {
       <TimelineView
         milestones={milestones}
         featureName={isFeatureNameSet ? featureName : undefined}
+        preset={preset}
         isOpen={isTimelineViewOpen}
         onClose={() => setIsTimelineViewOpen(false)}
         onDaysChange={handleDaysChange}
