@@ -355,8 +355,11 @@ export function TimelineView({ milestones, isOpen, onClose, onDaysChange }: Time
                         {/* Bar with drag support */}
                         <GanttBar
                           milestoneId={milestone.id}
+                          milestoneName={milestone.name}
                           phaseName={milestone.phase}
                           durationDays={previewDays}
+                          startDate={milestone.start}
+                          endDate={milestone.end}
                           offsetPercent={offsetPercent}
                           widthPercent={widthPercent}
                           editMode={editMode}

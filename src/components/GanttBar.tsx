@@ -1,10 +1,20 @@
 import { useRef, useCallback } from 'react';
 import { GripVertical } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { formatDateDisplay } from '@/lib/timeline';
 
 interface GanttBarProps {
   milestoneId: string;
+  milestoneName: string;
   phaseName: string;
   durationDays: number;
+  startDate: string;
+  endDate: string;
   offsetPercent: number;
   widthPercent: number;
   editMode: boolean;
@@ -32,8 +42,11 @@ const getPhaseColor = (phase: string) => {
 
 export function GanttBar({
   milestoneId,
+  milestoneName,
   phaseName,
   durationDays,
+  startDate,
+  endDate,
   offsetPercent,
   widthPercent,
   editMode,
@@ -53,7 +66,7 @@ export function GanttBar({
 
   if (durationDays <= 0) return null;
 
-  return (
+  const barContent = (
     <div
       ref={containerRef}
       className={`absolute top-1 bottom-1 rounded ${getPhaseColor(phaseName)} flex items-center transition-all shadow-sm ${
@@ -80,5 +93,35 @@ export function GanttBar({
         </div>
       )}
     </div>
+  );
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {barContent}
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs">
+          <div className="space-y-1">
+            <p className="font-semibold text-sm">{milestoneName}</p>
+            <p className="text-xs text-muted-foreground">{phaseName}</p>
+            <div className="flex gap-4 text-xs pt-1 border-t border-border mt-1">
+              <div>
+                <span className="text-muted-foreground">Start: </span>
+                <span className="font-medium">{formatDateDisplay(startDate)}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">End: </span>
+                <span className="font-medium">{formatDateDisplay(endDate)}</span>
+              </div>
+            </div>
+            <p className="text-xs">
+              <span className="text-muted-foreground">Duration: </span>
+              <span className="font-medium">{durationDays} days</span>
+            </p>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
