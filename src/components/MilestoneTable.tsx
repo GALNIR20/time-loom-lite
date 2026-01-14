@@ -20,6 +20,7 @@ interface MilestoneTableProps {
   hiddenMilestones: Set<string>;
   allMilestones: MilestoneConfig[];
   onRestoreMilestone: (id: string) => void;
+  mergedMilestones: Record<string, string[]>;
 }
 
 export function MilestoneTable({
@@ -31,6 +32,7 @@ export function MilestoneTable({
   hiddenMilestones,
   allMilestones,
   onRestoreMilestone,
+  mergedMilestones,
 }: MilestoneTableProps) {
   const [showHidden, setShowHidden] = useState(false);
   const [expandedDiscovery, setExpandedDiscovery] = useState<Set<string>>(new Set());
@@ -58,6 +60,15 @@ export function MilestoneTable({
       }
       return next;
     });
+  };
+
+  // Get display name including merged milestones
+  const getDisplayName = (milestone: MilestoneState) => {
+    const merged = mergedMilestones[milestone.id];
+    if (merged && merged.length > 0) {
+      return `${milestone.name} + ${merged.join(' + ')}`;
+    }
+    return milestone.name;
   };
 
   const getNextMilestoneName = (index: number) => {
@@ -134,7 +145,7 @@ export function MilestoneTable({
                     {formatDateDisplay(milestone.start)}
                   </td>
                   <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap">
-                    {milestone.name}
+                    {getDisplayName(milestone)}
                   </td>
                   <td className="px-2 py-3 text-center">
                     {DISCOVERY_MEETINGS[milestone.id] ? (
@@ -284,7 +295,7 @@ export function MilestoneTable({
                 >
                   {milestone.phase}
                 </span>
-                <h3 className="font-medium text-foreground text-sm mt-1 truncate">{milestone.name}</h3>
+                <h3 className="font-medium text-foreground text-sm mt-1 truncate">{getDisplayName(milestone)}</h3>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <span className="text-[10px] text-muted-foreground whitespace-nowrap">

@@ -46,6 +46,8 @@ const Index = () => {
   const [showDetailed, setShowDetailed] = useState(true);
   const [overrides, setOverrides] = useState<Record<string, number | null>>({});
   const [hiddenMilestones, setHiddenMilestones] = useState<Set<string>>(new Set());
+  // Track merged milestones: key = target milestone id, value = array of merged source milestone names
+  const [mergedMilestones, setMergedMilestones] = useState<Record<string, string[]>>({});
   const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
   const [isTimelineViewOpen, setIsTimelineViewOpen] = useState(false);
   
@@ -293,8 +295,17 @@ const Index = () => {
   const handleMergeMilestones = useCallback((sourceId: string, targetId: string) => {
     // Hide the source milestone (merge it into target)
     const sourceMilestone = DEFAULT_MILESTONES.find((m) => m.id === sourceId);
+    const sourceName = sourceMilestone?.name || 'Unknown';
+    
     setHiddenMilestones((prev) => new Set([...prev, sourceId]));
-    toast.success(`${sourceMilestone?.name || 'Milestone'} merged`, {
+    
+    // Add source name to merged list for target
+    setMergedMilestones((prev) => ({
+      ...prev,
+      [targetId]: [...(prev[targetId] || []), sourceName],
+    }));
+    
+    toast.success(`${sourceName} merged with ${DEFAULT_MILESTONES.find((m) => m.id === targetId)?.name}`, {
       action: {
         label: 'Undo',
         onClick: () => {
@@ -302,6 +313,17 @@ const Index = () => {
             const next = new Set(prev);
             next.delete(sourceId);
             return next;
+          });
+          // Remove from merged list
+          setMergedMilestones((prev) => {
+            const newList = [...(prev[targetId] || [])];
+            const idx = newList.indexOf(sourceName);
+            if (idx > -1) newList.splice(idx, 1);
+            if (newList.length === 0) {
+              const { [targetId]: _, ...rest } = prev;
+              return rest;
+            }
+            return { ...prev, [targetId]: newList };
           });
         },
       },
@@ -402,6 +424,7 @@ const Index = () => {
           hiddenMilestones={hiddenMilestones}
           allMilestones={DEFAULT_MILESTONES}
           onRestoreMilestone={handleRestoreMilestone}
+          mergedMilestones={mergedMilestones}
         />
         </main>
 
