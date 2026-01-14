@@ -16,6 +16,7 @@ export interface MilestoneState extends MilestoneConfig {
 }
 
 export interface TimelineExport {
+  featureName?: string;
   projectStart: string;
   devStart: string;
   preset: PresetType;

@@ -32,6 +32,7 @@ function calculateDaysBeforeIPhase(
 }
 
 const Index = () => {
+  const [featureName, setFeatureName] = useState('');
   const [projectStart, setProjectStart] = useState(getTodayISO);
   const [preset, setPreset] = useState<PresetType>('Big');
   const [showDetailed, setShowDetailed] = useState(true);
@@ -54,10 +55,14 @@ const Index = () => {
     [activeMilestoneConfigs, overrides, projectStart, preset]
   );
 
-  const totalDays = useMemo(
-    () => milestones.reduce((sum, m) => sum + m.durationDays, 0),
-    [milestones]
-  );
+  // Total days until I-Phase (not entire project)
+  const totalDays = useMemo(() => {
+    const iPhase = milestones.find((m) => m.id === 'i-phase');
+    if (!iPhase) return milestones.reduce((sum, m) => sum + m.durationDays, 0);
+    
+    const iPhaseIndex = milestones.indexOf(iPhase);
+    return milestones.slice(0, iPhaseIndex + 1).reduce((sum, m) => sum + m.durationDays, 0);
+  }, [milestones]);
 
   const projectedEnd = useMemo(
     () => milestones[milestones.length - 1]?.end ?? projectStart,
@@ -107,6 +112,7 @@ const Index = () => {
 
   const exportData: TimelineExport = useMemo(
     () => ({
+      featureName: featureName || undefined,
       projectStart,
       devStart: iPhaseStart ?? projectStart,
       preset,
@@ -120,7 +126,7 @@ const Index = () => {
         date: m.start,
       })),
     }),
-    [projectStart, iPhaseStart, preset, totalDays, projectedEnd, milestones]
+    [featureName, projectStart, iPhaseStart, preset, totalDays, projectedEnd, milestones]
   );
 
   const handleDaysChange = useCallback((id: string, value: number | null) => {
@@ -164,6 +170,7 @@ const Index = () => {
   }, [exportData]);
 
   const handleReset = useCallback(() => {
+    setFeatureName('');
     setProjectStart(getTodayISO());
     setPreset('Big');
     setShowDetailed(true);
@@ -191,6 +198,8 @@ const Index = () => {
       {/* Main Content */}
       <main className="container max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
         <ControlsPanel
+          featureName={featureName}
+          onFeatureNameChange={setFeatureName}
           projectStart={projectStart}
           onProjectStartChange={(date) => {
             setProjectStart(date);

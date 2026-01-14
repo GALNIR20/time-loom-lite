@@ -2,6 +2,8 @@ import { Calendar, RefreshCw, BarChart3 } from 'lucide-react';
 import { PresetType } from '@/types/timeline';
 
 interface ControlsPanelProps {
+  featureName: string;
+  onFeatureNameChange: (name: string) => void;
   projectStart: string;
   onProjectStartChange: (date: string) => void;
   devStart: string;
@@ -22,6 +24,8 @@ const PRESET_OPTIONS: { value: PresetType; label: string; description: string }[
 ];
 
 export function ControlsPanel({
+  featureName,
+  onFeatureNameChange,
   projectStart,
   onProjectStartChange,
   devStart,
@@ -39,6 +43,21 @@ export function ControlsPanel({
       <h2 className="text-xs sm:text-sm font-semibold text-foreground mb-3 sm:mb-4">Configuration</h2>
       
       <div className="space-y-3 sm:space-y-4">
+        {/* Feature Name */}
+        <div className="flex flex-col gap-1.5 sm:gap-2">
+          <label htmlFor="feature-name" className="text-[10px] sm:text-xs font-medium text-muted-foreground">
+            Feature Name
+          </label>
+          <input
+            type="text"
+            id="feature-name"
+            value={featureName}
+            onChange={(e) => onFeatureNameChange(e.target.value)}
+            placeholder="Enter feature name..."
+            className="input-field w-full text-sm"
+          />
+        </div>
+
         {/* Date inputs row */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
           {/* Preset Selector */}
