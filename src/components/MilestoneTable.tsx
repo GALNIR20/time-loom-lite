@@ -1,13 +1,7 @@
 import { MilestoneState, MilestoneConfig } from '@/types/timeline';
 import { formatDateDisplay, formatDuration } from '@/lib/timeline';
-import { X, ArrowRight, Trash2, RotateCcw, ChevronDown, ChevronUp, CalendarCheck } from 'lucide-react';
+import { X, ArrowRight, Trash2, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 // Discovery meetings configuration: maps milestone id to its discovery meetings
 const DISCOVERY_MEETINGS: Record<string, string[]> = {
@@ -37,7 +31,9 @@ export function MilestoneTable({
   onRestoreMilestone,
 }: MilestoneTableProps) {
   const [showHidden, setShowHidden] = useState(false);
+  const [expandedDiscovery, setExpandedDiscovery] = useState<Set<string>>(new Set());
   const hiddenList = allMilestones.filter((m) => hiddenMilestones.has(m.id));
+  
   const handleDaysInput = (id: string, value: string) => {
     if (value === '') {
       onDaysChange(id, null);
@@ -47,6 +43,18 @@ export function MilestoneTable({
     if (!isNaN(parsed) && parsed >= 0) {
       onDaysChange(id, parsed);
     }
+  };
+
+  const toggleDiscovery = (id: string) => {
+    setExpandedDiscovery((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   const getNextMilestoneName = (index: number) => {
@@ -70,9 +78,6 @@ export function MilestoneTable({
                 Days
               </th>
               <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
-                Discovery
-              </th>
-              <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
                 Next Milestone
               </th>
               <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
@@ -85,89 +90,114 @@ export function MilestoneTable({
           </thead>
           <tbody>
             {milestones.map((milestone, index) => (
-              <tr
-                key={milestone.id}
-                className={`
-                  border-b border-table-border last:border-b-0
-                  hover:bg-table-row-hover transition-colors
-                  ${index % 2 === 0 ? 'bg-card' : 'bg-background/50'}
-                `}
-              >
-                <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                  {formatDateDisplay(milestone.start)}
-                </td>
-                <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap">
-                  {milestone.name}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={milestone.durationDays}
-                      onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
-                      className="input-field w-20 text-center"
-                      aria-label={`Days for ${milestone.name}`}
-                    />
-                    {milestone.overrideDays !== null && (
+              <>
+                <tr
+                  key={milestone.id}
+                  className={`
+                    border-b border-table-border last:border-b-0
+                    hover:bg-table-row-hover transition-colors
+                    ${index % 2 === 0 ? 'bg-card' : 'bg-background/50'}
+                  `}
+                >
+                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                    {formatDateDisplay(milestone.start)}
+                  </td>
+                  <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap">
+                    {milestone.name}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={milestone.durationDays}
+                        onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
+                        className="input-field w-20 text-center"
+                        aria-label={`Days for ${milestone.name}`}
+                      />
+                      {milestone.overrideDays !== null && (
+                        <button
+                          onClick={() => onDaysChange(milestone.id, null)}
+                          className="btn-ghost"
+                          aria-label={`Reset days for ${milestone.name}`}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                    {getNextMilestoneName(index)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={
+                        milestone.phase === 'Concept Phase'
+                          ? 'phase-badge-concept'
+                          : milestone.phase === 'Sketch Phase'
+                          ? 'phase-badge-sketch'
+                          : 'phase-badge-execution'
+                      }
+                    >
+                      {milestone.phase}
+                    </span>
+                  </td>
+                  <td className="px-2 py-3 text-center">
+                    <button
+                      onClick={() => onRemoveMilestone(milestone.id)}
+                      className="btn-ghost text-muted-foreground hover:text-destructive p-1"
+                      aria-label={`Remove ${milestone.name}`}
+                      title="Remove milestone"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+                {/* Discovery meetings expandable row */}
+                {DISCOVERY_MEETINGS[milestone.id] && (
+                  <tr key={`${milestone.id}-discovery`} className="border-b border-table-border">
+                    <td colSpan={6} className="p-0">
                       <button
-                        onClick={() => onDaysChange(milestone.id, null)}
-                        className="btn-ghost"
-                        aria-label={`Reset days for ${milestone.name}`}
+                        onClick={() => toggleDiscovery(milestone.id)}
+                        className="w-full flex items-center justify-between px-4 py-2 text-sm text-muted-foreground hover:bg-muted/50 transition-colors"
                       >
-                        <X className="w-3 h-3" />
+                        <span>Discovery meetings ({DISCOVERY_MEETINGS[milestone.id].length})</span>
+                        {expandedDiscovery.has(milestone.id) ? (
+                          <ChevronUp className="w-4 h-4" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4" />
+                        )}
                       </button>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  {DISCOVERY_MEETINGS[milestone.id] ? (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 hover:bg-muted transition-colors cursor-pointer text-muted-foreground hover:text-foreground">
-                        <CalendarCheck className="w-4 h-4" />
-                        <span className="text-xs">View</span>
-                        <ChevronDown className="w-3 h-3" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="bg-popover border border-border shadow-lg z-50">
-                        {DISCOVERY_MEETINGS[milestone.id].map((meeting) => (
-                          <DropdownMenuItem key={meeting} className="text-sm cursor-default">
-                            {meeting}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  ) : (
-                    <span className="text-muted-foreground/50">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                  {getNextMilestoneName(index)}
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={
-                      milestone.phase === 'Concept Phase'
-                        ? 'phase-badge-concept'
-                        : milestone.phase === 'Sketch Phase'
-                        ? 'phase-badge-sketch'
-                        : 'phase-badge-execution'
-                    }
-                  >
-                    {milestone.phase}
-                  </span>
-                </td>
-                <td className="px-2 py-3 text-center">
-                  <button
-                    onClick={() => onRemoveMilestone(milestone.id)}
-                    className="btn-ghost text-muted-foreground hover:text-destructive p-1"
-                    aria-label={`Remove ${milestone.name}`}
-                    title="Remove milestone"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </td>
-              </tr>
+                      {expandedDiscovery.has(milestone.id) && (
+                        <div className="px-4 pb-3 space-y-2">
+                          {DISCOVERY_MEETINGS[milestone.id].map((meeting) => (
+                            <div
+                              key={meeting}
+                              className="flex items-center justify-between p-2 rounded-md bg-muted/30"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`text-[10px] ${
+                                    milestone.phase === 'Concept Phase'
+                                      ? 'phase-badge-concept'
+                                      : milestone.phase === 'Sketch Phase'
+                                      ? 'phase-badge-sketch'
+                                      : 'phase-badge-execution'
+                                  }`}
+                                >
+                                  Discovery
+                                </span>
+                                <span className="text-sm font-medium">{meeting}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )}
+              </>
             ))}
           </tbody>
         </table>
@@ -237,22 +267,44 @@ export function MilestoneTable({
               )}
             </div>
 
-            {/* Discovery meetings */}
+            {/* Discovery meetings expandable */}
             {DISCOVERY_MEETINGS[milestone.id] && (
-              <DropdownMenu>
-                <DropdownMenuTrigger className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 hover:bg-muted transition-colors text-xs text-muted-foreground hover:text-foreground">
-                  <CalendarCheck className="w-3.5 h-3.5" />
-                  <span>Discovery</span>
-                  <ChevronDown className="w-3 h-3" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="bg-popover border border-border shadow-lg z-50">
-                  {DISCOVERY_MEETINGS[milestone.id].map((meeting) => (
-                    <DropdownMenuItem key={meeting} className="text-sm cursor-default">
-                      {meeting}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="border-t border-border/50">
+                <button
+                  onClick={() => toggleDiscovery(milestone.id)}
+                  className="w-full flex items-center justify-between py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <span>Discovery meetings ({DISCOVERY_MEETINGS[milestone.id].length})</span>
+                  {expandedDiscovery.has(milestone.id) ? (
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  )}
+                </button>
+                {expandedDiscovery.has(milestone.id) && (
+                  <div className="pb-2 space-y-1.5">
+                    {DISCOVERY_MEETINGS[milestone.id].map((meeting) => (
+                      <div
+                        key={meeting}
+                        className="flex items-center gap-2 p-1.5 rounded-md bg-muted/30"
+                      >
+                        <span
+                          className={`text-[9px] ${
+                            milestone.phase === 'Concept Phase'
+                              ? 'phase-badge-concept'
+                              : milestone.phase === 'Sketch Phase'
+                              ? 'phase-badge-sketch'
+                              : 'phase-badge-execution'
+                          }`}
+                        >
+                          Discovery
+                        </span>
+                        <span className="text-xs font-medium">{meeting}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Next milestone */}
