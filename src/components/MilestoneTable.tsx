@@ -2,6 +2,20 @@ import { MilestoneState, MilestoneConfig } from '@/types/timeline';
 import { formatDateDisplay, formatDuration } from '@/lib/timeline';
 import { X, ArrowRight, Trash2, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+// Discovery meetings configuration: maps milestone id to its discovery meetings
+const DISCOVERY_MEETINGS: Record<string, string[]> = {
+  'brief': ['Pre-Concept Discovery'],
+  'pre-concept': ['Concept Discovery'],
+  'concept': ['Pre-Sketch Discovery'],
+  'sketch': ['Sketch Discovery', 'Tech Plan', 'Art Dev Plan'],
+};
 
 interface MilestoneTableProps {
   milestones: MilestoneState[];
@@ -33,6 +47,10 @@ export function MilestoneTable({
     if (!isNaN(parsed) && parsed >= 0) {
       onDaysChange(id, parsed);
     }
+  };
+
+  const getNextMilestoneName = (index: number) => {
+    return index < milestones.length - 1 ? milestones[index + 1].name : '—';
   };
 
   return (
@@ -101,7 +119,23 @@ export function MilestoneTable({
                   </div>
                 </td>
                 <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                  {index < milestones.length - 1 ? milestones[index + 1].name : '—'}
+                  {DISCOVERY_MEETINGS[milestone.id] ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer">
+                        <span>{getNextMilestoneName(index)}</span>
+                        <ChevronDown className="w-3 h-3" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="bg-popover border border-border shadow-lg z-50">
+                        {DISCOVERY_MEETINGS[milestone.id].map((meeting) => (
+                          <DropdownMenuItem key={meeting} className="text-sm cursor-default">
+                            {meeting}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : (
+                    getNextMilestoneName(index)
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <span
@@ -200,7 +234,23 @@ export function MilestoneTable({
             {index < milestones.length - 1 && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <ArrowRight className="w-3 h-3 flex-shrink-0" />
-                <span className="truncate">{milestones[index + 1].name}</span>
+                {DISCOVERY_MEETINGS[milestone.id] ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="flex items-center gap-1 hover:text-foreground transition-colors">
+                      <span className="truncate">{milestones[index + 1].name}</span>
+                      <ChevronDown className="w-3 h-3" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="bg-popover border border-border shadow-lg z-50">
+                      {DISCOVERY_MEETINGS[milestone.id].map((meeting) => (
+                        <DropdownMenuItem key={meeting} className="text-sm cursor-default">
+                          {meeting}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <span className="truncate">{milestones[index + 1].name}</span>
+                )}
               </div>
             )}
           </div>
