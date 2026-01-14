@@ -36,15 +36,22 @@ const Index = () => {
   const [preset, setPreset] = useState<PresetType>('Big');
   const [showDetailed, setShowDetailed] = useState(true);
   const [overrides, setOverrides] = useState<Record<string, number | null>>({});
+  const [hiddenMilestones, setHiddenMilestones] = useState<Set<string>>(new Set());
   const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
   const [isTimelineViewOpen, setIsTimelineViewOpen] = useState(false);
   
   // Track the user's intended dev start date (null = not manually set)
   const [lockedDevStart, setLockedDevStart] = useState<string | null>(null);
 
+  // Filter out hidden milestones from the config before calculating
+  const activeMilestoneConfigs = useMemo(
+    () => DEFAULT_MILESTONES.filter((m) => !hiddenMilestones.has(m.id)),
+    [hiddenMilestones]
+  );
+
   const milestones = useMemo(
-    () => calculateTimeline(DEFAULT_MILESTONES, overrides, projectStart, preset),
-    [overrides, projectStart, preset]
+    () => calculateTimeline(activeMilestoneConfigs, overrides, projectStart, preset),
+    [activeMilestoneConfigs, overrides, projectStart, preset]
   );
 
   const totalDays = useMemo(
@@ -120,6 +127,20 @@ const Index = () => {
     setOverrides((prev) => ({ ...prev, [id]: value }));
   }, []);
 
+  const handleRemoveMilestone = useCallback((id: string) => {
+    setHiddenMilestones((prev) => new Set([...prev, id]));
+    toast.success('Milestone removed');
+  }, []);
+
+  const handleRestoreMilestone = useCallback((id: string) => {
+    setHiddenMilestones((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    toast.success('Milestone restored');
+  }, []);
+
   const handleCopyJson = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(JSON.stringify(exportData, null, 2));
@@ -135,6 +156,7 @@ const Index = () => {
     setPreset('Big');
     setShowDetailed(true);
     setOverrides({});
+    setHiddenMilestones(new Set());
     setLockedDevStart(null);
     setIsTimelineViewOpen(false);
     toast.success('Timeline reset to defaults');
@@ -185,6 +207,10 @@ const Index = () => {
           milestones={milestones}
           showDetailed={showDetailed}
           onDaysChange={handleDaysChange}
+          onRemoveMilestone={handleRemoveMilestone}
+          hiddenMilestones={hiddenMilestones}
+          allMilestones={DEFAULT_MILESTONES}
+          onRestoreMilestone={handleRestoreMilestone}
         />
       </main>
 
@@ -201,6 +227,7 @@ const Index = () => {
         isOpen={isTimelineViewOpen}
         onClose={() => setIsTimelineViewOpen(false)}
         onDaysChange={handleDaysChange}
+        onRemoveMilestone={handleRemoveMilestone}
       />
     </div>
   );

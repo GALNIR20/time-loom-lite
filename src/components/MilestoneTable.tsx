@@ -1,18 +1,29 @@
-import { MilestoneState } from '@/types/timeline';
+import { MilestoneState, MilestoneConfig } from '@/types/timeline';
 import { formatDateDisplay, formatDuration } from '@/lib/timeline';
-import { X, ArrowRight } from 'lucide-react';
+import { X, ArrowRight, Trash2, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState } from 'react';
 
 interface MilestoneTableProps {
   milestones: MilestoneState[];
   showDetailed: boolean;
   onDaysChange: (id: string, value: number | null) => void;
+  onRemoveMilestone: (id: string) => void;
+  hiddenMilestones: Set<string>;
+  allMilestones: MilestoneConfig[];
+  onRestoreMilestone: (id: string) => void;
 }
 
 export function MilestoneTable({
   milestones,
   showDetailed,
   onDaysChange,
+  onRemoveMilestone,
+  hiddenMilestones,
+  allMilestones,
+  onRestoreMilestone,
 }: MilestoneTableProps) {
+  const [showHidden, setShowHidden] = useState(false);
+  const hiddenList = allMilestones.filter((m) => hiddenMilestones.has(m.id));
   const handleDaysInput = (id: string, value: string) => {
     if (value === '') {
       onDaysChange(id, null);
@@ -42,6 +53,15 @@ export function MilestoneTable({
               </th>
               <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
                 Next Milestone
+              </th>
+              <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
+                Duration
+              </th>
+              <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
+                Date
+              </th>
+              <th className="text-center px-4 py-3 font-semibold text-foreground whitespace-nowrap w-12">
+                
               </th>
               <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
                 Duration
@@ -108,6 +128,16 @@ export function MilestoneTable({
                 <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                   {formatDateDisplay(milestone.start)}
                 </td>
+                <td className="px-2 py-3 text-center">
+                  <button
+                    onClick={() => onRemoveMilestone(milestone.id)}
+                    className="btn-ghost text-muted-foreground hover:text-destructive p-1"
+                    aria-label={`Remove ${milestone.name}`}
+                    title="Remove milestone"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -134,9 +164,18 @@ export function MilestoneTable({
                 </span>
                 <h3 className="font-medium text-foreground text-sm mt-1 truncate">{milestone.name}</h3>
               </div>
-              <span className="text-[10px] text-muted-foreground whitespace-nowrap flex-shrink-0">
-                {formatDateDisplay(milestone.start)}
-              </span>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                  {formatDateDisplay(milestone.start)}
+                </span>
+                <button
+                  onClick={() => onRemoveMilestone(milestone.id)}
+                  className="btn-ghost text-muted-foreground hover:text-destructive p-1"
+                  aria-label={`Remove ${milestone.name}`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
             {/* Days input row */}
@@ -179,6 +218,52 @@ export function MilestoneTable({
           </div>
         ))}
       </div>
+
+      {/* Hidden Milestones Section */}
+      {hiddenList.length > 0 && (
+        <div className="border-t border-border">
+          <button
+            onClick={() => setShowHidden(!showHidden)}
+            className="w-full flex items-center justify-between px-4 py-3 text-sm text-muted-foreground hover:bg-muted/50 transition-colors"
+          >
+            <span>Removed milestones ({hiddenList.length})</span>
+            {showHidden ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          {showHidden && (
+            <div className="px-4 pb-3 space-y-2">
+              {hiddenList.map((m) => (
+                <div
+                  key={m.id}
+                  className="flex items-center justify-between p-2 rounded-md bg-muted/30"
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-[10px] ${
+                        m.phase === 'Concept Phase'
+                          ? 'phase-badge-concept'
+                          : m.phase === 'Sketch Phase'
+                          ? 'phase-badge-sketch'
+                          : 'phase-badge-execution'
+                      }`}
+                    >
+                      {m.phase}
+                    </span>
+                    <span className="text-sm font-medium">{m.name}</span>
+                  </div>
+                  <button
+                    onClick={() => onRestoreMilestone(m.id)}
+                    className="btn-ghost text-muted-foreground hover:text-primary p-1 flex items-center gap-1 text-xs"
+                    aria-label={`Restore ${m.name}`}
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Restore</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
