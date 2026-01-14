@@ -1,6 +1,6 @@
 import { MilestoneState, MilestoneConfig } from '@/types/timeline';
 import { formatDateDisplay, formatDuration } from '@/lib/timeline';
-import { X, ArrowRight, Trash2, RotateCcw, ChevronDown, ChevronUp, Merge } from 'lucide-react';
+import { X, ArrowRight, Trash2, RotateCcw, ChevronDown, ChevronUp, Merge, Unlink } from 'lucide-react';
 import { useState } from 'react';
 
 // Discovery meetings configuration: maps milestone id to its discovery meetings
@@ -21,6 +21,7 @@ interface MilestoneTableProps {
   allMilestones: MilestoneConfig[];
   onRestoreMilestone: (id: string) => void;
   mergedMilestones: Record<string, string[]>;
+  onUnmergeMilestone: (targetId: string, sourceName: string) => void;
 }
 
 export function MilestoneTable({
@@ -33,6 +34,7 @@ export function MilestoneTable({
   allMilestones,
   onRestoreMilestone,
   mergedMilestones,
+  onUnmergeMilestone,
 }: MilestoneTableProps) {
   const [showHidden, setShowHidden] = useState(false);
   const [expandedDiscovery, setExpandedDiscovery] = useState<Set<string>>(new Set());
@@ -144,8 +146,26 @@ export function MilestoneTable({
                   <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                     {formatDateDisplay(milestone.start)}
                   </td>
-                  <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap">
-                    {getDisplayName(milestone)}
+                  <td className="px-4 py-3 font-medium text-foreground">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="whitespace-nowrap">{milestone.name}</span>
+                      {mergedMilestones[milestone.id]?.map((mergedName) => (
+                        <span
+                          key={mergedName}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 bg-warning/20 text-warning rounded-full text-xs"
+                        >
+                          + {mergedName}
+                          <button
+                            onClick={() => onUnmergeMilestone(milestone.id, mergedName)}
+                            className="hover:bg-warning/30 rounded-full p-0.5 transition-colors"
+                            aria-label={`Unmerge ${mergedName}`}
+                            title="Unmerge"
+                          >
+                            <Unlink className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
                   </td>
                   <td className="px-2 py-3 text-center">
                     {DISCOVERY_MEETINGS[milestone.id] ? (
@@ -295,7 +315,24 @@ export function MilestoneTable({
                 >
                   {milestone.phase}
                 </span>
-                <h3 className="font-medium text-foreground text-sm mt-1 truncate">{getDisplayName(milestone)}</h3>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h3 className="font-medium text-foreground text-sm truncate">{milestone.name}</h3>
+                  {mergedMilestones[milestone.id]?.map((mergedName) => (
+                    <span
+                      key={mergedName}
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-warning/20 text-warning rounded-full text-[10px]"
+                    >
+                      + {mergedName}
+                      <button
+                        onClick={() => onUnmergeMilestone(milestone.id, mergedName)}
+                        className="hover:bg-warning/30 rounded-full p-0.5 transition-colors"
+                        aria-label={`Unmerge ${mergedName}`}
+                      >
+                        <Unlink className="w-2.5 h-2.5" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <span className="text-[10px] text-muted-foreground whitespace-nowrap">
