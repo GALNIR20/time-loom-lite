@@ -1,4 +1,4 @@
-import { Calendar, RefreshCw, BarChart3, Save } from 'lucide-react';
+import { Calendar, RefreshCw, BarChart3, Save, Undo2 } from 'lucide-react';
 import { PresetType } from '@/types/timeline';
 
 interface ControlsPanelProps {
@@ -17,6 +17,8 @@ interface ControlsPanelProps {
   onShowDetailedChange: (show: boolean) => void;
   onCopyJson: () => void;
   onSave: () => void;
+  onRestore: () => void;
+  hasUnsavedChanges: boolean;
   onReset: () => void;
   onShowTimeline: () => void;
 }
@@ -43,6 +45,8 @@ export function ControlsPanel({
   onShowDetailedChange,
   onCopyJson,
   onSave,
+  onRestore,
+  hasUnsavedChanges,
   onReset,
   onShowTimeline,
 }: ControlsPanelProps) {
@@ -166,7 +170,7 @@ export function ControlsPanel({
           </div>
 
           {/* Action Buttons */}
-          <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap">
+          <div className="flex flex-wrap gap-2">
             <button onClick={onShowTimeline} className="btn-primary text-xs sm:text-sm py-2 px-2 sm:px-3">
               <BarChart3 className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
               <span className="hidden xs:inline sm:inline">Timeline</span>
@@ -175,6 +179,12 @@ export function ControlsPanel({
               <Save className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
               <span className="hidden sm:inline">Save</span>
             </button>
+            {hasUnsavedChanges && (
+              <button onClick={onRestore} className="btn-secondary text-xs sm:text-sm py-2 px-2 sm:px-3 border-warning text-warning hover:bg-warning/10">
+                <Undo2 className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                <span className="hidden sm:inline">Restore</span>
+              </button>
+            )}
             <button onClick={onCopyJson} className="btn-secondary text-xs sm:text-sm py-2 px-2 sm:px-3">
               <span>JSON</span>
             </button>

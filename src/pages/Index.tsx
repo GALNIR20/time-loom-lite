@@ -57,6 +57,9 @@ const Index = () => {
   
   // Track the user's intended dev start date (null = not manually set)
   const [lockedDevStart, setLockedDevStart] = useState<string | null>(null);
+  
+  // Track if there's a saved config to restore to
+  const [savedConfig, setSavedConfig] = useState<SavedConfig | null>(null);
 
   // Load saved config on mount
   useEffect(() => {
@@ -64,6 +67,7 @@ const Index = () => {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const config: SavedConfig = JSON.parse(saved);
+        setSavedConfig(config);
         setFeatureName(config.featureName || '');
         setIsFeatureNameSet(config.isFeatureNameSet || false);
         setProjectStart(config.projectStart || getTodayISO());
@@ -78,6 +82,22 @@ const Index = () => {
     }
   }, []);
 
+  // Check if current state differs from saved config
+  const hasUnsavedChanges = useMemo(() => {
+    if (!savedConfig) return false;
+    
+    return (
+      featureName !== savedConfig.featureName ||
+      isFeatureNameSet !== savedConfig.isFeatureNameSet ||
+      projectStart !== savedConfig.projectStart ||
+      preset !== savedConfig.preset ||
+      showDetailed !== savedConfig.showDetailed ||
+      JSON.stringify(overrides) !== JSON.stringify(savedConfig.overrides) ||
+      JSON.stringify(Array.from(hiddenMilestones).sort()) !== JSON.stringify([...savedConfig.hiddenMilestones].sort()) ||
+      lockedDevStart !== savedConfig.lockedDevStart
+    );
+  }, [savedConfig, featureName, isFeatureNameSet, projectStart, preset, showDetailed, overrides, hiddenMilestones, lockedDevStart]);
+
   const handleSave = useCallback(() => {
     const config: SavedConfig = {
       featureName,
@@ -90,8 +110,23 @@ const Index = () => {
       lockedDevStart,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+    setSavedConfig(config);
     toast.success('Configuration saved!');
   }, [featureName, isFeatureNameSet, projectStart, preset, showDetailed, overrides, hiddenMilestones, lockedDevStart]);
+
+  const handleRestore = useCallback(() => {
+    if (!savedConfig) return;
+    
+    setFeatureName(savedConfig.featureName || '');
+    setIsFeatureNameSet(savedConfig.isFeatureNameSet || false);
+    setProjectStart(savedConfig.projectStart || getTodayISO());
+    setPreset(savedConfig.preset || 'Big');
+    setShowDetailed(savedConfig.showDetailed ?? true);
+    setOverrides(savedConfig.overrides || {});
+    setHiddenMilestones(new Set(savedConfig.hiddenMilestones || []));
+    setLockedDevStart(savedConfig.lockedDevStart || null);
+    toast.success('Configuration restored!');
+  }, [savedConfig]);
 
   // Filter out hidden milestones from the config before calculating
   const activeMilestoneConfigs = useMemo(
@@ -266,6 +301,8 @@ const Index = () => {
           onShowDetailedChange={setShowDetailed}
           onCopyJson={handleCopyJson}
           onSave={handleSave}
+          onRestore={handleRestore}
+          hasUnsavedChanges={hasUnsavedChanges}
           onReset={handleReset}
           onShowTimeline={() => setIsTimelineViewOpen(true)}
         />
