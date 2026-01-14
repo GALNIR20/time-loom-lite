@@ -4,6 +4,9 @@ import { PresetType } from '@/types/timeline';
 interface ControlsPanelProps {
   featureName: string;
   onFeatureNameChange: (name: string) => void;
+  isFeatureNameSet: boolean;
+  onSetFeatureName: () => void;
+  onEditFeatureName: () => void;
   projectStart: string;
   onProjectStartChange: (date: string) => void;
   devStart: string;
@@ -26,6 +29,9 @@ const PRESET_OPTIONS: { value: PresetType; label: string; description: string }[
 export function ControlsPanel({
   featureName,
   onFeatureNameChange,
+  isFeatureNameSet,
+  onSetFeatureName,
+  onEditFeatureName,
   projectStart,
   onProjectStartChange,
   devStart,
@@ -48,14 +54,37 @@ export function ControlsPanel({
           <label htmlFor="feature-name" className="text-[10px] sm:text-xs font-medium text-muted-foreground">
             Feature Name
           </label>
-          <input
-            type="text"
-            id="feature-name"
-            value={featureName}
-            onChange={(e) => onFeatureNameChange(e.target.value)}
-            placeholder="Enter feature name..."
-            className="input-field w-full text-sm"
-          />
+          {isFeatureNameSet ? (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-foreground flex-1 truncate">
+                {featureName}
+              </span>
+              <button
+                onClick={onEditFeatureName}
+                className="btn-secondary text-xs py-1.5 px-3"
+              >
+                Edit
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                id="feature-name"
+                value={featureName}
+                onChange={(e) => onFeatureNameChange(e.target.value)}
+                placeholder="Enter feature name..."
+                className="input-field flex-1 text-sm"
+              />
+              <button
+                onClick={onSetFeatureName}
+                disabled={!featureName.trim()}
+                className="btn-primary text-xs py-1.5 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Set
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Date inputs row */}
