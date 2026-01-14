@@ -1,6 +1,6 @@
 import { MilestoneState, MilestoneConfig } from '@/types/timeline';
 import { formatDateDisplay, formatDuration } from '@/lib/timeline';
-import { X, ArrowRight, Trash2, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, ArrowRight, Trash2, RotateCcw, ChevronDown, ChevronUp, Merge } from 'lucide-react';
 import { useState } from 'react';
 
 // Discovery meetings configuration: maps milestone id to its discovery meetings
@@ -16,6 +16,7 @@ interface MilestoneTableProps {
   showDetailed: boolean;
   onDaysChange: (id: string, value: number | null) => void;
   onRemoveMilestone: (id: string) => void;
+  onMergeMilestones: (sourceId: string, targetId: string) => void;
   hiddenMilestones: Set<string>;
   allMilestones: MilestoneConfig[];
   onRestoreMilestone: (id: string) => void;
@@ -26,12 +27,14 @@ export function MilestoneTable({
   showDetailed,
   onDaysChange,
   onRemoveMilestone,
+  onMergeMilestones,
   hiddenMilestones,
   allMilestones,
   onRestoreMilestone,
 }: MilestoneTableProps) {
   const [showHidden, setShowHidden] = useState(false);
   const [expandedDiscovery, setExpandedDiscovery] = useState<Set<string>>(new Set());
+  const [mergeDropdownOpen, setMergeDropdownOpen] = useState<string | null>(null);
   const hiddenList = allMilestones.filter((m) => hiddenMilestones.has(m.id));
   
   const handleDaysInput = (id: string, value: string) => {
@@ -59,6 +62,31 @@ export function MilestoneTable({
 
   const getNextMilestoneName = (index: number) => {
     return index < milestones.length - 1 ? milestones[index + 1].name : '—';
+  };
+
+  const getMergeTargets = (currentIndex: number) => {
+    // Can merge with previous or next milestone
+    const targets: { id: string; name: string; direction: 'prev' | 'next' }[] = [];
+    if (currentIndex > 0) {
+      targets.push({
+        id: milestones[currentIndex - 1].id,
+        name: milestones[currentIndex - 1].name,
+        direction: 'prev',
+      });
+    }
+    if (currentIndex < milestones.length - 1) {
+      targets.push({
+        id: milestones[currentIndex + 1].id,
+        name: milestones[currentIndex + 1].name,
+        direction: 'next',
+      });
+    }
+    return targets;
+  };
+
+  const handleMerge = (sourceId: string, targetId: string) => {
+    onMergeMilestones(sourceId, targetId);
+    setMergeDropdownOpen(null);
   };
 
   return (
@@ -144,6 +172,36 @@ export function MilestoneTable({
                         >
                           <X className="w-3 h-3" />
                         </button>
+                      )}
+                      {/* Merge button - appears when days is 0 */}
+                      {milestone.durationDays === 0 && getMergeTargets(index).length > 0 && (
+                        <div className="relative">
+                          <button
+                            onClick={() => setMergeDropdownOpen(mergeDropdownOpen === milestone.id ? null : milestone.id)}
+                            className="btn-ghost text-warning hover:text-warning p-1"
+                            aria-label={`Merge ${milestone.name} with another milestone`}
+                            title="Merge milestone"
+                          >
+                            <Merge className="w-4 h-4" />
+                          </button>
+                          {mergeDropdownOpen === milestone.id && (
+                            <div className="absolute left-0 top-full mt-1 z-50 bg-card border border-border rounded-lg shadow-lg min-w-[180px] py-1">
+                              <div className="px-3 py-1.5 text-xs text-muted-foreground border-b border-border">
+                                Merge with:
+                              </div>
+                              {getMergeTargets(index).map((target) => (
+                                <button
+                                  key={target.id}
+                                  onClick={() => handleMerge(milestone.id, target.id)}
+                                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors flex items-center gap-2"
+                                >
+                                  <ArrowRight className={`w-3 h-3 ${target.direction === 'prev' ? 'rotate-180' : ''}`} />
+                                  <span>{target.name}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   </td>
@@ -263,6 +321,36 @@ export function MilestoneTable({
                   >
                     <X className="w-3 h-3" />
                   </button>
+                )}
+                {/* Merge button - appears when days is 0 */}
+                {milestone.durationDays === 0 && getMergeTargets(index).length > 0 && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setMergeDropdownOpen(mergeDropdownOpen === milestone.id ? null : milestone.id)}
+                      className="btn-ghost text-warning hover:text-warning p-1"
+                      aria-label={`Merge ${milestone.name}`}
+                      title="Merge milestone"
+                    >
+                      <Merge className="w-3.5 h-3.5" />
+                    </button>
+                    {mergeDropdownOpen === milestone.id && (
+                      <div className="absolute left-0 top-full mt-1 z-50 bg-card border border-border rounded-lg shadow-lg min-w-[160px] py-1">
+                        <div className="px-3 py-1.5 text-xs text-muted-foreground border-b border-border">
+                          Merge with:
+                        </div>
+                        {getMergeTargets(index).map((target) => (
+                          <button
+                            key={target.id}
+                            onClick={() => handleMerge(milestone.id, target.id)}
+                            className="w-full text-left px-3 py-2 text-xs hover:bg-muted transition-colors flex items-center gap-2"
+                          >
+                            <ArrowRight className={`w-3 h-3 ${target.direction === 'prev' ? 'rotate-180' : ''}`} />
+                            <span>{target.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
               {showDetailed && (

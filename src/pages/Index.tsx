@@ -290,6 +290,24 @@ const Index = () => {
     toast.success('Milestone restored');
   }, []);
 
+  const handleMergeMilestones = useCallback((sourceId: string, targetId: string) => {
+    // Hide the source milestone (merge it into target)
+    const sourceMilestone = DEFAULT_MILESTONES.find((m) => m.id === sourceId);
+    setHiddenMilestones((prev) => new Set([...prev, sourceId]));
+    toast.success(`${sourceMilestone?.name || 'Milestone'} merged`, {
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          setHiddenMilestones((prev) => {
+            const next = new Set(prev);
+            next.delete(sourceId);
+            return next;
+          });
+        },
+      },
+    });
+  }, []);
+
   const handleCopyJson = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(JSON.stringify(exportData, null, 2));
@@ -380,6 +398,7 @@ const Index = () => {
           showDetailed={showDetailed}
           onDaysChange={handleDaysChange}
           onRemoveMilestone={handleRemoveMilestone}
+          onMergeMilestones={handleMergeMilestones}
           hiddenMilestones={hiddenMilestones}
           allMilestones={DEFAULT_MILESTONES}
           onRestoreMilestone={handleRestoreMilestone}
