@@ -246,7 +246,7 @@ export function MilestoneTable({
                           ? 'phase-badge-concept'
                           : milestone.phase === 'Sketch Phase'
                           ? 'phase-badge-sketch'
-                          : 'phase-badge-execution'
+                          : 'phase-badge-development'
                       }
                     >
                       {milestone.phase}
@@ -279,7 +279,7 @@ export function MilestoneTable({
                                   ? 'phase-badge-concept'
                                   : milestone.phase === 'Sketch Phase'
                                   ? 'phase-badge-sketch'
-                                  : 'phase-badge-execution'
+                                  : 'phase-badge-development'
                               }`}
                             >
                               Discovery
@@ -310,7 +310,7 @@ export function MilestoneTable({
                       ? 'phase-badge-concept'
                       : milestone.phase === 'Sketch Phase'
                       ? 'phase-badge-sketch'
-                      : 'phase-badge-execution'
+                      : 'phase-badge-development'
                   }`}
                 >
                   {milestone.phase}

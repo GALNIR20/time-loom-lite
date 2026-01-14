@@ -7,25 +7,29 @@ import { MilestoneTable } from '@/components/MilestoneTable';
 import { JsonExportModal } from '@/components/JsonExportModal';
 import { TimelineView } from '@/components/TimelineView';
 import { ProjectSidebar, SavedProject } from '@/components/ProjectSidebar';
+import { SprintManager } from '@/components/SprintManager';
 import {
   DEFAULT_MILESTONES,
   calculateTimeline,
   getPresetDuration,
   PRESET_CONFIGS,
   getTodayISO,
+  createSprintMilestone,
+  SPRINT_DURATION_DAYS,
 } from '@/lib/timeline';
-import { TimelineExport, PresetType } from '@/types/timeline';
+import { TimelineExport, PresetType, MilestoneConfig } from '@/types/timeline';
 import predictorLogo from '@/assets/predictor-logo.png';
 
 // Calculate days before I-Phase for a given preset and overrides
 function calculateDaysBeforeIPhase(
   presetType: PresetType,
-  overrides: Record<string, number | null>
+  overrides: Record<string, number | null>,
+  milestoneConfigs: MilestoneConfig[]
 ): number {
-  const iPhaseIndex = DEFAULT_MILESTONES.findIndex((m) => m.id === 'i-phase');
+  const iPhaseIndex = milestoneConfigs.findIndex((m) => m.id === 'i-phase');
   if (iPhaseIndex === -1) return 0;
   
-  return DEFAULT_MILESTONES.slice(0, iPhaseIndex).reduce((sum, config) => {
+  return milestoneConfigs.slice(0, iPhaseIndex).reduce((sum, config) => {
     const overrideDays = overrides[config.id] ?? null;
     const duration = getPresetDuration(config.id, presetType, overrideDays);
     return sum + duration;
@@ -45,6 +49,8 @@ const Index = () => {
   const [preset, setPreset] = useState<PresetType>('Big');
   const [showDetailed, setShowDetailed] = useState(true);
   const [overrides, setOverrides] = useState<Record<string, number | null>>({});
+  // Custom milestones (starts with defaults, can add sprints)
+  const [customMilestones, setCustomMilestones] = useState<MilestoneConfig[]>(DEFAULT_MILESTONES);
   const [hiddenMilestones, setHiddenMilestones] = useState<Set<string>>(new Set());
   // Track merged milestones: key = target milestone id, value = array of merged source milestone names
   const [mergedMilestones, setMergedMilestones] = useState<Record<string, string[]>>({});
@@ -179,8 +185,8 @@ const Index = () => {
 
   // Filter out hidden milestones from the config before calculating
   const activeMilestoneConfigs = useMemo(
-    () => DEFAULT_MILESTONES.filter((m) => !hiddenMilestones.has(m.id)),
-    [hiddenMilestones]
+    () => customMilestones.filter((m) => !hiddenMilestones.has(m.id)),
+    [customMilestones, hiddenMilestones]
   );
 
   const milestones = useMemo(
@@ -217,8 +223,8 @@ const Index = () => {
   }, [milestones]);
 
   const daysBeforeIPhase = useMemo(
-    () => calculateDaysBeforeIPhase(preset, overrides),
-    [overrides, preset]
+    () => calculateDaysBeforeIPhase(preset, overrides, customMilestones),
+    [overrides, preset, customMilestones]
   );
 
   const handleDevStartChange = useCallback((devStartDate: string) => {
@@ -226,10 +232,10 @@ const Index = () => {
     setLockedDevStart(devStartDate);
     // Calculate project start by going back from dev start
     const devStart = parseISO(devStartDate);
-    const daysBack = calculateDaysBeforeIPhase(preset, overrides);
+    const daysBack = calculateDaysBeforeIPhase(preset, overrides, customMilestones);
     const newProjectStart = subDays(devStart, daysBack);
     setProjectStart(format(newProjectStart, 'yyyy-MM-dd'));
-  }, [preset, overrides]);
+  }, [preset, overrides, customMilestones]);
 
   const handlePresetChange = useCallback((newPreset: PresetType) => {
     setPreset(newPreset);
@@ -237,11 +243,11 @@ const Index = () => {
     // If user has locked a dev start date, recalculate project start
     if (lockedDevStart) {
       const devStart = parseISO(lockedDevStart);
-      const daysBack = calculateDaysBeforeIPhase(newPreset, overrides);
+      const daysBack = calculateDaysBeforeIPhase(newPreset, overrides, customMilestones);
       const newProjectStart = subDays(devStart, daysBack);
       setProjectStart(format(newProjectStart, 'yyyy-MM-dd'));
     }
-  }, [lockedDevStart, overrides]);
+  }, [lockedDevStart, overrides, customMilestones]);
 
   const exportData: TimelineExport = useMemo(
     () => ({
@@ -294,7 +300,7 @@ const Index = () => {
 
   const handleMergeMilestones = useCallback((sourceId: string, targetId: string) => {
     // Hide the source milestone (merge it into target)
-    const sourceMilestone = DEFAULT_MILESTONES.find((m) => m.id === sourceId);
+    const sourceMilestone = customMilestones.find((m) => m.id === sourceId);
     const sourceName = sourceMilestone?.name || 'Unknown';
     
     setHiddenMilestones((prev) => new Set([...prev, sourceId]));
@@ -305,7 +311,7 @@ const Index = () => {
       [targetId]: [...(prev[targetId] || []), sourceName],
     }));
     
-    toast.success(`${sourceName} merged with ${DEFAULT_MILESTONES.find((m) => m.id === targetId)?.name}`, {
+    toast.success(`${sourceName} merged with ${customMilestones.find((m) => m.id === targetId)?.name}`, {
       action: {
         label: 'Undo',
         onClick: () => {
@@ -328,7 +334,7 @@ const Index = () => {
         },
       },
     });
-  }, []);
+  }, [customMilestones]);
 
   const handleCopyJson = useCallback(async () => {
     try {
@@ -347,11 +353,39 @@ const Index = () => {
     setPreset('Big');
     setShowDetailed(true);
     setOverrides({});
+    setCustomMilestones(DEFAULT_MILESTONES);
     setHiddenMilestones(new Set());
+    setMergedMilestones({});
     setLockedDevStart(null);
     setIsTimelineViewOpen(false);
     toast.success('Timeline reset to defaults');
   }, []);
+
+  // Sprint management handlers
+  const handleAddSprint = useCallback(() => {
+    const currentSprints = customMilestones.filter((m) => m.id.startsWith('sprint-'));
+    const nextSprintNumber = currentSprints.length + 1;
+    const newSprint = createSprintMilestone(nextSprintNumber);
+    
+    setCustomMilestones((prev) => [...prev, newSprint]);
+    // Set default duration for the new sprint
+    setOverrides((prev) => ({ ...prev, [newSprint.id]: SPRINT_DURATION_DAYS }));
+    toast.success(`Sprint ${nextSprintNumber} added`);
+  }, [customMilestones]);
+
+  const handleRemoveSprint = useCallback(() => {
+    const sprints = customMilestones.filter((m) => m.id.startsWith('sprint-'));
+    if (sprints.length <= 1) return;
+    
+    const lastSprint = sprints[sprints.length - 1];
+    setCustomMilestones((prev) => prev.filter((m) => m.id !== lastSprint.id));
+    // Remove override for removed sprint
+    setOverrides((prev) => {
+      const { [lastSprint.id]: _, ...rest } = prev;
+      return rest;
+    });
+    toast.success(`${lastSprint.name} removed`);
+  }, [customMilestones]);
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -415,6 +449,12 @@ const Index = () => {
           showDetailed={showDetailed}
         />
 
+        <SprintManager
+          milestones={customMilestones}
+          onAddSprint={handleAddSprint}
+          onRemoveSprint={handleRemoveSprint}
+        />
+
         <MilestoneTable
           milestones={milestones}
           showDetailed={showDetailed}
@@ -422,12 +462,12 @@ const Index = () => {
           onRemoveMilestone={handleRemoveMilestone}
           onMergeMilestones={handleMergeMilestones}
           hiddenMilestones={hiddenMilestones}
-          allMilestones={DEFAULT_MILESTONES}
+          allMilestones={customMilestones}
           onRestoreMilestone={handleRestoreMilestone}
           mergedMilestones={mergedMilestones}
           onUnmergeMilestone={(targetId: string, sourceName: string) => {
             // Find the source milestone id by name
-            const sourceMilestone = DEFAULT_MILESTONES.find((m) => m.name === sourceName);
+            const sourceMilestone = customMilestones.find((m) => m.name === sourceName);
             if (sourceMilestone) {
               // Restore the hidden milestone
               setHiddenMilestones((prev) => {

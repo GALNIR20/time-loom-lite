@@ -135,6 +135,12 @@
     color: hsl(var(--success));
   }
 
+  .phase-badge-development {
+    @apply inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium;
+    background-color: hsl(var(--success) / 0.1);
+    color: hsl(var(--success));
+  }
+
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2 
            bg-primary text-primary-foreground font-medium text-sm rounded-md
