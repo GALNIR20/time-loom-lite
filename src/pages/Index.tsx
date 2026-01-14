@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { parseISO, subDays, format } from 'date-fns';
 import { ControlsPanel } from '@/components/ControlsPanel';
@@ -31,6 +31,19 @@ function calculateDaysBeforeIPhase(
   }, 0);
 }
 
+const STORAGE_KEY = 'timeline-predictor-config';
+
+interface SavedConfig {
+  featureName: string;
+  isFeatureNameSet: boolean;
+  projectStart: string;
+  preset: PresetType;
+  showDetailed: boolean;
+  overrides: Record<string, number | null>;
+  hiddenMilestones: string[];
+  lockedDevStart: string | null;
+}
+
 const Index = () => {
   const [featureName, setFeatureName] = useState('');
   const [isFeatureNameSet, setIsFeatureNameSet] = useState(false);
@@ -44,6 +57,41 @@ const Index = () => {
   
   // Track the user's intended dev start date (null = not manually set)
   const [lockedDevStart, setLockedDevStart] = useState<string | null>(null);
+
+  // Load saved config on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const config: SavedConfig = JSON.parse(saved);
+        setFeatureName(config.featureName || '');
+        setIsFeatureNameSet(config.isFeatureNameSet || false);
+        setProjectStart(config.projectStart || getTodayISO());
+        setPreset(config.preset || 'Big');
+        setShowDetailed(config.showDetailed ?? true);
+        setOverrides(config.overrides || {});
+        setHiddenMilestones(new Set(config.hiddenMilestones || []));
+        setLockedDevStart(config.lockedDevStart || null);
+      }
+    } catch (e) {
+      console.error('Failed to load saved config:', e);
+    }
+  }, []);
+
+  const handleSave = useCallback(() => {
+    const config: SavedConfig = {
+      featureName,
+      isFeatureNameSet,
+      projectStart,
+      preset,
+      showDetailed,
+      overrides,
+      hiddenMilestones: Array.from(hiddenMilestones),
+      lockedDevStart,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+    toast.success('Configuration saved!');
+  }, [featureName, isFeatureNameSet, projectStart, preset, showDetailed, overrides, hiddenMilestones, lockedDevStart]);
 
   // Filter out hidden milestones from the config before calculating
   const activeMilestoneConfigs = useMemo(
@@ -217,6 +265,7 @@ const Index = () => {
           showDetailed={showDetailed}
           onShowDetailedChange={setShowDetailed}
           onCopyJson={handleCopyJson}
+          onSave={handleSave}
           onReset={handleReset}
           onShowTimeline={() => setIsTimelineViewOpen(true)}
         />
