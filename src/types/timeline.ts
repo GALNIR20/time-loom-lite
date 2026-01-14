@@ -1,4 +1,4 @@
-export type PhaseType = 'Concept Phase' | 'Sketch Phase' | 'Execution Phase';
+export type PhaseType = 'Concept Phase' | 'Sketch Phase' | 'Development';
 export type PresetType = 'Big' | 'Medium' | 'BLITZ';
 
 export interface MilestoneConfig {

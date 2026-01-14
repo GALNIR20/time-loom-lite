@@ -37,9 +37,19 @@ export const DEFAULT_MILESTONES: MilestoneConfig[] = [
   { id: 'concept', phase: 'Concept Phase', name: 'Concept' },
   { id: 'art-sketch', phase: 'Sketch Phase', name: 'Art Sketch' },
   { id: 'sketch', phase: 'Sketch Phase', name: 'Sketch' },
-  { id: 'i-phase', phase: 'Execution Phase', name: 'I-Phase' },
-  { id: 'sprint-1', phase: 'Execution Phase', name: 'Sprint 1' },
+  { id: 'i-phase', phase: 'Development', name: 'I-Phase' },
+  { id: 'sprint-1', phase: 'Development', name: 'Sprint 1' },
 ];
+
+export const SPRINT_DURATION_DAYS = 14;
+
+export function createSprintMilestone(sprintNumber: number): MilestoneConfig {
+  return {
+    id: `sprint-${sprintNumber}`,
+    phase: 'Development',
+    name: `Sprint ${sprintNumber}`,
+  };
+}
 
 export function getPresetDuration(
   milestoneId: string,
