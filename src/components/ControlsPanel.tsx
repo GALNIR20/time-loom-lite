@@ -60,10 +60,10 @@ export function ControlsPanel({
             </select>
           </div>
 
-          {/* Dev Start Date (editable - calculates backwards) */}
+          {/* Development Start Date (editable - calculates backwards) */}
           <div className="flex flex-col gap-1.5 sm:gap-2">
             <label htmlFor="dev-start" className="text-[10px] sm:text-xs font-medium text-muted-foreground">
-              Dev Start (Sprint 1)
+              Development Start (I-Phase)
             </label>
             <div className="relative">
               <Calendar className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 w-3.5 sm:w-4 h-3.5 sm:h-4 text-muted-foreground pointer-events-none" />
