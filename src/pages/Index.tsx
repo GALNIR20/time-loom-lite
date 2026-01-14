@@ -425,6 +425,28 @@ const Index = () => {
           allMilestones={DEFAULT_MILESTONES}
           onRestoreMilestone={handleRestoreMilestone}
           mergedMilestones={mergedMilestones}
+          onUnmergeMilestone={(targetId: string, sourceName: string) => {
+            // Find the source milestone id by name
+            const sourceMilestone = DEFAULT_MILESTONES.find((m) => m.name === sourceName);
+            if (sourceMilestone) {
+              // Restore the hidden milestone
+              setHiddenMilestones((prev) => {
+                const next = new Set(prev);
+                next.delete(sourceMilestone.id);
+                return next;
+              });
+            }
+            // Remove from merged list
+            setMergedMilestones((prev) => {
+              const newList = [...(prev[targetId] || [])].filter((n) => n !== sourceName);
+              if (newList.length === 0) {
+                const { [targetId]: _, ...rest } = prev;
+                return rest;
+              }
+              return { ...prev, [targetId]: newList };
+            });
+            toast.success(`${sourceName} unmerged`);
+          }}
         />
         </main>
 
