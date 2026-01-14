@@ -43,7 +43,7 @@ export function MilestoneTable({
           <thead>
             <tr className="bg-table-header border-b border-table-border">
               <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
-                Phase
+                Date
               </th>
               <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
                 Milestone
@@ -55,7 +55,7 @@ export function MilestoneTable({
                 Next Milestone
               </th>
               <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
-                Date
+                Phase
               </th>
               <th className="text-center px-4 py-3 font-semibold text-foreground whitespace-nowrap w-12">
                 
@@ -72,18 +72,8 @@ export function MilestoneTable({
                   ${index % 2 === 0 ? 'bg-card' : 'bg-background/50'}
                 `}
               >
-                <td className="px-4 py-3">
-                  <span
-                    className={
-                      milestone.phase === 'Concept Phase'
-                        ? 'phase-badge-concept'
-                        : milestone.phase === 'Sketch Phase'
-                        ? 'phase-badge-sketch'
-                        : 'phase-badge-execution'
-                    }
-                  >
-                    {milestone.phase}
-                  </span>
+                <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                  {formatDateDisplay(milestone.start)}
                 </td>
                 <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap">
                   {milestone.name}
@@ -113,8 +103,18 @@ export function MilestoneTable({
                 <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                   {index < milestones.length - 1 ? milestones[index + 1].name : '—'}
                 </td>
-                <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                  {formatDateDisplay(milestone.start)}
+                <td className="px-4 py-3">
+                  <span
+                    className={
+                      milestone.phase === 'Concept Phase'
+                        ? 'phase-badge-concept'
+                        : milestone.phase === 'Sketch Phase'
+                        ? 'phase-badge-sketch'
+                        : 'phase-badge-execution'
+                    }
+                  >
+                    {milestone.phase}
+                  </span>
                 </td>
                 <td className="px-2 py-3 text-center">
                   <button
