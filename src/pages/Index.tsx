@@ -16,15 +16,15 @@ import {
 import { TimelineExport, PresetType } from '@/types/timeline';
 import predictorLogo from '@/assets/predictor-logo.png';
 
-// Calculate days before Sprint 1 for a given preset and overrides
-function calculateDaysBeforeSprint1(
+// Calculate days before I-Phase for a given preset and overrides
+function calculateDaysBeforeIPhase(
   presetType: PresetType,
   overrides: Record<string, number | null>
 ): number {
-  const sprint1Index = DEFAULT_MILESTONES.findIndex((m) => m.id === 'sprint-1');
-  if (sprint1Index === -1) return 0;
+  const iPhaseIndex = DEFAULT_MILESTONES.findIndex((m) => m.id === 'i-phase');
+  if (iPhaseIndex === -1) return 0;
   
-  return DEFAULT_MILESTONES.slice(0, sprint1Index).reduce((sum, config) => {
+  return DEFAULT_MILESTONES.slice(0, iPhaseIndex).reduce((sum, config) => {
     const overrideDays = overrides[config.id] ?? null;
     const duration = getPresetDuration(config.id, presetType, overrideDays);
     return sum + duration;
@@ -64,22 +64,22 @@ const Index = () => {
     [milestones, projectStart]
   );
 
-  const sprint1Start = useMemo(() => {
-    const sprint1 = milestones.find((m) => m.id === 'sprint-1');
-    return sprint1?.start ?? null;
+  const iPhaseStart = useMemo(() => {
+    const iPhase = milestones.find((m) => m.id === 'i-phase');
+    return iPhase?.start ?? null;
   }, [milestones]);
 
-  const daysToSprint1 = useMemo(() => {
-    const sprint1 = milestones.find((m) => m.id === 'sprint-1');
-    if (!sprint1) return null;
+  const daysToIPhase = useMemo(() => {
+    const iPhase = milestones.find((m) => m.id === 'i-phase');
+    if (!iPhase) return null;
     
     return milestones
-      .filter((m) => milestones.indexOf(m) < milestones.indexOf(sprint1))
+      .filter((m) => milestones.indexOf(m) < milestones.indexOf(iPhase))
       .reduce((sum, m) => sum + m.durationDays, 0);
   }, [milestones]);
 
-  const daysBeforeSprint1 = useMemo(
-    () => calculateDaysBeforeSprint1(preset, overrides),
+  const daysBeforeIPhase = useMemo(
+    () => calculateDaysBeforeIPhase(preset, overrides),
     [overrides, preset]
   );
 
@@ -88,7 +88,7 @@ const Index = () => {
     setLockedDevStart(devStartDate);
     // Calculate project start by going back from dev start
     const devStart = parseISO(devStartDate);
-    const daysBack = calculateDaysBeforeSprint1(preset, overrides);
+    const daysBack = calculateDaysBeforeIPhase(preset, overrides);
     const newProjectStart = subDays(devStart, daysBack);
     setProjectStart(format(newProjectStart, 'yyyy-MM-dd'));
   }, [preset, overrides]);
@@ -99,7 +99,7 @@ const Index = () => {
     // If user has locked a dev start date, recalculate project start
     if (lockedDevStart) {
       const devStart = parseISO(lockedDevStart);
-      const daysBack = calculateDaysBeforeSprint1(newPreset, overrides);
+      const daysBack = calculateDaysBeforeIPhase(newPreset, overrides);
       const newProjectStart = subDays(devStart, daysBack);
       setProjectStart(format(newProjectStart, 'yyyy-MM-dd'));
     }
@@ -108,7 +108,7 @@ const Index = () => {
   const exportData: TimelineExport = useMemo(
     () => ({
       projectStart,
-      devStart: sprint1Start ?? projectStart,
+      devStart: iPhaseStart ?? projectStart,
       preset,
       totalDays,
       projectedEnd,
@@ -120,7 +120,7 @@ const Index = () => {
         date: m.start,
       })),
     }),
-    [projectStart, sprint1Start, preset, totalDays, projectedEnd, milestones]
+    [projectStart, iPhaseStart, preset, totalDays, projectedEnd, milestones]
   );
 
   const handleDaysChange = useCallback((id: string, value: number | null) => {
@@ -196,7 +196,7 @@ const Index = () => {
             setProjectStart(date);
             setLockedDevStart(null); // Clear locked dev start when project start is manually changed
           }}
-          devStart={sprint1Start ?? projectStart}
+          devStart={iPhaseStart ?? projectStart}
           onDevStartChange={handleDevStartChange}
           preset={preset}
           onPresetChange={handlePresetChange}
@@ -210,8 +210,8 @@ const Index = () => {
         <SummaryCards
           totalDays={totalDays}
           projectedEnd={projectedEnd}
-          sprint1Start={sprint1Start}
-          daysToSprint1={daysToSprint1}
+          iPhaseStart={iPhaseStart}
+          daysToIPhase={daysToIPhase}
           showDetailed={showDetailed}
         />
 
