@@ -33,6 +33,7 @@ function calculateDaysBeforeIPhase(
 
 const Index = () => {
   const [featureName, setFeatureName] = useState('');
+  const [isFeatureNameSet, setIsFeatureNameSet] = useState(false);
   const [projectStart, setProjectStart] = useState(getTodayISO);
   const [preset, setPreset] = useState<PresetType>('Big');
   const [showDetailed, setShowDetailed] = useState(true);
@@ -171,6 +172,7 @@ const Index = () => {
 
   const handleReset = useCallback(() => {
     setFeatureName('');
+    setIsFeatureNameSet(false);
     setProjectStart(getTodayISO());
     setPreset('Big');
     setShowDetailed(true);
@@ -200,6 +202,9 @@ const Index = () => {
         <ControlsPanel
           featureName={featureName}
           onFeatureNameChange={setFeatureName}
+          isFeatureNameSet={isFeatureNameSet}
+          onSetFeatureName={() => setIsFeatureNameSet(true)}
+          onEditFeatureName={() => setIsFeatureNameSet(false)}
           projectStart={projectStart}
           onProjectStartChange={(date) => {
             setProjectStart(date);
@@ -245,6 +250,7 @@ const Index = () => {
       {/* Timeline View Modal */}
       <TimelineView
         milestones={milestones}
+        featureName={isFeatureNameSet ? featureName : undefined}
         isOpen={isTimelineViewOpen}
         onClose={() => setIsTimelineViewOpen(false)}
         onDaysChange={handleDaysChange}

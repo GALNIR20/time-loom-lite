@@ -9,6 +9,7 @@ import { parseISO, differenceInDays, addDays, startOfWeek, format, differenceInW
 
 interface TimelineViewProps {
   milestones: MilestoneState[];
+  featureName?: string;
   isOpen: boolean;
   onClose: () => void;
   onDaysChange: (id: string, value: number | null) => void;
@@ -17,7 +18,7 @@ interface TimelineViewProps {
 
 type ViewMode = 'days' | 'weeks' | 'quarters' | 'milestones';
 
-export function TimelineView({ milestones, isOpen, onClose, onDaysChange, onRemoveMilestone }: TimelineViewProps) {
+export function TimelineView({ milestones, featureName, isOpen, onClose, onDaysChange, onRemoveMilestone }: TimelineViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('weeks');
   const [editMode, setEditMode] = useState(false);
 
@@ -96,7 +97,14 @@ export function TimelineView({ milestones, isOpen, onClose, onDaysChange, onRemo
       <div className="bg-card rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">Timeline View</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-foreground">Timeline View</h2>
+            {featureName && (
+              <span className="text-sm text-muted-foreground">
+                — <span className="font-medium text-foreground">{featureName}</span>
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-4">
             {/* Edit Mode Toggle */}
             <label className="flex items-center gap-2 cursor-pointer">
