@@ -1,6 +1,6 @@
 import { MilestoneState, MilestoneConfig } from '@/types/timeline';
 import { formatDateDisplay, formatDuration } from '@/lib/timeline';
-import { X, ArrowRight, Trash2, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, ArrowRight, Trash2, RotateCcw, ChevronDown, ChevronUp, CalendarCheck } from 'lucide-react';
 import { useState } from 'react';
 import {
   DropdownMenu,
@@ -70,6 +70,9 @@ export function MilestoneTable({
                 Days
               </th>
               <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
+                Discovery
+              </th>
+              <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
                 Next Milestone
               </th>
               <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
@@ -118,11 +121,12 @@ export function MilestoneTable({
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                <td className="px-4 py-3">
                   {DISCOVERY_MEETINGS[milestone.id] ? (
                     <DropdownMenu>
-                      <DropdownMenuTrigger className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer">
-                        <span>{getNextMilestoneName(index)}</span>
+                      <DropdownMenuTrigger className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 hover:bg-muted transition-colors cursor-pointer text-muted-foreground hover:text-foreground">
+                        <CalendarCheck className="w-4 h-4" />
+                        <span className="text-xs">View</span>
                         <ChevronDown className="w-3 h-3" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="bg-popover border border-border shadow-lg z-50">
@@ -134,8 +138,11 @@ export function MilestoneTable({
                       </DropdownMenuContent>
                     </DropdownMenu>
                   ) : (
-                    getNextMilestoneName(index)
+                    <span className="text-muted-foreground/50">—</span>
                   )}
+                </td>
+                <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                  {getNextMilestoneName(index)}
                 </td>
                 <td className="px-4 py-3">
                   <span
@@ -230,27 +237,29 @@ export function MilestoneTable({
               )}
             </div>
 
+            {/* Discovery meetings */}
+            {DISCOVERY_MEETINGS[milestone.id] && (
+              <DropdownMenu>
+                <DropdownMenuTrigger className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 hover:bg-muted transition-colors text-xs text-muted-foreground hover:text-foreground">
+                  <CalendarCheck className="w-3.5 h-3.5" />
+                  <span>Discovery</span>
+                  <ChevronDown className="w-3 h-3" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="bg-popover border border-border shadow-lg z-50">
+                  {DISCOVERY_MEETINGS[milestone.id].map((meeting) => (
+                    <DropdownMenuItem key={meeting} className="text-sm cursor-default">
+                      {meeting}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
             {/* Next milestone */}
             {index < milestones.length - 1 && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <ArrowRight className="w-3 h-3 flex-shrink-0" />
-                {DISCOVERY_MEETINGS[milestone.id] ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger className="flex items-center gap-1 hover:text-foreground transition-colors">
-                      <span className="truncate">{milestones[index + 1].name}</span>
-                      <ChevronDown className="w-3 h-3" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="bg-popover border border-border shadow-lg z-50">
-                      {DISCOVERY_MEETINGS[milestone.id].map((meeting) => (
-                        <DropdownMenuItem key={meeting} className="text-sm cursor-default">
-                          {meeting}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : (
-                  <span className="truncate">{milestones[index + 1].name}</span>
-                )}
+                <span className="truncate">{milestones[index + 1].name}</span>
               </div>
             )}
           </div>
