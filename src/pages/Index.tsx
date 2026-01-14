@@ -222,6 +222,13 @@ const Index = () => {
       .reduce((sum, m) => sum + m.durationDays, 0);
   }, [milestones]);
 
+  // Total development time (I-Phase + all sprints)
+  const devDays = useMemo(() => {
+    return milestones
+      .filter((m) => m.phase === 'Development')
+      .reduce((sum, m) => sum + m.durationDays, 0);
+  }, [milestones]);
+
   const daysBeforeIPhase = useMemo(
     () => calculateDaysBeforeIPhase(preset, overrides, customMilestones),
     [overrides, preset, customMilestones]
@@ -447,6 +454,7 @@ const Index = () => {
           iPhaseStart={iPhaseStart}
           daysToIPhase={daysToIPhase}
           showDetailed={showDetailed}
+          devDays={devDays}
         />
 
         <SprintManager
