@@ -85,7 +85,7 @@ export function ProjectSidebar({
         {/* New Project Button */}
         <button
           onClick={onCreateNew}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors mb-1"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors mb-3"
         >
           <Plus className="w-4 h-4" />
           <span>New Project</span>

@@ -200,9 +200,6 @@ export function ControlsPanel({
                 <span className="hidden sm:inline">Restore</span>
               </button>
             )}
-            <button onClick={onCopyJson} className="btn-secondary text-xs sm:text-sm py-2 px-2 sm:px-3">
-              <span>JSON</span>
-            </button>
             <button onClick={onReset} className="btn-secondary text-xs sm:text-sm py-2 px-2 sm:px-3">
               <RefreshCw className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
               <span className="hidden sm:inline">Reset</span>
