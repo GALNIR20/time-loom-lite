@@ -60,6 +60,23 @@ export default {
           "row-hover": "hsl(var(--table-row-hover))",
           border: "hsl(var(--table-border))",
         },
+        phase: {
+          concept: "hsl(var(--phase-concept))",
+          sketch: "hsl(var(--phase-sketch))",
+          dev: "hsl(var(--phase-execution))",
+        },
+        milestone: {
+          brief: "hsl(var(--milestone-brief))",
+          "pre-concept": "hsl(var(--milestone-pre-concept))",
+          concept: "hsl(var(--milestone-concept))",
+          "art-sketch": "hsl(var(--milestone-art-sketch))",
+          sketch: "hsl(var(--milestone-sketch))",
+          "i-phase": "hsl(var(--milestone-i-phase))",
+          "management-pitch": "hsl(var(--milestone-management-pitch))",
+          "pre-launch": "hsl(var(--milestone-pre-launch))",
+          rfc: "hsl(var(--milestone-rfc))",
+          sprint: "hsl(var(--milestone-sprint))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

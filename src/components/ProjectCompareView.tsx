@@ -19,10 +19,31 @@ interface ProjectTimeline {
   endDate: string;
 }
 
+// Individual milestone colors matching the reference design
+const MILESTONE_COLORS: Record<string, string> = {
+  'brief': 'bg-milestone-brief',
+  'pre-concept': 'bg-milestone-pre-concept',
+  'concept': 'bg-milestone-concept',
+  'art-sketch': 'bg-milestone-art-sketch',
+  'sketch': 'bg-milestone-sketch',
+  'i-phase': 'bg-milestone-i-phase',
+  'management-pitch': 'bg-milestone-management-pitch',
+  'pre-launch': 'bg-milestone-pre-launch',
+  'rfc': 'bg-milestone-rfc',
+};
+
 const PHASE_COLORS: Record<string, { bg: string; border: string }> = {
   'Concept Phase': { bg: 'bg-phase-concept', border: 'border-phase-concept' },
   'Sketch Phase': { bg: 'bg-phase-sketch', border: 'border-phase-sketch' },
   'Development': { bg: 'bg-phase-dev', border: 'border-phase-dev' },
+};
+
+const getMilestoneColor = (milestoneId: string): string => {
+  // Check for sprint milestones
+  if (milestoneId.startsWith('sprint-')) {
+    return 'bg-milestone-sprint';
+  }
+  return MILESTONE_COLORS[milestoneId] || 'bg-primary';
 };
 
 export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompareViewProps) {
@@ -206,19 +227,43 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
           </div>
         </div>
 
-        {/* Phase Legend */}
-        <div className="px-4 py-2 border-b border-border flex items-center gap-6 text-xs">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-phase-concept" />
-            <span className="text-muted-foreground">Concept Phase</span>
+        {/* Milestone Legend */}
+        <div className="px-4 py-2 border-b border-border flex flex-wrap items-center gap-4 text-xs">
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-milestone-art-sketch" />
+            <span className="text-muted-foreground">Art Sketch</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-phase-sketch" />
-            <span className="text-muted-foreground">Sketch Phase</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-milestone-brief" />
+            <span className="text-muted-foreground">Brief</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-phase-dev" />
-            <span className="text-muted-foreground">Development</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-milestone-concept" />
+            <span className="text-muted-foreground">Concept</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-milestone-i-phase" />
+            <span className="text-muted-foreground">Execution Phase</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-milestone-management-pitch" />
+            <span className="text-muted-foreground">Management pitch</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-milestone-pre-concept" />
+            <span className="text-muted-foreground">Pre-Concept</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-milestone-pre-launch" />
+            <span className="text-muted-foreground">Pre-Launch</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-milestone-rfc" />
+            <span className="text-muted-foreground">RFC</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-milestone-sketch" />
+            <span className="text-muted-foreground">Sketch</span>
           </div>
         </div>
 
@@ -294,7 +339,7 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
                         {/* Milestone markers with labels */}
                         {milestones.map((milestone, milestoneIndex) => {
                           const position = getExactPosition(milestone.end);
-                          const colors = PHASE_COLORS[milestone.phase];
+                          const colorClass = getMilestoneColor(milestone.id);
                           return (
                             <div
                               key={milestone.id}
@@ -305,7 +350,7 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
                               }}
                             >
                               <div
-                                className={`w-8 h-8 rounded-full ${colors.bg} flex items-center justify-center shadow-md z-10`}
+                                className={`w-8 h-8 rounded-full ${colorClass} flex items-center justify-center shadow-md z-10`}
                                 title={`${milestone.name}: ${format(parseISO(milestone.end), 'MMM d, yyyy')}`}
                               >
                                 <span className="text-xs font-bold text-white">{milestoneIndex + 1}</span>
@@ -345,7 +390,7 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
                           {/* Filled milestone markers */}
                           {milestones.map((milestone, milestoneIndex) => {
                             const position = getExactPosition(milestone.end);
-                            const colors = PHASE_COLORS[milestone.phase];
+                            const colorClass = getMilestoneColor(milestone.id);
                             return (
                               <div
                                 key={milestone.id}
@@ -356,7 +401,7 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
                                 }}
                               >
                                 <div
-                                  className={`w-8 h-8 rounded-full ${colors.bg} flex items-center justify-center shadow-md`}
+                                  className={`w-8 h-8 rounded-full ${colorClass} flex items-center justify-center shadow-md`}
                                 >
                                   <span className="text-xs font-bold text-white">{milestoneIndex + 1}</span>
                                 </div>
