@@ -428,7 +428,11 @@ const Index = () => {
           featureName={featureName}
           onFeatureNameChange={setFeatureName}
           isFeatureNameSet={isFeatureNameSet}
-          onSetFeatureName={() => setIsFeatureNameSet(true)}
+          onSetFeatureName={() => {
+            setIsFeatureNameSet(true);
+            // Auto-save after setting feature name
+            setTimeout(() => handleSave(), 0);
+          }}
           onEditFeatureName={() => setIsFeatureNameSet(false)}
           projectStart={projectStart}
           onProjectStartChange={(date) => {
