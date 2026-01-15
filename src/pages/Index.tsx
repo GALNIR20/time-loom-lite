@@ -48,6 +48,7 @@ const Index = () => {
   const [projectStart, setProjectStart] = useState(getTodayISO);
   const [preset, setPreset] = useState<PresetType>('Big');
   const [showDetailed, setShowDetailed] = useState(true);
+  const [useWorkDays, setUseWorkDays] = useState(false);
   const [overrides, setOverrides] = useState<Record<string, number | null>>({});
   // Custom milestones (starts with defaults, can add sprints)
   const [customMilestones, setCustomMilestones] = useState<MilestoneConfig[]>(DEFAULT_MILESTONES);
@@ -440,6 +441,8 @@ const Index = () => {
           onPresetChange={handlePresetChange}
           showDetailed={showDetailed}
           onShowDetailedChange={setShowDetailed}
+          useWorkDays={useWorkDays}
+          onUseWorkDaysChange={setUseWorkDays}
           onCopyJson={handleCopyJson}
           onSave={handleSave}
           onRestore={handleRestore}
