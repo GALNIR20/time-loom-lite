@@ -6,6 +6,7 @@ import { SummaryCards } from '@/components/SummaryCards';
 import { MilestoneTable } from '@/components/MilestoneTable';
 import { JsonExportModal } from '@/components/JsonExportModal';
 import { TimelineView } from '@/components/TimelineView';
+import { ProjectCompareView } from '@/components/ProjectCompareView';
 import { ProjectSidebar, SavedProject } from '@/components/ProjectSidebar';
 import { SprintManager } from '@/components/SprintManager';
 import {
@@ -57,6 +58,7 @@ const Index = () => {
   const [mergedMilestones, setMergedMilestones] = useState<Record<string, string[]>>({});
   const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
   const [isTimelineViewOpen, setIsTimelineViewOpen] = useState(false);
+  const [isCompareViewOpen, setIsCompareViewOpen] = useState(false);
   
   // Track the user's intended dev start date (null = not manually set)
   const [lockedDevStart, setLockedDevStart] = useState<string | null>(null);
@@ -453,6 +455,7 @@ const Index = () => {
           hasUnsavedChanges={hasUnsavedChanges}
           onReset={handleReset}
           onShowTimeline={() => setIsTimelineViewOpen(true)}
+          onShowCompare={() => setIsCompareViewOpen(true)}
         />
 
         <SummaryCards
@@ -522,6 +525,13 @@ const Index = () => {
           onClose={() => setIsTimelineViewOpen(false)}
           onDaysChange={handleDaysChange}
           onRemoveMilestone={handleRemoveMilestone}
+        />
+
+        {/* Project Compare View Modal */}
+        <ProjectCompareView
+          isOpen={isCompareViewOpen}
+          onClose={() => setIsCompareViewOpen(false)}
+          projects={savedProjects}
         />
       </div>
     </div>
