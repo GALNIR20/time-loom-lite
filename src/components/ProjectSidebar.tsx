@@ -1,4 +1,4 @@
-import { Plus, FolderOpen, Trash2, ChevronLeft, ChevronRight, LogOut } from 'lucide-react';
+import { Plus, FolderOpen, Trash2, ChevronLeft, ChevronRight, ChevronDown, LogOut } from 'lucide-react';
 import { PresetType } from '@/types/timeline';
 import predictorLogo from '@/assets/predictor-logo.png';
 
@@ -75,9 +75,9 @@ export function ProjectSidebar({
   return (
     <div className="w-56 bg-card border-r border-border flex flex-col h-full">
       {/* Logo Header */}
-      <div className="p-4 flex items-center gap-2">
+      <div className="p-4 flex items-center gap-2.5">
         <img src={predictorLogo} alt="Predictor" className="w-8 h-8 rounded-lg" />
-        <span className="font-semibold text-foreground">Predictor</span>
+        <span className="font-semibold text-foreground text-lg">Predictor</span>
       </div>
 
       {/* Navigation Menu */}
@@ -85,10 +85,13 @@ export function ProjectSidebar({
         {/* New Project Button */}
         <button
           onClick={onCreateNew}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors mb-3"
+          className="w-full flex items-center justify-between px-3 py-2.5 rounded-full text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors mb-4"
         >
-          <Plus className="w-4 h-4" />
-          <span>New Project</span>
+          <div className="flex items-center gap-3">
+            <Plus className="w-4 h-4" />
+            <span>New Project</span>
+          </div>
+          <ChevronDown className="w-4 h-4" />
         </button>
 
         {/* Projects List */}
@@ -100,51 +103,66 @@ export function ProjectSidebar({
           </p>
         ) : (
           <div className="space-y-1">
-            {projects.map((project) => (
-              <div
-                key={project.id}
-                className={`group relative rounded-full transition-colors ${
-                  currentProjectId === project.id
-                    ? 'bg-primary text-primary-foreground shadow-md'
-                    : 'hover:bg-muted text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <button
-                  onClick={() => onSelectProject(project)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 text-left"
-                >
-                  <FolderOpen className="w-4 h-4 flex-shrink-0" />
-                  <span className="text-sm truncate flex-1">
-                    {project.featureName || 'Untitled Project'}
-                  </span>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteProject(project.id);
-                  }}
-                  className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
-                    currentProjectId === project.id
-                      ? 'hover:bg-primary-foreground/20 text-primary-foreground'
-                      : 'hover:bg-destructive/10 text-muted-foreground hover:text-destructive'
-                  }`}
-                  aria-label={`Delete ${project.featureName || 'project'}`}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
+            {projects.map((project) => {
+              const isActive = currentProjectId === project.id;
+              return (
+                <div key={project.id}>
+                  <div
+                    className={`group relative rounded-full transition-all ${
+                      isActive
+                        ? 'bg-primary text-primary-foreground shadow-md'
+                        : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <button
+                      onClick={() => onSelectProject(project)}
+                      className="w-full flex items-center justify-between px-3 py-2.5 text-left"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <FolderOpen className="w-4 h-4 flex-shrink-0" />
+                        <span className="text-sm truncate">
+                          {project.featureName || 'Untitled Project'}
+                        </span>
+                      </div>
+                      <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${isActive ? 'rotate-0' : '-rotate-90'}`} />
+                    </button>
+                  </div>
+                  
+                  {/* Sub-items when active */}
+                  {isActive && (
+                    <div className="ml-6 mt-1 space-y-0.5 border-l-2 border-primary/20 pl-3">
+                      <div className="text-sm text-primary font-medium py-1">
+                        {project.preset}
+                      </div>
+                      <div className="text-xs text-muted-foreground py-1">
+                        {new Date(project.savedAt).toLocaleDateString()}
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteProject(project.id);
+                        }}
+                        className="flex items-center gap-2 text-xs text-muted-foreground hover:text-destructive py-1 transition-colors"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        Delete Project
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t border-border">
+      <div className="border-t border-border p-3">
         <button
           onClick={onToggleCollapse}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <LogOut className="w-4 h-4" />
           <span>Collapse</span>
         </button>
       </div>
