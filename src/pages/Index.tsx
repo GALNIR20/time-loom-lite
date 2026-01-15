@@ -469,6 +469,7 @@ const Index = () => {
         <MilestoneTable
           milestones={milestones}
           showDetailed={showDetailed}
+          useWorkDays={useWorkDays}
           onDaysChange={handleDaysChange}
           onRemoveMilestone={handleRemoveMilestone}
           onMergeMilestones={handleMergeMilestones}
