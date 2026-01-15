@@ -14,6 +14,7 @@ const DISCOVERY_MEETINGS: Record<string, string[]> = {
 interface MilestoneTableProps {
   milestones: MilestoneState[];
   showDetailed: boolean;
+  useWorkDays: boolean;
   onDaysChange: (id: string, value: number | null) => void;
   onRemoveMilestone: (id: string) => void;
   onMergeMilestones: (sourceId: string, targetId: string) => void;
@@ -24,9 +25,18 @@ interface MilestoneTableProps {
   onUnmergeMilestone: (targetId: string, sourceName: string) => void;
 }
 
+// Convert calendar days to work days (5 work days per week)
+function calendarToWorkDays(calendarDays: number): number {
+  const weeks = Math.floor(calendarDays / 7);
+  const remainingDays = calendarDays % 7;
+  // Each full week = 5 work days, remaining days capped at 5
+  return weeks * 5 + Math.min(remainingDays, 5);
+}
+
 export function MilestoneTable({
   milestones,
   showDetailed,
+  useWorkDays,
   onDaysChange,
   onRemoveMilestone,
   onMergeMilestones,
@@ -119,7 +129,7 @@ export function MilestoneTable({
                 
               </th>
               <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
-                Days
+                Days {useWorkDays && <span className="text-xs font-normal text-muted-foreground">(work)</span>}
               </th>
               <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
                 Next Milestone
@@ -185,24 +195,31 @@ export function MilestoneTable({
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={milestone.durationDays}
-                        onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
-                        className="input-field w-20 text-center"
-                        aria-label={`Days for ${milestone.name}`}
-                      />
-                      {milestone.overrideDays !== null && (
-                        <button
-                          onClick={() => onDaysChange(milestone.id, null)}
-                          className="btn-ghost"
-                          aria-label={`Reset days for ${milestone.name}`}
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={milestone.durationDays}
+                          onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
+                          className="input-field w-20 text-center"
+                          aria-label={`Days for ${milestone.name}`}
+                        />
+                        {milestone.overrideDays !== null && (
+                          <button
+                            onClick={() => onDaysChange(milestone.id, null)}
+                            className="btn-ghost"
+                            aria-label={`Reset days for ${milestone.name}`}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                      {useWorkDays && milestone.durationDays > 0 && (
+                        <span className="text-xs text-success font-medium px-1.5 py-0.5 bg-success/10 rounded">
+                          {calendarToWorkDays(milestone.durationDays)}w
+                        </span>
                       )}
                       {/* Merge button - appears when days is 0 */}
                       {milestone.durationDays === 0 && getMergeTargets(index).length > 0 && (
@@ -361,6 +378,11 @@ export function MilestoneTable({
                   aria-label={`Days for ${milestone.name}`}
                 />
                 <span className="text-xs text-muted-foreground">days</span>
+                {useWorkDays && milestone.durationDays > 0 && (
+                  <span className="text-[10px] text-success font-medium px-1 py-0.5 bg-success/10 rounded">
+                    {calendarToWorkDays(milestone.durationDays)}w
+                  </span>
+                )}
                 {milestone.overrideDays !== null && (
                   <button
                     onClick={() => onDaysChange(milestone.id, null)}
