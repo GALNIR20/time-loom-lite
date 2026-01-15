@@ -99,13 +99,13 @@ export function ProjectSidebar({
             Click Save to store your first project.
           </p>
         ) : (
-          <div className="space-y-0.5">
+          <div className="space-y-1">
             {projects.map((project) => (
               <div
                 key={project.id}
-                className={`group relative rounded-lg transition-colors ${
+                className={`group relative rounded-full transition-colors ${
                   currentProjectId === project.id
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'bg-primary text-primary-foreground shadow-md'
                     : 'hover:bg-muted text-muted-foreground hover:text-foreground'
                 }`}
               >
