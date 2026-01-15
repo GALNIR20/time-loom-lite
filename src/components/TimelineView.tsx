@@ -263,10 +263,12 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
                     <span className="text-xs font-medium text-muted-foreground">Days</span>
                   </div>
                 )}
-                {/* Next column header */}
-                <div className="w-28 flex-shrink-0 p-2 border-r border-border">
-                  <span className="text-xs font-medium text-muted-foreground">Next</span>
-                </div>
+                {/* Next column header - only show in edit mode */}
+                {editMode && (
+                  <div className="w-28 flex-shrink-0 p-2 border-r border-border">
+                    <span className="text-xs font-medium text-muted-foreground">Next</span>
+                  </div>
+                )}
                 {/* Calendar columns */}
                 <div className="flex-1 flex">
                   {viewMode === 'weeks' && weeks.map((week, i) => (
@@ -338,12 +340,14 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
                       </div>
                     )}
 
-                    {/* Next milestone */}
-                    <div className="w-28 flex-shrink-0 p-3 border-r border-border flex items-center">
-                      <span className="text-sm font-medium text-foreground truncate">
-                        {nextMilestone ? nextMilestone.name : '—'}
-                      </span>
-                    </div>
+                    {/* Next milestone - only show in edit mode */}
+                    {editMode && (
+                      <div className="w-28 flex-shrink-0 p-3 border-r border-border flex items-center">
+                        <span className="text-sm font-medium text-foreground truncate">
+                          {nextMilestone ? nextMilestone.name : '—'}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Remove button - only show in edit mode */}
                     {editMode && (
