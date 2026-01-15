@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { X, ChevronDown, ChevronRight } from 'lucide-react';
-import { format, parseISO, differenceInDays, min, max } from 'date-fns';
+import { format, parseISO, differenceInDays, min, max, addDays } from 'date-fns';
 import { SavedProject } from './ProjectSidebar';
 import { calculateTimeline, DEFAULT_MILESTONES } from '@/lib/timeline';
 import { MilestoneState } from '@/types/timeline';
@@ -19,10 +19,10 @@ interface ProjectTimeline {
   endDate: string;
 }
 
-const PHASE_COLORS: Record<string, string> = {
-  'Concept Phase': 'bg-phase-concept',
-  'Sketch Phase': 'bg-phase-sketch',
-  'Development': 'bg-phase-dev',
+const PHASE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  'Concept Phase': { bg: 'bg-phase-concept', border: 'border-phase-concept', text: 'text-phase-concept' },
+  'Sketch Phase': { bg: 'bg-phase-sketch', border: 'border-phase-sketch', text: 'text-phase-sketch' },
+  'Development': { bg: 'bg-phase-dev', border: 'border-phase-dev', text: 'text-phase-dev' },
 };
 
 export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompareViewProps) {
@@ -63,10 +63,22 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
     const allDates = projectTimelines.flatMap((t) => [parseISO(t.startDate), parseISO(t.endDate)]);
     const start = min(allDates);
     const end = max(allDates);
-    const totalDays = differenceInDays(end, start);
+    const totalDays = Math.max(differenceInDays(end, start), 1);
 
     return { start, end, totalDays };
   }, [projectTimelines]);
+
+  // Generate week markers
+  const weekMarkers = useMemo(() => {
+    if (dateRange.totalDays === 0) return [];
+    const markers = [];
+    let current = dateRange.start;
+    while (current <= dateRange.end) {
+      markers.push(current);
+      current = addDays(current, 7);
+    }
+    return markers;
+  }, [dateRange]);
 
   const toggleExpanded = (projectId: string) => {
     setExpandedProjects((prev) => {
@@ -80,26 +92,26 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
     });
   };
 
-  const getBarPosition = (start: string, end: string) => {
+  const getBarStyle = (start: string, end: string) => {
     if (dateRange.totalDays === 0) return { left: '0%', width: '100%' };
     
     const startOffset = differenceInDays(parseISO(start), dateRange.start);
-    const duration = differenceInDays(parseISO(end), parseISO(start));
+    const duration = Math.max(differenceInDays(parseISO(end), parseISO(start)), 1);
     
     const left = (startOffset / dateRange.totalDays) * 100;
-    const width = Math.max((duration / dateRange.totalDays) * 100, 1);
+    const width = (duration / dateRange.totalDays) * 100;
     
-    return { left: `${left}%`, width: `${width}%` };
+    return { left: `${left}%`, width: `${Math.max(width, 0.5)}%` };
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col">
+      <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-7xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">Compare Projects</h2>
+          <h2 className="text-lg font-semibold text-foreground">Compare Timelines</h2>
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
@@ -116,7 +128,10 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
             </label>
             <select
               value={selectedProject1 || ''}
-              onChange={(e) => setSelectedProject1(e.target.value || null)}
+              onChange={(e) => {
+                setSelectedProject1(e.target.value || null);
+                if (e.target.value) setExpandedProjects((prev) => new Set([...prev, e.target.value]));
+              }}
               className="input-field w-full"
             >
               <option value="">Select a project...</option>
@@ -133,7 +148,10 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
             </label>
             <select
               value={selectedProject2 || ''}
-              onChange={(e) => setSelectedProject2(e.target.value || null)}
+              onChange={(e) => {
+                setSelectedProject2(e.target.value || null);
+                if (e.target.value) setExpandedProjects((prev) => new Set([...prev, e.target.value]));
+              }}
               className="input-field w-full"
             >
               <option value="">Select a project...</option>
@@ -146,126 +164,167 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
           </div>
         </div>
 
-        {/* Comparison Timeline */}
-        <div className="flex-1 overflow-auto p-4">
+        {/* Timeline Comparison */}
+        <div className="flex-1 overflow-auto">
           {projectTimelines.length === 0 ? (
             <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
               Select at least one project to compare
             </div>
           ) : (
-            <div className="space-y-2">
-              {/* Date header */}
-              <div className="flex items-center mb-4">
-                <div className="w-48 flex-shrink-0" />
-                <div className="flex-1 flex justify-between text-xs text-muted-foreground px-1">
-                  <span>{format(dateRange.start, 'MMM d, yyyy')}</span>
-                  <span>{format(dateRange.end, 'MMM d, yyyy')}</span>
+            <div className="min-w-[800px]">
+              {/* Timeline Header with Week Markers */}
+              <div className="sticky top-0 bg-card z-10 border-b border-border">
+                <div className="flex">
+                  <div className="w-56 flex-shrink-0 p-3 border-r border-border">
+                    <span className="text-xs font-medium text-muted-foreground">Milestone</span>
+                  </div>
+                  <div className="w-20 flex-shrink-0 p-3 border-r border-border text-center">
+                    <span className="text-xs font-medium text-muted-foreground">Days</span>
+                  </div>
+                  <div className="flex-1 relative h-10">
+                    {/* Week grid lines */}
+                    {weekMarkers.map((date, i) => {
+                      const offset = (differenceInDays(date, dateRange.start) / dateRange.totalDays) * 100;
+                      return (
+                        <div
+                          key={i}
+                          className="absolute top-0 bottom-0 border-l border-border"
+                          style={{ left: `${offset}%` }}
+                        >
+                          <span className="absolute top-2 left-1 text-[10px] text-muted-foreground whitespace-nowrap">
+                            {format(date, 'MMM d')}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
-              {/* Project rows */}
-              {projectTimelines.map(({ project, milestones, totalDays }) => {
+              {/* Project Timelines */}
+              {projectTimelines.map(({ project, milestones, totalDays }, projectIndex) => {
                 const isExpanded = expandedProjects.has(project.id);
                 
                 return (
-                  <div key={project.id} className="border border-border rounded-lg overflow-hidden">
-                    {/* Project header row */}
-                    <div className="flex items-center bg-muted/30">
+                  <div key={project.id} className={projectIndex > 0 ? 'border-t-4 border-primary/20' : ''}>
+                    {/* Project Header Row */}
+                    <div className="flex bg-muted/40 border-b border-border">
                       <button
                         onClick={() => toggleExpanded(project.id)}
-                        className="w-48 flex-shrink-0 p-3 flex items-center gap-2 text-left hover:bg-muted/50 transition-colors"
+                        className="w-56 flex-shrink-0 p-3 border-r border-border flex items-center gap-2 hover:bg-muted/60 transition-colors text-left"
                       >
                         {isExpanded ? (
-                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                          <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                         ) : (
-                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                          <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                         )}
                         <div className="min-w-0">
-                          <div className="text-sm font-medium text-foreground truncate">
+                          <div className="text-sm font-semibold text-foreground truncate">
                             {project.featureName || 'Untitled Project'}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {project.preset} • {totalDays} days
+                            {project.preset} preset
                           </div>
                         </div>
                       </button>
-                      
-                      {/* Combined Gantt bar */}
-                      <div className="flex-1 h-10 relative mx-2">
-                        {milestones.map((milestone) => {
-                          const pos = getBarPosition(milestone.start, milestone.end);
+                      <div className="w-20 flex-shrink-0 p-3 border-r border-border flex items-center justify-center">
+                        <span className="text-sm font-semibold text-foreground">{totalDays}</span>
+                      </div>
+                      <div className="flex-1 relative py-2 px-1">
+                        {/* Week grid lines */}
+                        {weekMarkers.map((date, i) => {
+                          const offset = (differenceInDays(date, dateRange.start) / dateRange.totalDays) * 100;
                           return (
                             <div
-                              key={milestone.id}
-                              className={`absolute top-1 bottom-1 rounded ${PHASE_COLORS[milestone.phase]} opacity-80`}
-                              style={{ left: pos.left, width: pos.width }}
-                              title={`${milestone.name}: ${milestone.durationDays} days`}
+                              key={i}
+                              className="absolute top-0 bottom-0 border-l border-border/50"
+                              style={{ left: `${offset}%` }}
                             />
                           );
                         })}
+                        {/* Combined milestone bar */}
+                        <div className="relative h-8 flex items-center">
+                          {milestones.map((milestone) => {
+                            const style = getBarStyle(milestone.start, milestone.end);
+                            const colors = PHASE_COLORS[milestone.phase];
+                            return (
+                              <div
+                                key={milestone.id}
+                                className={`absolute top-1 bottom-1 ${colors.bg} rounded-sm opacity-90 hover:opacity-100 transition-opacity cursor-pointer`}
+                                style={{ left: style.left, width: style.width }}
+                                title={`${milestone.name}: ${milestone.durationDays} days (${format(parseISO(milestone.start), 'MMM d')} - ${format(parseISO(milestone.end), 'MMM d')})`}
+                              />
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
 
-                    {/* Expanded milestone rows */}
-                    {isExpanded && (
-                      <div className="bg-card">
-                        {milestones.map((milestone) => {
-                          const pos = getBarPosition(milestone.start, milestone.end);
-                          return (
-                            <div key={milestone.id} className="flex items-center border-t border-border">
-                              <div className="w-48 flex-shrink-0 p-2 pl-10">
-                                <div className="text-sm text-foreground">{milestone.name}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {milestone.durationDays} days
-                                </div>
-                              </div>
-                              <div className="flex-1 h-8 relative mx-2">
+                    {/* Expanded Milestone Rows */}
+                    {isExpanded && milestones.map((milestone) => {
+                      const style = getBarStyle(milestone.start, milestone.end);
+                      const colors = PHASE_COLORS[milestone.phase];
+                      
+                      return (
+                        <div key={milestone.id} className="flex border-b border-border hover:bg-muted/20 transition-colors">
+                          <div className="w-56 flex-shrink-0 p-3 pl-10 border-r border-border">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${colors.bg}`} />
+                              <span className="text-sm text-foreground">{milestone.name}</span>
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-0.5 pl-4">
+                              {format(parseISO(milestone.start), 'MMM d')} → {format(parseISO(milestone.end), 'MMM d')}
+                            </div>
+                          </div>
+                          <div className="w-20 flex-shrink-0 p-3 border-r border-border flex items-center justify-center">
+                            <span className="text-sm text-foreground">{milestone.durationDays}</span>
+                          </div>
+                          <div className="flex-1 relative py-2 px-1">
+                            {/* Week grid lines */}
+                            {weekMarkers.map((date, i) => {
+                              const offset = (differenceInDays(date, dateRange.start) / dateRange.totalDays) * 100;
+                              return (
                                 <div
-                                  className={`absolute top-1 bottom-1 rounded ${PHASE_COLORS[milestone.phase]}`}
-                                  style={{ left: pos.left, width: pos.width }}
+                                  key={i}
+                                  className="absolute top-0 bottom-0 border-l border-border/30"
+                                  style={{ left: `${offset}%` }}
                                 />
+                              );
+                            })}
+                            {/* Milestone bar */}
+                            <div className="relative h-6 flex items-center">
+                              <div
+                                className={`absolute top-0.5 bottom-0.5 ${colors.bg} rounded flex items-center justify-center overflow-hidden`}
+                                style={{ left: style.left, width: style.width }}
+                              >
+                                <span className="text-[10px] font-medium text-white truncate px-1">
+                                  {milestone.name}
+                                </span>
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}
 
-              {/* Summary comparison */}
+              {/* Summary comparison when 2 projects selected */}
               {projectTimelines.length === 2 && (
-                <div className="mt-6 p-4 bg-muted/30 rounded-lg">
-                  <h3 className="text-sm font-semibold text-foreground mb-3">Comparison Summary</h3>
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div />
-                    <div className="font-medium text-foreground">
-                      {projectTimelines[0].project.featureName || 'Project 1'}
-                    </div>
-                    <div className="font-medium text-foreground">
-                      {projectTimelines[1].project.featureName || 'Project 2'}
-                    </div>
-                    
-                    <div className="text-muted-foreground">Preset</div>
-                    <div>{projectTimelines[0].project.preset}</div>
-                    <div>{projectTimelines[1].project.preset}</div>
-                    
-                    <div className="text-muted-foreground">Total Days</div>
-                    <div>{projectTimelines[0].totalDays}</div>
-                    <div>{projectTimelines[1].totalDays}</div>
-                    
-                    <div className="text-muted-foreground">Difference</div>
-                    <div className="col-span-2 text-primary font-medium">
+                <div className="p-4 bg-muted/30 border-t border-border">
+                  <div className="flex items-center gap-6 text-sm">
+                    <span className="text-muted-foreground font-medium">Difference:</span>
+                    <span className="text-primary font-semibold">
                       {Math.abs(projectTimelines[0].totalDays - projectTimelines[1].totalDays)} days
-                      {projectTimelines[0].totalDays !== projectTimelines[1].totalDays && (
-                        <span className="text-muted-foreground font-normal">
-                          {' '}({projectTimelines[0].totalDays < projectTimelines[1].totalDays 
-                            ? `${projectTimelines[0].project.featureName || 'Project 1'} is shorter`
-                            : `${projectTimelines[1].project.featureName || 'Project 2'} is shorter`})
-                        </span>
-                      )}
-                    </div>
+                    </span>
+                    {projectTimelines[0].totalDays !== projectTimelines[1].totalDays && (
+                      <span className="text-muted-foreground">
+                        ({projectTimelines[0].totalDays < projectTimelines[1].totalDays 
+                          ? `${projectTimelines[0].project.featureName || 'Project 1'} is shorter`
+                          : `${projectTimelines[1].project.featureName || 'Project 2'} is shorter`})
+                      </span>
+                    )}
                   </div>
                 </div>
               )}
