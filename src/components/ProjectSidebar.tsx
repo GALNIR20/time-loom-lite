@@ -88,7 +88,7 @@ export function ProjectSidebar({
         {/* New Project Button */}
         <button
           onClick={onCreateNew}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors mb-2"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors mb-2"
         >
           <Plus className="w-4 h-4" />
           <span>New Project</span>
@@ -99,11 +99,7 @@ export function ProjectSidebar({
           {/* Projects Header */}
           <button
             onClick={() => setIsProjectsExpanded(!isProjectsExpanded)}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-full text-sm transition-all ${
-              projects.length > 0 && currentProjectId
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-            }`}
+            className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-all"
           >
             <div className="flex items-center gap-3">
               <FolderOpen className="w-4 h-4" />
