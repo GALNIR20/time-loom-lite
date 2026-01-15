@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { X, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import { format, parseISO, differenceInDays, min, max, addDays, startOfWeek, getWeek } from 'date-fns';
 import { SavedProject } from './ProjectSidebar';
 import { calculateTimeline, DEFAULT_MILESTONES } from '@/lib/timeline';
@@ -19,22 +19,21 @@ interface ProjectTimeline {
   endDate: string;
 }
 
-const PHASE_COLORS: Record<string, { bg: string; text: string }> = {
-  'Concept Phase': { bg: 'bg-phase-concept', text: 'text-white' },
-  'Sketch Phase': { bg: 'bg-phase-sketch', text: 'text-white' },
-  'Development': { bg: 'bg-phase-dev', text: 'text-white' },
+const PHASE_COLORS: Record<string, { bg: string; border: string }> = {
+  'Concept Phase': { bg: 'bg-phase-concept', border: 'border-phase-concept' },
+  'Sketch Phase': { bg: 'bg-phase-sketch', border: 'border-phase-sketch' },
+  'Development': { bg: 'bg-phase-dev', border: 'border-phase-dev' },
 };
 
 export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompareViewProps) {
-  const [selectedProject1, setSelectedProject1] = useState<string | null>(null);
-  const [selectedProject2, setSelectedProject2] = useState<string | null>(null);
+  const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
   // Calculate timelines for selected projects
   const projectTimelines = useMemo(() => {
     const timelines: ProjectTimeline[] = [];
     
-    [selectedProject1, selectedProject2].forEach((projectId) => {
+    selectedProjects.forEach((projectId) => {
       if (!projectId) return;
       const project = projects.find((p) => p.id === projectId);
       if (!project) return;
@@ -54,7 +53,7 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
     });
 
     return timelines;
-  }, [selectedProject1, selectedProject2, projects]);
+  }, [selectedProjects, projects]);
 
   // Calculate overall date range for the timeline
   const dateRange = useMemo(() => {
@@ -96,6 +95,25 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
     });
   };
 
+  const addProjectSlot = () => {
+    setSelectedProjects(prev => [...prev, '']);
+  };
+
+  const removeProjectSlot = (index: number) => {
+    setSelectedProjects(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateProjectSelection = (index: number, projectId: string) => {
+    setSelectedProjects(prev => {
+      const next = [...prev];
+      next[index] = projectId;
+      return next;
+    });
+    if (projectId) {
+      setExpandedProjects(prev => new Set([...prev, projectId]));
+    }
+  };
+
   // Get column index for a date
   const getColumnIndex = (dateStr: string) => {
     const date = parseISO(dateStr);
@@ -103,9 +121,24 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
     return Math.floor(daysDiff / 7);
   };
 
+  // Get exact position within the timeline
+  const getExactPosition = (dateStr: string) => {
+    const date = parseISO(dateStr);
+    const daysDiff = differenceInDays(date, dateRange.start);
+    return (daysDiff / 7) * columnWidth;
+  };
+
   if (!isOpen) return null;
 
   const columnWidth = 80; // px per week column
+
+  // Find shortest and longest projects for comparison
+  const sortedByDuration = [...projectTimelines].sort((a, b) => a.totalDays - b.totalDays);
+  const shortestProject = sortedByDuration[0];
+  const longestProject = sortedByDuration[sortedByDuration.length - 1];
+  const daysDifference = projectTimelines.length >= 2 
+    ? longestProject.totalDays - shortestProject.totalDays 
+    : 0;
 
   return (
     <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -128,47 +161,48 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
           </button>
         </div>
 
-        {/* Project Selection */}
-        <div className="p-4 border-b border-border flex gap-4 flex-wrap">
-          <div className="flex-1 min-w-[200px]">
-            <label className="text-xs font-medium text-muted-foreground block mb-1.5">
-              Project 1
-            </label>
-            <select
-              value={selectedProject1 || ''}
-              onChange={(e) => {
-                setSelectedProject1(e.target.value || null);
-                if (e.target.value) setExpandedProjects((prev) => new Set([...prev, e.target.value]));
-              }}
-              className="input-field w-full"
+        {/* Project Selection - Unlimited */}
+        <div className="p-4 border-b border-border">
+          <div className="flex flex-wrap gap-3 items-end">
+            {selectedProjects.map((projectId, index) => (
+              <div key={index} className="flex-shrink-0 w-56">
+                <label className="text-xs font-medium text-muted-foreground block mb-1.5">
+                  Project {index + 1}
+                </label>
+                <div className="flex gap-1">
+                  <select
+                    value={projectId}
+                    onChange={(e) => updateProjectSelection(index, e.target.value)}
+                    className="input-field flex-1"
+                  >
+                    <option value="">Select project...</option>
+                    {projects.map((p) => (
+                      <option 
+                        key={p.id} 
+                        value={p.id} 
+                        disabled={selectedProjects.includes(p.id) && p.id !== projectId}
+                      >
+                        {p.featureName || 'Untitled Project'}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => removeProjectSlot(index)}
+                    className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                    title="Remove"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+            <button
+              onClick={addProjectSlot}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-border hover:border-primary hover:bg-primary/5 text-muted-foreground hover:text-primary transition-colors text-sm"
             >
-              <option value="">Select a project...</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id} disabled={p.id === selectedProject2}>
-                  {p.featureName || 'Untitled Project'}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex-1 min-w-[200px]">
-            <label className="text-xs font-medium text-muted-foreground block mb-1.5">
-              Project 2
-            </label>
-            <select
-              value={selectedProject2 || ''}
-              onChange={(e) => {
-                setSelectedProject2(e.target.value || null);
-                if (e.target.value) setExpandedProjects((prev) => new Set([...prev, e.target.value]));
-              }}
-              className="input-field w-full"
-            >
-              <option value="">Select a project...</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id} disabled={p.id === selectedProject1}>
-                  {p.featureName || 'Untitled Project'}
-                </option>
-              ))}
-            </select>
+              <Plus className="w-4 h-4" />
+              Add Project
+            </button>
           </div>
         </div>
 
@@ -192,7 +226,7 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
         <div className="flex-1 overflow-auto">
           {projectTimelines.length === 0 ? (
             <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
-              Select at least one project to compare
+              Add projects to compare their timelines
             </div>
           ) : (
             <div className="min-w-fit">
@@ -238,33 +272,51 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
                           {project.featureName || 'Untitled Project'}
                         </span>
                       </button>
-                      <div className="flex relative">
+                      <div className="flex relative" style={{ minHeight: 80 }}>
                         {/* Week grid cells */}
                         {weekColumns.map((_, i) => (
                           <div
                             key={i}
                             className="border-r border-border/50"
-                            style={{ width: columnWidth, height: 60 }}
+                            style={{ width: columnWidth, height: 80 }}
                           />
                         ))}
-                        {/* Milestone markers on combined row */}
+                        {/* Connecting line between milestones */}
+                        {milestones.length > 1 && (
+                          <div
+                            className="absolute top-[23px] h-[2px] bg-primary/30"
+                            style={{
+                              left: getExactPosition(milestones[0].end) + 16,
+                              width: getExactPosition(milestones[milestones.length - 1].end) - getExactPosition(milestones[0].end),
+                            }}
+                          />
+                        )}
+                        {/* Milestone markers with labels */}
                         {milestones.map((milestone, milestoneIndex) => {
-                          const colIndex = getColumnIndex(milestone.end);
+                          const position = getExactPosition(milestone.end);
                           const colors = PHASE_COLORS[milestone.phase];
                           return (
                             <div
                               key={milestone.id}
                               className="absolute flex flex-col items-center"
                               style={{
-                                left: colIndex * columnWidth + columnWidth / 2 - 16,
+                                left: position - 16,
                                 top: 8,
                               }}
                             >
                               <div
-                                className={`w-8 h-8 rounded-full ${colors.bg} flex items-center justify-center shadow-md`}
+                                className={`w-8 h-8 rounded-full ${colors.bg} flex items-center justify-center shadow-md z-10`}
                                 title={`${milestone.name}: ${format(parseISO(milestone.end), 'MMM d, yyyy')}`}
                               >
                                 <span className="text-xs font-bold text-white">{milestoneIndex + 1}</span>
+                              </div>
+                              <div className="mt-1 text-center w-20">
+                                <div className="text-[10px] font-medium text-foreground truncate">
+                                  {milestone.name}
+                                </div>
+                                <div className="text-[10px] text-muted-foreground">
+                                  {format(parseISO(milestone.end), 'MMM d')}
+                                </div>
                               </div>
                             </div>
                           );
@@ -272,74 +324,63 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
                       </div>
                     </div>
 
-                    {/* Expanded Milestone Details */}
-                    {isExpanded && milestones.map((milestone, milestoneIndex) => {
-                      const colIndex = getColumnIndex(milestone.end);
-                      const colors = PHASE_COLORS[milestone.phase];
-                      
-                      return (
-                        <div key={milestone.id} className="flex border-b border-border hover:bg-muted/10 transition-colors">
-                          <div className="w-44 flex-shrink-0 p-3 pl-8 border-r border-border">
-                            <div className="flex items-center gap-2">
-                              <div className={`w-2 h-2 rounded-full ${colors.bg}`} />
-                              <span className="text-sm text-foreground">{milestone.name}</span>
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-0.5 pl-4">
-                              {milestone.durationDays} days
-                            </div>
-                          </div>
-                          <div className="flex relative">
-                            {/* Week grid cells */}
-                            {weekColumns.map((_, i) => (
-                              <div
-                                key={i}
-                                className="border-r border-border/30"
-                                style={{ width: columnWidth, height: 64 }}
-                              />
-                            ))}
-                            {/* Milestone marker */}
+                    {/* Expanded Milestone Details - shows empty circles for future milestones */}
+                    {isExpanded && (
+                      <div className="flex border-b border-border bg-background/50">
+                        <div className="w-44 flex-shrink-0 p-3 border-r border-border" />
+                        <div className="flex relative" style={{ minHeight: 64 }}>
+                          {/* Week grid cells with faded milestone indicators */}
+                          {weekColumns.map((_, i) => (
                             <div
-                              className="absolute flex flex-col items-center"
-                              style={{
-                                left: colIndex * columnWidth + columnWidth / 2 - 16,
-                                top: 8,
-                              }}
+                              key={i}
+                              className="border-r border-border/30 flex items-center justify-center"
+                              style={{ width: columnWidth, height: 64 }}
                             >
-                              <div
-                                className={`w-8 h-8 rounded-full ${colors.bg} flex items-center justify-center shadow-md`}
-                              >
-                                <span className="text-xs font-bold text-white">{milestoneIndex + 1}</span>
-                              </div>
-                              <div className="mt-1 text-center">
-                                <div className="text-[10px] font-medium text-foreground whitespace-nowrap">
-                                  {milestone.name}
-                                </div>
-                                <div className="text-[10px] text-muted-foreground">
-                                  {format(parseISO(milestone.end), 'MMM d, yyyy')}
-                                </div>
-                              </div>
+                              {/* Show empty circle placeholder if no milestone ends this week */}
+                              {!milestones.some(m => getColumnIndex(m.end) === i) && (
+                                <div className="w-8 h-8 rounded-full border-2 border-muted-foreground/20" />
+                              )}
                             </div>
-                          </div>
+                          ))}
+                          {/* Filled milestone markers */}
+                          {milestones.map((milestone, milestoneIndex) => {
+                            const position = getExactPosition(milestone.end);
+                            const colors = PHASE_COLORS[milestone.phase];
+                            return (
+                              <div
+                                key={milestone.id}
+                                className="absolute flex flex-col items-center"
+                                style={{
+                                  left: position - 16,
+                                  top: 16,
+                                }}
+                              >
+                                <div
+                                  className={`w-8 h-8 rounded-full ${colors.bg} flex items-center justify-center shadow-md`}
+                                >
+                                  <span className="text-xs font-bold text-white">{milestoneIndex + 1}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
 
-              {/* Summary comparison when 2 projects selected */}
-              {projectTimelines.length === 2 && (
+              {/* Summary comparison when 2+ projects selected */}
+              {projectTimelines.length >= 2 && (
                 <div className="p-4 bg-muted/30 border-t border-border">
                   <div className="flex items-center gap-6 text-sm">
                     <span className="text-muted-foreground font-medium">Difference:</span>
                     <span className="text-primary font-semibold">
-                      {Math.abs(projectTimelines[0].totalDays - projectTimelines[1].totalDays)} days
+                      {daysDifference} days
                     </span>
-                    {projectTimelines[0].totalDays !== projectTimelines[1].totalDays && (
+                    {daysDifference > 0 && (
                       <span className="text-muted-foreground">
-                        ({projectTimelines[0].totalDays < projectTimelines[1].totalDays 
-                          ? `${projectTimelines[0].project.featureName || 'Project 1'} is shorter`
-                          : `${projectTimelines[1].project.featureName || 'Project 2'} is shorter`})
+                        ({shortestProject.project.featureName || 'Project'} is shorter)
                       </span>
                     )}
                   </div>
