@@ -15,6 +15,8 @@ interface ControlsPanelProps {
   onPresetChange: (preset: PresetType) => void;
   showDetailed: boolean;
   onShowDetailedChange: (show: boolean) => void;
+  useWorkDays: boolean;
+  onUseWorkDaysChange: (use: boolean) => void;
   onCopyJson: () => void;
   onSave: () => void;
   onRestore: () => void;
@@ -43,6 +45,8 @@ export function ControlsPanel({
   onPresetChange,
   showDetailed,
   onShowDetailedChange,
+  useWorkDays,
+  onUseWorkDaysChange,
   onCopyJson,
   onSave,
   onRestore,
@@ -155,18 +159,29 @@ export function ControlsPanel({
 
         {/* Options and Actions row */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4 pt-3 border-t border-border">
-          {/* Show Detailed Checkbox */}
+          {/* Display Options */}
           <div className="flex flex-col gap-1.5 sm:gap-2 sm:flex-1">
             <span className="text-[10px] sm:text-xs font-medium text-muted-foreground">Display Options</span>
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={showDetailed}
-                onChange={(e) => onShowDetailedChange(e.target.checked)}
-                className="w-3.5 sm:w-4 h-3.5 sm:h-4 rounded border-input text-primary focus:ring-ring focus:ring-offset-1"
-              />
-              <span className="text-xs sm:text-sm text-foreground">Show months/weeks/days</span>
-            </label>
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={showDetailed}
+                  onChange={(e) => onShowDetailedChange(e.target.checked)}
+                  className="w-3.5 sm:w-4 h-3.5 sm:h-4 rounded border-input text-primary focus:ring-ring focus:ring-offset-1"
+                />
+                <span className="text-xs sm:text-sm text-foreground">Show months/weeks/days</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={useWorkDays}
+                  onChange={(e) => onUseWorkDaysChange(e.target.checked)}
+                  className="w-3.5 sm:w-4 h-3.5 sm:h-4 rounded border-input text-primary focus:ring-ring focus:ring-offset-1"
+                />
+                <span className="text-xs sm:text-sm text-foreground">Work days (5/week)</span>
+              </label>
+            </div>
           </div>
 
           {/* Action Buttons */}
