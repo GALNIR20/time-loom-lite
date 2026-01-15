@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Plus, FolderOpen, Trash2, ChevronLeft, ChevronRight, ChevronDown, LogOut } from 'lucide-react';
 import { PresetType } from '@/types/timeline';
 import predictorLogo from '@/assets/predictor-logo.png';
@@ -34,6 +35,8 @@ export function ProjectSidebar({
   onCreateNew,
   onDeleteProject,
 }: ProjectSidebarProps) {
+  const [isProjectsExpanded, setIsProjectsExpanded] = useState(true);
+
   if (isCollapsed) {
     return (
       <div className="w-14 bg-card border-r border-border flex flex-col items-center py-4">
@@ -85,75 +88,72 @@ export function ProjectSidebar({
         {/* New Project Button */}
         <button
           onClick={onCreateNew}
-          className="w-full flex items-center justify-between px-3 py-2.5 rounded-full text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors mb-4"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors mb-2"
         >
-          <div className="flex items-center gap-3">
-            <Plus className="w-4 h-4" />
-            <span>New Project</span>
-          </div>
-          <ChevronDown className="w-4 h-4" />
+          <Plus className="w-4 h-4" />
+          <span>New Project</span>
         </button>
 
-        {/* Projects List */}
-        {projects.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-6 px-2">
-            No saved projects yet.
-            <br />
-            Click Save to store your first project.
-          </p>
-        ) : (
-          <div className="space-y-1">
-            {projects.map((project) => {
-              const isActive = currentProjectId === project.id;
-              return (
-                <div key={project.id}>
-                  <div
-                    className={`group relative rounded-full transition-all ${
-                      isActive
-                        ? 'bg-primary text-primary-foreground shadow-md'
-                        : 'hover:bg-muted text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <button
-                      onClick={() => onSelectProject(project)}
-                      className="w-full flex items-center justify-between px-3 py-2.5 text-left"
+        {/* Projects Folder */}
+        <div>
+          {/* Projects Header */}
+          <button
+            onClick={() => setIsProjectsExpanded(!isProjectsExpanded)}
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-full text-sm transition-all ${
+              projects.length > 0 && currentProjectId
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <FolderOpen className="w-4 h-4" />
+              <span>Projects</span>
+            </div>
+            <ChevronDown className={`w-4 h-4 transition-transform ${isProjectsExpanded ? 'rotate-0' : '-rotate-90'}`} />
+          </button>
+
+          {/* Projects List */}
+          {isProjectsExpanded && (
+            <div className="mt-1 ml-4 border-l-2 border-border pl-3 space-y-0.5">
+              {projects.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-2">
+                  No projects yet
+                </p>
+              ) : (
+                projects.map((project) => {
+                  const isActive = currentProjectId === project.id;
+                  return (
+                    <div
+                      key={project.id}
+                      className="group flex items-center justify-between"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <FolderOpen className="w-4 h-4 flex-shrink-0" />
-                        <span className="text-sm truncate">
-                          {project.featureName || 'Untitled Project'}
-                        </span>
-                      </div>
-                      <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${isActive ? 'rotate-0' : '-rotate-90'}`} />
-                    </button>
-                  </div>
-                  
-                  {/* Sub-items when active */}
-                  {isActive && (
-                    <div className="ml-6 mt-1 space-y-0.5 border-l-2 border-primary/20 pl-3">
-                      <div className="text-sm text-primary font-medium py-1">
-                        {project.preset}
-                      </div>
-                      <div className="text-xs text-muted-foreground py-1">
-                        {new Date(project.savedAt).toLocaleDateString()}
-                      </div>
+                      <button
+                        onClick={() => onSelectProject(project)}
+                        className={`flex-1 text-left text-sm py-1.5 transition-colors truncate ${
+                          isActive
+                            ? 'text-primary font-medium'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        {project.featureName || 'Untitled Project'}
+                      </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           onDeleteProject(project.id);
                         }}
-                        className="flex items-center gap-2 text-xs text-muted-foreground hover:text-destructive py-1 transition-colors"
+                        className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
+                        aria-label={`Delete ${project.featureName || 'project'}`}
                       >
                         <Trash2 className="w-3 h-3" />
-                        Delete Project
                       </button>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
       </nav>
 
       {/* Footer */}
