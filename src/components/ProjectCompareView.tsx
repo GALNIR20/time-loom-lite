@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { X, ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { X, Plus, Trash2 } from 'lucide-react';
 import { format, parseISO, differenceInDays, min, max, addDays, startOfWeek, getWeek } from 'date-fns';
 import { SavedProject } from './ProjectSidebar';
 import { calculateTimeline, DEFAULT_MILESTONES } from '@/lib/timeline';
@@ -48,7 +48,6 @@ const getMilestoneColor = (milestoneId: string): string => {
 
 export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompareViewProps) {
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
-  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
   // Calculate timelines for selected projects
   const projectTimelines = useMemo(() => {
@@ -104,18 +103,6 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
     return weeks;
   }, [dateRange]);
 
-  const toggleExpanded = (projectId: string) => {
-    setExpandedProjects((prev) => {
-      const next = new Set(prev);
-      if (next.has(projectId)) {
-        next.delete(projectId);
-      } else {
-        next.add(projectId);
-      }
-      return next;
-    });
-  };
-
   const addProjectSlot = () => {
     setSelectedProjects(prev => [...prev, '']);
   };
@@ -130,9 +117,6 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
       next[index] = projectId;
       return next;
     });
-    if (projectId) {
-      setExpandedProjects(prev => new Set([...prev, projectId]));
-    }
   };
 
   // Get column index for a date
@@ -298,25 +282,15 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
 
               {/* Project Rows */}
               {projectTimelines.map(({ project, milestones }, projectIndex) => {
-                const isExpanded = expandedProjects.has(project.id);
-                
                 return (
                   <div key={project.id} className={projectIndex > 0 ? 'border-t-2 border-primary/20' : ''}>
-                    {/* Project Header Row */}
+                    {/* Project Row */}
                     <div className="flex bg-muted/30 border-b border-border">
-                      <button
-                        onClick={() => toggleExpanded(project.id)}
-                        className="w-44 flex-shrink-0 p-3 border-r border-border flex items-center gap-2 hover:bg-muted/50 transition-colors text-left"
-                      >
-                        {isExpanded ? (
-                          <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                        )}
+                      <div className="w-44 flex-shrink-0 p-3 border-r border-border flex items-center gap-2">
                         <span className="text-sm font-semibold text-foreground truncate">
                           {project.featureName || 'Untitled Project'}
                         </span>
-                      </button>
+                      </div>
                       <div className="flex relative" style={{ minHeight: 80 }}>
                         {/* Week grid cells */}
                         {weekColumns.map((_, i) => (
@@ -368,49 +342,6 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
                         })}
                       </div>
                     </div>
-
-                    {/* Expanded Milestone Details - shows empty circles for future milestones */}
-                    {isExpanded && (
-                      <div className="flex border-b border-border bg-background/50">
-                        <div className="w-44 flex-shrink-0 p-3 border-r border-border" />
-                        <div className="flex relative" style={{ minHeight: 64 }}>
-                          {/* Week grid cells with faded milestone indicators */}
-                          {weekColumns.map((_, i) => (
-                            <div
-                              key={i}
-                              className="border-r border-border/30 flex items-center justify-center"
-                              style={{ width: columnWidth, height: 64 }}
-                            >
-                              {/* Show empty circle placeholder if no milestone ends this week */}
-                              {!milestones.some(m => getColumnIndex(m.end) === i) && (
-                                <div className="w-8 h-8 rounded-full border-2 border-muted-foreground/20" />
-                              )}
-                            </div>
-                          ))}
-                          {/* Filled milestone markers */}
-                          {milestones.map((milestone, milestoneIndex) => {
-                            const position = getExactPosition(milestone.end);
-                            const colorClass = getMilestoneColor(milestone.id);
-                            return (
-                              <div
-                                key={milestone.id}
-                                className="absolute flex flex-col items-center"
-                                style={{
-                                  left: position - 16,
-                                  top: 16,
-                                }}
-                              >
-                                <div
-                                  className={`w-8 h-8 rounded-full ${colorClass} flex items-center justify-center shadow-md`}
-                                >
-                                  <span className="text-xs font-bold text-white">{milestoneIndex + 1}</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 );
               })}
