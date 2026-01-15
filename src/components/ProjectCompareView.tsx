@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { X, ChevronDown, ChevronRight } from 'lucide-react';
-import { format, parseISO, differenceInDays, min, max, addDays } from 'date-fns';
+import { format, parseISO, differenceInDays, min, max, addDays, startOfWeek, getWeek } from 'date-fns';
 import { SavedProject } from './ProjectSidebar';
 import { calculateTimeline, DEFAULT_MILESTONES } from '@/lib/timeline';
 import { MilestoneState } from '@/types/timeline';
@@ -19,10 +19,10 @@ interface ProjectTimeline {
   endDate: string;
 }
 
-const PHASE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  'Concept Phase': { bg: 'bg-phase-concept', border: 'border-phase-concept', text: 'text-phase-concept' },
-  'Sketch Phase': { bg: 'bg-phase-sketch', border: 'border-phase-sketch', text: 'text-phase-sketch' },
-  'Development': { bg: 'bg-phase-dev', border: 'border-phase-dev', text: 'text-phase-dev' },
+const PHASE_COLORS: Record<string, { bg: string; text: string }> = {
+  'Concept Phase': { bg: 'bg-phase-concept', text: 'text-white' },
+  'Sketch Phase': { bg: 'bg-phase-sketch', text: 'text-white' },
+  'Development': { bg: 'bg-phase-dev', text: 'text-white' },
 };
 
 export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompareViewProps) {
@@ -56,28 +56,32 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
     return timelines;
   }, [selectedProject1, selectedProject2, projects]);
 
-  // Calculate overall date range for the Gantt chart
+  // Calculate overall date range for the timeline
   const dateRange = useMemo(() => {
     if (projectTimelines.length === 0) return { start: new Date(), end: new Date(), totalDays: 0 };
 
     const allDates = projectTimelines.flatMap((t) => [parseISO(t.startDate), parseISO(t.endDate)]);
-    const start = min(allDates);
-    const end = max(allDates);
+    const start = startOfWeek(min(allDates), { weekStartsOn: 1 });
+    const end = addDays(max(allDates), 14); // Add buffer
     const totalDays = Math.max(differenceInDays(end, start), 1);
 
     return { start, end, totalDays };
   }, [projectTimelines]);
 
-  // Generate week markers
-  const weekMarkers = useMemo(() => {
+  // Generate week columns
+  const weekColumns = useMemo(() => {
     if (dateRange.totalDays === 0) return [];
-    const markers = [];
+    const weeks = [];
     let current = dateRange.start;
     while (current <= dateRange.end) {
-      markers.push(current);
+      weeks.push({
+        date: current,
+        weekNum: getWeek(current),
+        label: format(current, 'MMM d'),
+      });
       current = addDays(current, 7);
     }
-    return markers;
+    return weeks;
   }, [dateRange]);
 
   const toggleExpanded = (projectId: string) => {
@@ -92,26 +96,30 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
     });
   };
 
-  const getBarStyle = (start: string, end: string) => {
-    if (dateRange.totalDays === 0) return { left: '0%', width: '100%' };
-    
-    const startOffset = differenceInDays(parseISO(start), dateRange.start);
-    const duration = Math.max(differenceInDays(parseISO(end), parseISO(start)), 1);
-    
-    const left = (startOffset / dateRange.totalDays) * 100;
-    const width = (duration / dateRange.totalDays) * 100;
-    
-    return { left: `${left}%`, width: `${Math.max(width, 0.5)}%` };
+  // Get column index for a date
+  const getColumnIndex = (dateStr: string) => {
+    const date = parseISO(dateStr);
+    const daysDiff = differenceInDays(date, dateRange.start);
+    return Math.floor(daysDiff / 7);
   };
 
   if (!isOpen) return null;
+
+  const columnWidth = 80; // px per week column
 
   return (
     <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-7xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">Compare Timelines</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-foreground">Timeline View</h2>
+            {projectTimelines.length > 0 && (
+              <span className="text-muted-foreground">
+                — ({projectTimelines[0]?.project.preset || 'Big'} PLC)
+              </span>
+            )}
+          </div>
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
@@ -164,142 +172,151 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
           </div>
         </div>
 
-        {/* Timeline Comparison */}
+        {/* Phase Legend */}
+        <div className="px-4 py-2 border-b border-border flex items-center gap-6 text-xs">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-phase-concept" />
+            <span className="text-muted-foreground">Concept Phase</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-phase-sketch" />
+            <span className="text-muted-foreground">Sketch Phase</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-phase-dev" />
+            <span className="text-muted-foreground">Development</span>
+          </div>
+        </div>
+
+        {/* Timeline Content */}
         <div className="flex-1 overflow-auto">
           {projectTimelines.length === 0 ? (
             <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
               Select at least one project to compare
             </div>
           ) : (
-            <div className="min-w-[800px]">
-              {/* Timeline Header with Week Markers */}
+            <div className="min-w-fit">
+              {/* Week Headers */}
               <div className="sticky top-0 bg-card z-10 border-b border-border">
                 <div className="flex">
-                  <div className="w-56 flex-shrink-0 p-3 border-r border-border">
+                  <div className="w-44 flex-shrink-0 p-3 border-r border-border">
                     <span className="text-xs font-medium text-muted-foreground">Milestone</span>
                   </div>
-                  <div className="w-20 flex-shrink-0 p-3 border-r border-border text-center">
-                    <span className="text-xs font-medium text-muted-foreground">Days</span>
-                  </div>
-                  <div className="flex-1 relative h-10">
-                    {/* Week grid lines */}
-                    {weekMarkers.map((date, i) => {
-                      const offset = (differenceInDays(date, dateRange.start) / dateRange.totalDays) * 100;
-                      return (
-                        <div
-                          key={i}
-                          className="absolute top-0 bottom-0 border-l border-border"
-                          style={{ left: `${offset}%` }}
-                        >
-                          <span className="absolute top-2 left-1 text-[10px] text-muted-foreground whitespace-nowrap">
-                            {format(date, 'MMM d')}
-                          </span>
-                        </div>
-                      );
-                    })}
+                  <div className="flex">
+                    {weekColumns.map((week, i) => (
+                      <div
+                        key={i}
+                        className="border-r border-border text-center py-2"
+                        style={{ width: columnWidth }}
+                      >
+                        <div className="text-xs font-semibold text-foreground">W{week.weekNum}</div>
+                        <div className="text-[10px] text-muted-foreground">{week.label}</div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
 
-              {/* Project Timelines */}
-              {projectTimelines.map(({ project, milestones, totalDays }, projectIndex) => {
+              {/* Project Rows */}
+              {projectTimelines.map(({ project, milestones }, projectIndex) => {
                 const isExpanded = expandedProjects.has(project.id);
                 
                 return (
-                  <div key={project.id} className={projectIndex > 0 ? 'border-t-4 border-primary/20' : ''}>
+                  <div key={project.id} className={projectIndex > 0 ? 'border-t-2 border-primary/20' : ''}>
                     {/* Project Header Row */}
-                    <div className="flex bg-muted/40 border-b border-border">
+                    <div className="flex bg-muted/30 border-b border-border">
                       <button
                         onClick={() => toggleExpanded(project.id)}
-                        className="w-56 flex-shrink-0 p-3 border-r border-border flex items-center gap-2 hover:bg-muted/60 transition-colors text-left"
+                        className="w-44 flex-shrink-0 p-3 border-r border-border flex items-center gap-2 hover:bg-muted/50 transition-colors text-left"
                       >
                         {isExpanded ? (
                           <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                         ) : (
                           <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                         )}
-                        <div className="min-w-0">
-                          <div className="text-sm font-semibold text-foreground truncate">
-                            {project.featureName || 'Untitled Project'}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {project.preset} preset
-                          </div>
-                        </div>
+                        <span className="text-sm font-semibold text-foreground truncate">
+                          {project.featureName || 'Untitled Project'}
+                        </span>
                       </button>
-                      <div className="w-20 flex-shrink-0 p-3 border-r border-border flex items-center justify-center">
-                        <span className="text-sm font-semibold text-foreground">{totalDays}</span>
-                      </div>
-                      <div className="flex-1 relative py-2 px-1">
-                        {/* Week grid lines */}
-                        {weekMarkers.map((date, i) => {
-                          const offset = (differenceInDays(date, dateRange.start) / dateRange.totalDays) * 100;
+                      <div className="flex relative">
+                        {/* Week grid cells */}
+                        {weekColumns.map((_, i) => (
+                          <div
+                            key={i}
+                            className="border-r border-border/50"
+                            style={{ width: columnWidth, height: 60 }}
+                          />
+                        ))}
+                        {/* Milestone markers on combined row */}
+                        {milestones.map((milestone, milestoneIndex) => {
+                          const colIndex = getColumnIndex(milestone.end);
+                          const colors = PHASE_COLORS[milestone.phase];
                           return (
                             <div
-                              key={i}
-                              className="absolute top-0 bottom-0 border-l border-border/50"
-                              style={{ left: `${offset}%` }}
-                            />
+                              key={milestone.id}
+                              className="absolute flex flex-col items-center"
+                              style={{
+                                left: colIndex * columnWidth + columnWidth / 2 - 16,
+                                top: 8,
+                              }}
+                            >
+                              <div
+                                className={`w-8 h-8 rounded-full ${colors.bg} flex items-center justify-center shadow-md`}
+                                title={`${milestone.name}: ${format(parseISO(milestone.end), 'MMM d, yyyy')}`}
+                              >
+                                <span className="text-xs font-bold text-white">{milestoneIndex + 1}</span>
+                              </div>
+                            </div>
                           );
                         })}
-                        {/* Combined milestone bar */}
-                        <div className="relative h-8 flex items-center">
-                          {milestones.map((milestone) => {
-                            const style = getBarStyle(milestone.start, milestone.end);
-                            const colors = PHASE_COLORS[milestone.phase];
-                            return (
-                              <div
-                                key={milestone.id}
-                                className={`absolute top-1 bottom-1 ${colors.bg} rounded-sm opacity-90 hover:opacity-100 transition-opacity cursor-pointer`}
-                                style={{ left: style.left, width: style.width }}
-                                title={`${milestone.name}: ${milestone.durationDays} days (${format(parseISO(milestone.start), 'MMM d')} - ${format(parseISO(milestone.end), 'MMM d')})`}
-                              />
-                            );
-                          })}
-                        </div>
                       </div>
                     </div>
 
-                    {/* Expanded Milestone Rows */}
-                    {isExpanded && milestones.map((milestone) => {
-                      const style = getBarStyle(milestone.start, milestone.end);
+                    {/* Expanded Milestone Details */}
+                    {isExpanded && milestones.map((milestone, milestoneIndex) => {
+                      const colIndex = getColumnIndex(milestone.end);
                       const colors = PHASE_COLORS[milestone.phase];
                       
                       return (
-                        <div key={milestone.id} className="flex border-b border-border hover:bg-muted/20 transition-colors">
-                          <div className="w-56 flex-shrink-0 p-3 pl-10 border-r border-border">
+                        <div key={milestone.id} className="flex border-b border-border hover:bg-muted/10 transition-colors">
+                          <div className="w-44 flex-shrink-0 p-3 pl-8 border-r border-border">
                             <div className="flex items-center gap-2">
                               <div className={`w-2 h-2 rounded-full ${colors.bg}`} />
                               <span className="text-sm text-foreground">{milestone.name}</span>
                             </div>
                             <div className="text-xs text-muted-foreground mt-0.5 pl-4">
-                              {format(parseISO(milestone.start), 'MMM d')} → {format(parseISO(milestone.end), 'MMM d')}
+                              {milestone.durationDays} days
                             </div>
                           </div>
-                          <div className="w-20 flex-shrink-0 p-3 border-r border-border flex items-center justify-center">
-                            <span className="text-sm text-foreground">{milestone.durationDays}</span>
-                          </div>
-                          <div className="flex-1 relative py-2 px-1">
-                            {/* Week grid lines */}
-                            {weekMarkers.map((date, i) => {
-                              const offset = (differenceInDays(date, dateRange.start) / dateRange.totalDays) * 100;
-                              return (
-                                <div
-                                  key={i}
-                                  className="absolute top-0 bottom-0 border-l border-border/30"
-                                  style={{ left: `${offset}%` }}
-                                />
-                              );
-                            })}
-                            {/* Milestone bar */}
-                            <div className="relative h-6 flex items-center">
+                          <div className="flex relative">
+                            {/* Week grid cells */}
+                            {weekColumns.map((_, i) => (
                               <div
-                                className={`absolute top-0.5 bottom-0.5 ${colors.bg} rounded flex items-center justify-center overflow-hidden`}
-                                style={{ left: style.left, width: style.width }}
+                                key={i}
+                                className="border-r border-border/30"
+                                style={{ width: columnWidth, height: 64 }}
+                              />
+                            ))}
+                            {/* Milestone marker */}
+                            <div
+                              className="absolute flex flex-col items-center"
+                              style={{
+                                left: colIndex * columnWidth + columnWidth / 2 - 16,
+                                top: 8,
+                              }}
+                            >
+                              <div
+                                className={`w-8 h-8 rounded-full ${colors.bg} flex items-center justify-center shadow-md`}
                               >
-                                <span className="text-[10px] font-medium text-white truncate px-1">
+                                <span className="text-xs font-bold text-white">{milestoneIndex + 1}</span>
+                              </div>
+                              <div className="mt-1 text-center">
+                                <div className="text-[10px] font-medium text-foreground whitespace-nowrap">
                                   {milestone.name}
-                                </span>
+                                </div>
+                                <div className="text-[10px] text-muted-foreground">
+                                  {format(parseISO(milestone.end), 'MMM d, yyyy')}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -330,23 +347,6 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
               )}
             </div>
           )}
-        </div>
-
-        {/* Legend */}
-        <div className="p-4 border-t border-border flex items-center gap-6 text-xs">
-          <span className="text-muted-foreground">Phases:</span>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-phase-concept" />
-            <span className="text-muted-foreground">Concept</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-phase-sketch" />
-            <span className="text-muted-foreground">Sketch</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-phase-dev" />
-            <span className="text-muted-foreground">Development</span>
-          </div>
         </div>
       </div>
     </div>
