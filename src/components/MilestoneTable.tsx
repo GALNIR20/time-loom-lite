@@ -48,13 +48,11 @@ function formatShortDate(isoDate: string): string {
   return format(date, 'd.M');
 }
 
-// Get sprint display name: "Sprint X (2.YWW - D.M-D.M)"
+// Get sprint display name: "Sprint X (2.YWW)"
 function getSprintDisplayName(milestone: MilestoneState): string {
   const sprintNumber = milestone.id.replace('sprint-', '');
   const sprintCode = getSprintCode(milestone.start);
-  const startShort = formatShortDate(milestone.start);
-  const endShort = formatShortDate(milestone.end);
-  return `Sprint ${sprintNumber} (${sprintCode} - ${startShort}-${endShort})`;
+  return `Sprint ${sprintNumber} (${sprintCode})`;
 }
 
 export function MilestoneTable({
