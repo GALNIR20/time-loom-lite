@@ -159,59 +159,61 @@ export function ControlsPanel({
           </div>
         </div>
 
-        {/* Options and Actions row */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4 pt-3 border-t border-border">
-          {/* Display Options */}
-          <div className="flex flex-col gap-1.5 sm:gap-2 sm:flex-1">
-            <span className="text-[10px] sm:text-xs font-medium text-muted-foreground">Display Options</span>
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={showDetailed}
-                  onChange={(e) => onShowDetailedChange(e.target.checked)}
-                  className="w-3.5 sm:w-4 h-3.5 sm:h-4 rounded border-input text-primary focus:ring-ring focus:ring-offset-1"
-                />
-                <span className="text-xs sm:text-sm text-foreground">Show months/weeks/days</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={useWorkDays}
-                  onChange={(e) => onUseWorkDaysChange(e.target.checked)}
-                  className="w-3.5 sm:w-4 h-3.5 sm:h-4 rounded border-input text-primary focus:ring-ring focus:ring-offset-1"
-                />
-                <span className="text-xs sm:text-sm text-foreground">Work days (5/week)</span>
-              </label>
+        {/* Options and Actions row - only show after feature name is set */}
+        {isFeatureNameSet && (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4 pt-3 border-t border-border">
+            {/* Display Options */}
+            <div className="flex flex-col gap-1.5 sm:gap-2 sm:flex-1">
+              <span className="text-[10px] sm:text-xs font-medium text-muted-foreground">Display Options</span>
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={showDetailed}
+                    onChange={(e) => onShowDetailedChange(e.target.checked)}
+                    className="w-3.5 sm:w-4 h-3.5 sm:h-4 rounded border-input text-primary focus:ring-ring focus:ring-offset-1"
+                  />
+                  <span className="text-xs sm:text-sm text-foreground">Show months/weeks/days</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={useWorkDays}
+                    onChange={(e) => onUseWorkDaysChange(e.target.checked)}
+                    className="w-3.5 sm:w-4 h-3.5 sm:h-4 rounded border-input text-primary focus:ring-ring focus:ring-offset-1"
+                  />
+                  <span className="text-xs sm:text-sm text-foreground">Work days (5/week)</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-2">
+              <button onClick={onShowCompare} className="btn-secondary text-xs sm:text-sm py-2 px-2 sm:px-3">
+                <GitCompare className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                <span className="hidden xs:inline sm:inline">Compare</span>
+              </button>
+              <button onClick={onShowTimeline} className="btn-primary text-xs sm:text-sm py-2 px-2 sm:px-3">
+                <BarChart3 className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                <span className="hidden xs:inline sm:inline">Timeline</span>
+              </button>
+              <button onClick={onSave} className="btn-primary text-xs sm:text-sm py-2 px-2 sm:px-3">
+                <Save className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                <span className="hidden sm:inline">Save</span>
+              </button>
+              {hasUnsavedChanges && (
+                <button onClick={onRestore} className="btn-secondary text-xs sm:text-sm py-2 px-2 sm:px-3 border-warning text-warning hover:bg-warning/10">
+                  <Undo2 className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                  <span className="hidden sm:inline">Restore</span>
+                </button>
+              )}
+              <button onClick={onReset} className="btn-secondary text-xs sm:text-sm py-2 px-2 sm:px-3">
+                <RefreshCw className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                <span className="hidden sm:inline">Reset</span>
+              </button>
             </div>
           </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-wrap gap-2">
-            <button onClick={onShowCompare} className="btn-secondary text-xs sm:text-sm py-2 px-2 sm:px-3">
-              <GitCompare className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
-              <span className="hidden xs:inline sm:inline">Compare</span>
-            </button>
-            <button onClick={onShowTimeline} className="btn-primary text-xs sm:text-sm py-2 px-2 sm:px-3">
-              <BarChart3 className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
-              <span className="hidden xs:inline sm:inline">Timeline</span>
-            </button>
-            <button onClick={onSave} className="btn-primary text-xs sm:text-sm py-2 px-2 sm:px-3">
-              <Save className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
-              <span className="hidden sm:inline">Save</span>
-            </button>
-            {hasUnsavedChanges && (
-              <button onClick={onRestore} className="btn-secondary text-xs sm:text-sm py-2 px-2 sm:px-3 border-warning text-warning hover:bg-warning/10">
-                <Undo2 className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
-                <span className="hidden sm:inline">Restore</span>
-              </button>
-            )}
-            <button onClick={onReset} className="btn-secondary text-xs sm:text-sm py-2 px-2 sm:px-3">
-              <RefreshCw className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
-              <span className="hidden sm:inline">Reset</span>
-            </button>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
