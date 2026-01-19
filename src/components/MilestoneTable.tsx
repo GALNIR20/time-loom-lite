@@ -2,7 +2,7 @@ import { MilestoneState, MilestoneConfig } from '@/types/timeline';
 import { formatDateDisplay, formatDuration } from '@/lib/timeline';
 import { X, ArrowRight, Trash2, RotateCcw, ChevronDown, ChevronUp, Merge, Unlink } from 'lucide-react';
 import { useState } from 'react';
-import { parseISO, format, getYear, getWeek } from 'date-fns';
+import { parseISO, format, differenceInDays } from 'date-fns';
 
 // Discovery meetings configuration: maps milestone id to its discovery meetings
 const DISCOVERY_MEETINGS: Record<string, string[]> = {
@@ -34,12 +34,20 @@ function calendarToWorkDays(calendarDays: number): number {
   return weeks * 5 + Math.min(remainingDays, 5);
 }
 
-// Calculate sprint code based on start date (2.YWW format - single digit year + 2-digit week)
+// Calculate sprint code based on the 2026 sprint plan
+// Reference: Jan 13, 2026 = 2.409, each biweekly sprint increments by 1
 function getSprintCode(startDate: string): string {
   const date = parseISO(startDate);
-  const year = getYear(date) % 10; // Get last single digit of year
-  const week = getWeek(date, { weekStartsOn: 1 }); // ISO week starts on Monday
-  return `2.${year}${week.toString().padStart(2, '0')}`;
+  // Reference point: Jan 13, 2026 = sprint code 409
+  const referenceDate = new Date(2026, 0, 13); // Jan 13, 2026
+  const referenceCode = 409;
+  
+  // Calculate biweeks (14 days) difference from reference
+  const daysDiff = differenceInDays(date, referenceDate);
+  const biweeksDiff = Math.round(daysDiff / 14);
+  const code = referenceCode + biweeksDiff;
+  
+  return `2.${code}`;
 }
 
 // Format date as D.M (day.month)
