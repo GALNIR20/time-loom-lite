@@ -104,11 +104,16 @@ export function MilestoneTable({
     });
   };
 
-  // Get display name including merged milestones, with special format for sprints
+  // Get display name including merged milestones, with special format for sprints and I-Phase
   const getDisplayName = (milestone: MilestoneState) => {
     // Special formatting for sprints
     if (milestone.id.startsWith('sprint-')) {
       return getSprintDisplayName(milestone);
+    }
+    // Special formatting for I-Phase: show sprint code
+    if (milestone.id === 'i-phase') {
+      const sprintCode = getSprintCode(milestone.start);
+      return `${milestone.name} (${sprintCode})`;
     }
     const merged = mergedMilestones[milestone.id];
     if (merged && merged.length > 0) {
