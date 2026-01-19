@@ -113,50 +113,33 @@ export function MilestoneTable({
   };
 
   return (
-    <div className="card-elevated overflow-hidden">
+    <div className="table-container">
       {/* Desktop Table */}
-      <div className="hidden md:block table-container">
+      <div className="hidden md:block">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-table-header border-b border-table-border">
-              <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
-                Date
+            <tr>
+              <th className="table-header-cell">Date</th>
+              <th className="table-header-cell">Milestone</th>
+              <th className="table-header-cell w-10"></th>
+              <th className="table-header-cell">
+                Days {useWorkDays && <span className="text-xs font-normal text-primary/60">(work)</span>}
               </th>
-              <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
-                Milestone
-              </th>
-              <th className="text-center px-2 py-3 font-semibold text-foreground whitespace-nowrap w-10">
-                
-              </th>
-              <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
-                Days {useWorkDays && <span className="text-xs font-normal text-muted-foreground">(work)</span>}
-              </th>
-              <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
-                Next Milestone
-              </th>
-              <th className="text-left px-4 py-3 font-semibold text-foreground whitespace-nowrap">
-                Phase
-              </th>
-              <th className="text-center px-4 py-3 font-semibold text-foreground whitespace-nowrap w-12">
-                
+              <th className="table-header-cell">Next Milestone</th>
+              <th className="table-header-cell">Phase</th>
+              <th className="table-header-cell w-12 text-center">
+                <span className="sr-only">Actions</span>
               </th>
             </tr>
           </thead>
           <tbody>
             {milestones.map((milestone, index) => (
               <>
-                <tr
-                  key={milestone.id}
-                  className={`
-                    border-b border-table-border last:border-b-0
-                    hover:bg-table-row-hover transition-colors
-                    ${index % 2 === 0 ? 'bg-card' : 'bg-background/50'}
-                  `}
-                >
-                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                <tr key={milestone.id} className="table-body-row">
+                  <td className="table-body-cell text-muted-foreground whitespace-nowrap">
                     {formatDateDisplay(milestone.start)}
                   </td>
-                  <td className="px-4 py-3 font-medium text-foreground">
+                  <td className="table-body-cell font-medium">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="whitespace-nowrap">{milestone.name}</span>
                       {mergedMilestones[milestone.id]?.map((mergedName) => (
@@ -177,11 +160,11 @@ export function MilestoneTable({
                       ))}
                     </div>
                   </td>
-                  <td className="px-2 py-3 text-center">
+                  <td className="table-body-cell text-center px-2">
                     {DISCOVERY_MEETINGS[milestone.id] ? (
                       <button
                         onClick={() => toggleDiscovery(milestone.id)}
-                        className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                        className="p-1.5 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                         aria-label={`Toggle discovery meetings for ${milestone.name}`}
                       >
                         {expandedDiscovery.has(milestone.id) ? (
@@ -194,7 +177,7 @@ export function MilestoneTable({
                       <ArrowRight className="w-4 h-4 text-muted-foreground/30 mx-auto" />
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="table-body-cell">
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1">
                         <input
@@ -221,7 +204,6 @@ export function MilestoneTable({
                           {calendarToWorkDays(milestone.durationDays)}w
                         </span>
                       )}
-                      {/* Merge button - appears when days is 0 */}
                       {milestone.durationDays === 0 && getMergeTargets(index).length > 0 && (
                         <div className="relative">
                           <button
@@ -233,7 +215,7 @@ export function MilestoneTable({
                             <Merge className="w-4 h-4" />
                           </button>
                           {mergeDropdownOpen === milestone.id && (
-                            <div className="absolute left-0 top-full mt-1 z-50 bg-card border border-border rounded-lg shadow-lg min-w-[180px] py-1">
+                            <div className="absolute left-0 top-full mt-1 z-50 bg-card border border-border rounded-xl shadow-lg min-w-[180px] py-1">
                               <div className="px-3 py-1.5 text-xs text-muted-foreground border-b border-border">
                                 Merge with:
                               </div>
@@ -253,10 +235,10 @@ export function MilestoneTable({
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                  <td className="table-body-cell text-muted-foreground whitespace-nowrap">
                     {getNextMilestoneName(index)}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="table-body-cell">
                     <span
                       className={
                         milestone.phase === 'Concept Phase'
@@ -269,10 +251,10 @@ export function MilestoneTable({
                       {milestone.phase}
                     </span>
                   </td>
-                  <td className="px-2 py-3 text-center">
+                  <td className="table-body-cell text-center px-2">
                     <button
                       onClick={() => onRemoveMilestone(milestone.id)}
-                      className="btn-ghost text-muted-foreground hover:text-destructive p-1"
+                      className="p-2 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                       aria-label={`Remove ${milestone.name}`}
                       title="Remove milestone"
                     >
@@ -282,8 +264,8 @@ export function MilestoneTable({
                 </tr>
                 {/* Discovery meetings expandable row */}
                 {DISCOVERY_MEETINGS[milestone.id] && expandedDiscovery.has(milestone.id) && (
-                  <tr key={`${milestone.id}-discovery`} className="border-b border-table-border bg-muted/20">
-                    <td colSpan={7} className="px-4 py-3">
+                  <tr key={`${milestone.id}-discovery`} className="border-t border-border/50 bg-muted/20">
+                    <td colSpan={7} className="px-6 py-4">
                       <div className="space-y-2">
                         {DISCOVERY_MEETINGS[milestone.id].map((meeting) => (
                           <div
