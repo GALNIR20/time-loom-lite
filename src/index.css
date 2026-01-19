@@ -128,7 +128,20 @@
   }
 
   .table-container {
-    @apply overflow-x-auto rounded-lg border border-table-border;
+    @apply overflow-x-auto rounded-xl bg-card;
+    box-shadow: 0 0 0 1px hsl(var(--border) / 0.5), var(--shadow-md);
+  }
+
+  .table-header-cell {
+    @apply text-left px-6 py-4 font-semibold text-primary uppercase tracking-wider text-xs whitespace-nowrap;
+  }
+
+  .table-body-row {
+    @apply border-t border-border/50 hover:bg-muted/30 transition-colors;
+  }
+
+  .table-body-cell {
+    @apply px-6 py-4 text-foreground;
   }
 
   .phase-badge-concept {
