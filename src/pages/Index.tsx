@@ -30,8 +30,8 @@ function generateId() {
 const Index = () => {
   const [featureName, setFeatureName] = useState('');
   const [isFeatureNameSet, setIsFeatureNameSet] = useState(false);
-  const [projectStart, setProjectStart] = useState(getTodayISO);
-  const [preset, setPreset] = useState<PresetType>('Big');
+  const [projectStart, setProjectStart] = useState('');
+  const [preset, setPreset] = useState<PresetType>(null);
   const [showDetailed, setShowDetailed] = useState(true);
   const [useWorkDays, setUseWorkDays] = useState(false);
   const [overrides, setOverrides] = useState<Record<string, number | null>>({});
@@ -132,8 +132,8 @@ const Index = () => {
     setCurrentProjectId(null);
     setFeatureName('');
     setIsFeatureNameSet(false);
-    setProjectStart(getTodayISO());
-    setPreset('Big');
+    setProjectStart('');
+    setPreset(null);
     setShowDetailed(true);
     setOverrides({});
     setHiddenMilestones(new Set());
@@ -177,8 +177,9 @@ const Index = () => {
   const devDays = useMemo(() => {
     return milestones.filter(m => m.phase === 'Development').reduce((sum, m) => sum + m.durationDays, 0);
   }, [milestones]);
-  const daysBeforeIPhase = useMemo(() => calculateDaysBeforeIPhase(preset, overrides, customMilestones), [overrides, preset, customMilestones]);
+  const daysBeforeIPhase = useMemo(() => preset ? calculateDaysBeforeIPhase(preset, overrides, customMilestones) : 0, [overrides, preset, customMilestones]);
   const handleDevStartChange = useCallback((devStartDate: string) => {
+    if (!preset) return; // Can't calculate without preset
     // Lock this dev start date
     setLockedDevStart(devStartDate);
     // Calculate project start by going back from dev start
@@ -191,7 +192,7 @@ const Index = () => {
     setPreset(newPreset);
 
     // If user has locked a dev start date, recalculate project start
-    if (lockedDevStart) {
+    if (lockedDevStart && newPreset) {
       const devStart = parseISO(lockedDevStart);
       const daysBack = calculateDaysBeforeIPhase(newPreset, overrides, customMilestones);
       const newProjectStart = subDays(devStart, daysBack);
@@ -296,8 +297,8 @@ const Index = () => {
   const handleReset = useCallback(() => {
     setFeatureName('');
     setIsFeatureNameSet(false);
-    setProjectStart(getTodayISO());
-    setPreset('Big');
+    setProjectStart('');
+    setPreset(null);
     setShowDetailed(true);
     setOverrides({});
     setCustomMilestones(DEFAULT_MILESTONES);
