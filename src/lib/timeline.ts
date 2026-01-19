@@ -105,6 +105,7 @@ export function calculateTimeline(
 }
 
 export function formatDateDisplay(isoDate: string): string {
+  if (!isoDate) return '—';
   const date = parseISO(isoDate);
   return format(date, 'MMM d, yyyy');
 }
