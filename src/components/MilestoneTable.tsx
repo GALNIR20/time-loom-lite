@@ -2,6 +2,7 @@ import { MilestoneState, MilestoneConfig } from '@/types/timeline';
 import { formatDateDisplay, formatDuration } from '@/lib/timeline';
 import { X, ArrowRight, Trash2, RotateCcw, ChevronDown, ChevronUp, Merge, Unlink } from 'lucide-react';
 import { useState } from 'react';
+import { parseISO, format, getYear, getWeek } from 'date-fns';
 
 // Discovery meetings configuration: maps milestone id to its discovery meetings
 const DISCOVERY_MEETINGS: Record<string, string[]> = {
@@ -31,6 +32,28 @@ function calendarToWorkDays(calendarDays: number): number {
   const remainingDays = calendarDays % 7;
   // Each full week = 5 work days, remaining days capped at 5
   return weeks * 5 + Math.min(remainingDays, 5);
+}
+
+// Calculate sprint number based on start date (year.week format)
+function getSprintNumber(startDate: string): string {
+  const date = parseISO(startDate);
+  const year = getYear(date) % 100; // Get last 2 digits of year
+  const week = getWeek(date, { weekStartsOn: 1 }); // ISO week starts on Monday
+  return `2.${year}${week.toString().padStart(2, '0')}`;
+}
+
+// Format date as D.M (day.month)
+function formatShortDate(isoDate: string): string {
+  const date = parseISO(isoDate);
+  return format(date, 'd.M');
+}
+
+// Get sprint display name with number and dates
+function getSprintDisplayName(milestone: MilestoneState): string {
+  const sprintNum = getSprintNumber(milestone.start);
+  const startShort = formatShortDate(milestone.start);
+  const endShort = formatShortDate(milestone.end);
+  return `${sprintNum} - ${startShort} - ${endShort}`;
 }
 
 export function MilestoneTable({
@@ -74,8 +97,12 @@ export function MilestoneTable({
     });
   };
 
-  // Get display name including merged milestones
+  // Get display name including merged milestones, with special format for sprints
   const getDisplayName = (milestone: MilestoneState) => {
+    // Special formatting for sprints
+    if (milestone.id.startsWith('sprint-')) {
+      return getSprintDisplayName(milestone);
+    }
     const merged = mergedMilestones[milestone.id];
     if (merged && merged.length > 0) {
       return `${milestone.name} + ${merged.join(' + ')}`;
@@ -141,8 +168,8 @@ export function MilestoneTable({
                   </td>
                   <td className="table-body-cell font-medium">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="whitespace-nowrap">{milestone.name}</span>
-                      {mergedMilestones[milestone.id]?.map((mergedName) => (
+                      <span className="whitespace-nowrap">{getDisplayName(milestone)}</span>
+                      {!milestone.id.startsWith('sprint-') && mergedMilestones[milestone.id]?.map((mergedName) => (
                         <span
                           key={mergedName}
                           className="inline-flex items-center gap-1 px-2 py-0.5 bg-warning/20 text-warning rounded-full text-xs"
@@ -315,8 +342,8 @@ export function MilestoneTable({
                   {milestone.phase}
                 </span>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <h3 className="font-medium text-foreground text-sm truncate">{milestone.name}</h3>
-                  {mergedMilestones[milestone.id]?.map((mergedName) => (
+                  <h3 className="font-medium text-foreground text-sm truncate">{getDisplayName(milestone)}</h3>
+                  {!milestone.id.startsWith('sprint-') && mergedMilestones[milestone.id]?.map((mergedName) => (
                     <span
                       key={mergedName}
                       className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-warning/20 text-warning rounded-full text-[10px]"
