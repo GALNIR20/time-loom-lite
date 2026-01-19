@@ -1,7 +1,10 @@
 import { MilestoneConfig, MilestoneState, PresetType } from '@/types/timeline';
 import { format, addDays, parseISO } from 'date-fns';
 
-export const PRESET_CONFIGS: Record<PresetType, Record<string, number>> = {
+// Use 'Big' | 'Medium' | 'BLITZ' as keys (non-null presets)
+type NonNullPreset = Exclude<PresetType, null>;
+
+export const PRESET_CONFIGS: Record<NonNullPreset, Record<string, number>> = {
   Big: {
     'brief': 14,
     'pre-concept': 21,
@@ -58,6 +61,7 @@ export function getPresetDuration(
   if (overrideDays !== null && overrideDays >= 0) {
     return overrideDays;
   }
+  if (!preset) return 0;
   return PRESET_CONFIGS[preset][milestoneId] ?? 0;
 }
 
@@ -67,6 +71,9 @@ export function calculateTimeline(
   projectStart: string,
   preset: PresetType
 ): MilestoneState[] {
+  // Return empty if no project start or preset
+  if (!projectStart || !preset) return [];
+  
   const startDate = parseISO(projectStart);
   let currentDate = startDate;
 
