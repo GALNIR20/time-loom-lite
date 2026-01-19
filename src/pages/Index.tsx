@@ -469,21 +469,15 @@ const Index = () => {
               devDays={devDays}
             />
 
-            <SprintManager
-              milestones={customMilestones}
-              onAddSprint={handleAddSprint}
-              onRemoveSprint={handleRemoveSprint}
-            />
-
             <MilestoneTable
-              milestones={milestones}
+              milestones={milestones.filter(m => !m.id.startsWith('sprint-'))}
               showDetailed={showDetailed}
               useWorkDays={useWorkDays}
               onDaysChange={handleDaysChange}
               onRemoveMilestone={handleRemoveMilestone}
               onMergeMilestones={handleMergeMilestones}
               hiddenMilestones={hiddenMilestones}
-              allMilestones={customMilestones}
+              allMilestones={customMilestones.filter(m => !m.id.startsWith('sprint-'))}
               onRestoreMilestone={handleRestoreMilestone}
               mergedMilestones={mergedMilestones}
               onUnmergeMilestone={(targetId: string, sourceName: string) => {
@@ -508,6 +502,12 @@ const Index = () => {
                 });
                 toast.success(`${sourceName} unmerged`);
               }}
+            />
+
+            <SprintManager
+              milestones={customMilestones}
+              onAddSprint={handleAddSprint}
+              onRemoveSprint={handleRemoveSprint}
             />
           </>
         )}
