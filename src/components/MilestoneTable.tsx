@@ -34,26 +34,19 @@ function calendarToWorkDays(calendarDays: number): number {
   return weeks * 5 + Math.min(remainingDays, 5);
 }
 
-// Calculate sprint number based on start date (year.week format)
-function getSprintNumber(startDate: string): string {
+// Calculate sprint code based on start date (year.week format)
+function getSprintCode(startDate: string): string {
   const date = parseISO(startDate);
   const year = getYear(date) % 100; // Get last 2 digits of year
   const week = getWeek(date, { weekStartsOn: 1 }); // ISO week starts on Monday
   return `2.${year}${week.toString().padStart(2, '0')}`;
 }
 
-// Format date as D.M (day.month)
-function formatShortDate(isoDate: string): string {
-  const date = parseISO(isoDate);
-  return format(date, 'd.M');
-}
-
-// Get sprint display name with number and dates
+// Get sprint display name: "Sprint X (2.YWW)"
 function getSprintDisplayName(milestone: MilestoneState): string {
-  const sprintNum = getSprintNumber(milestone.start);
-  const startShort = formatShortDate(milestone.start);
-  const endShort = formatShortDate(milestone.end);
-  return `${sprintNum} - ${startShort} - ${endShort}`;
+  const sprintNumber = milestone.id.replace('sprint-', '');
+  const sprintCode = getSprintCode(milestone.start);
+  return `Sprint ${sprintNumber} (${sprintCode})`;
 }
 
 export function MilestoneTable({
