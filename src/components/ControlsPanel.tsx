@@ -26,8 +26,7 @@ interface ControlsPanelProps {
   onShowCompare: () => void;
 }
 
-const PRESET_OPTIONS: { value: PresetType | ''; label: string; description: string }[] = [
-  { value: '', label: 'Select preset...', description: '' },
+const PRESET_OPTIONS: { value: PresetType; label: string; description: string }[] = [
   { value: 'Big', label: 'Big PLC', description: '112 days' },
   { value: 'Medium', label: 'Medium PLC', description: '73 days' },
   { value: 'BLITZ', label: 'BLITZ', description: '46 days' },
@@ -82,14 +81,23 @@ export function ControlsPanel({
                 </button>
               </div>
             ) : (
-              <input
-                type="text"
-                id="feature-name"
-                value={featureName}
-                onChange={(e) => onFeatureNameChange(e.target.value)}
-                placeholder="Enter feature name..."
-                className="input-field flex-1 text-sm"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  id="feature-name"
+                  value={featureName}
+                  onChange={(e) => onFeatureNameChange(e.target.value)}
+                  placeholder="Enter feature name..."
+                  className="input-field flex-1 text-sm"
+                />
+                <button
+                  onClick={onSetFeatureName}
+                  disabled={!featureName.trim()}
+                  className="btn-primary text-xs py-1.5 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Set
+                </button>
+              </div>
             )}
           </div>
 
@@ -100,13 +108,13 @@ export function ControlsPanel({
             </label>
             <select
               id="preset"
-              value={preset ?? ''}
-              onChange={(e) => onPresetChange(e.target.value === '' ? null : e.target.value as PresetType)}
+              value={preset}
+              onChange={(e) => onPresetChange(e.target.value as PresetType)}
               className="input-field w-full text-sm"
             >
               {PRESET_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value} disabled={option.value === ''}>
-                  {option.description ? `${option.label} (${option.description})` : option.label}
+                <option key={option.value} value={option.value}>
+                  {option.label} ({option.description})
                 </option>
               ))}
             </select>
@@ -128,28 +136,16 @@ export function ControlsPanel({
                 id="dev-start"
                 value={devStart}
                 onChange={(e) => onDevStartChange(e.target.value)}
-                placeholder="-- -- ----"
-                className={`input-field w-full pl-8 sm:pl-9 text-sm min-w-0 ${!devStart ? 'text-muted-foreground' : ''}`}
+                className="input-field w-full pl-8 sm:pl-9 text-sm min-w-0"
               />
             </div>
           </div>
 
           {/* Project Start Date */}
           <div className="flex flex-col gap-1.5 sm:gap-2">
-            <div className="flex items-center justify-between">
-              <label htmlFor="project-start" className="text-[10px] sm:text-xs font-medium text-muted-foreground">
-                Project Start Date
-              </label>
-              {!isFeatureNameSet && featureName.trim() && (
-                <button
-                  onClick={onSetFeatureName}
-                  disabled={!featureName.trim()}
-                  className="btn-primary text-xs py-1 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Set
-                </button>
-              )}
-            </div>
+            <label htmlFor="project-start" className="text-[10px] sm:text-xs font-medium text-muted-foreground">
+              Project Start Date
+            </label>
             <div className="relative">
               <Calendar className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 w-3.5 sm:w-4 h-3.5 sm:h-4 text-muted-foreground pointer-events-none" />
               <input
@@ -157,8 +153,7 @@ export function ControlsPanel({
                 id="project-start"
                 value={projectStart}
                 onChange={(e) => onProjectStartChange(e.target.value)}
-                placeholder="-- -- ----"
-                className={`input-field w-full pl-8 sm:pl-9 text-sm min-w-0 ${!projectStart ? 'text-muted-foreground' : ''}`}
+                className="input-field w-full pl-8 sm:pl-9 text-sm min-w-0"
               />
             </div>
           </div>

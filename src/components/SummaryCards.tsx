@@ -44,10 +44,10 @@ export function SummaryCards({
           {daysToIPhase !== null && iPhaseStart ? (
             <div className="flex flex-col">
               <span className="summary-value text-base sm:text-2xl">{formatDuration(daysToIPhase, showDetailed)}</span>
-              <span className="summary-subtext text-[9px] sm:text-xs">days ({iPhaseStart ? formatDateDisplay(iPhaseStart) : '—'})</span>
+              <span className="summary-subtext text-[9px] sm:text-xs">days ({formatDateDisplay(iPhaseStart)})</span>
             </div>
           ) : (
-            <span className="summary-subtext">—</span>
+            <span className="summary-subtext">N/A</span>
           )}
         </div>
       </div>
@@ -73,7 +73,7 @@ export function SummaryCards({
           <span className="summary-label text-[10px] sm:text-xs">Projected End</span>
         </div>
         <div className="mt-1.5 sm:mt-2">
-          <span className="summary-value text-base sm:text-2xl">{projectedEnd ? formatDateDisplay(projectedEnd) : '—'}</span>
+          <span className="summary-value text-base sm:text-2xl">{formatDateDisplay(projectedEnd)}</span>
         </div>
       </div>
     </div>
