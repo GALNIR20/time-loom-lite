@@ -355,7 +355,7 @@ const Index = () => {
         </header>
 
         {/* Main Content */}
-        <main className="container max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 bg-[#ededf3]">
+        <main className="container max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 bg-gray-50">
         <ControlsPanel featureName={featureName} onFeatureNameChange={setFeatureName} isFeatureNameSet={isFeatureNameSet} onSetFeatureName={() => {
           setIsFeatureNameSet(true);
           // Auto-save after setting feature name
