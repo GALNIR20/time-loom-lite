@@ -458,55 +458,59 @@ const Index = () => {
           onShowCompare={() => setIsCompareViewOpen(true)}
         />
 
-        <SummaryCards
-          totalDays={totalDays}
-          projectedEnd={projectedEnd}
-          iPhaseStart={iPhaseStart}
-          daysToIPhase={daysToIPhase}
-          showDetailed={showDetailed}
-          devDays={devDays}
-        />
+        {isFeatureNameSet && (
+          <>
+            <SummaryCards
+              totalDays={totalDays}
+              projectedEnd={projectedEnd}
+              iPhaseStart={iPhaseStart}
+              daysToIPhase={daysToIPhase}
+              showDetailed={showDetailed}
+              devDays={devDays}
+            />
 
-        <SprintManager
-          milestones={customMilestones}
-          onAddSprint={handleAddSprint}
-          onRemoveSprint={handleRemoveSprint}
-        />
+            <SprintManager
+              milestones={customMilestones}
+              onAddSprint={handleAddSprint}
+              onRemoveSprint={handleRemoveSprint}
+            />
 
-        <MilestoneTable
-          milestones={milestones}
-          showDetailed={showDetailed}
-          useWorkDays={useWorkDays}
-          onDaysChange={handleDaysChange}
-          onRemoveMilestone={handleRemoveMilestone}
-          onMergeMilestones={handleMergeMilestones}
-          hiddenMilestones={hiddenMilestones}
-          allMilestones={customMilestones}
-          onRestoreMilestone={handleRestoreMilestone}
-          mergedMilestones={mergedMilestones}
-          onUnmergeMilestone={(targetId: string, sourceName: string) => {
-            // Find the source milestone id by name
-            const sourceMilestone = customMilestones.find((m) => m.name === sourceName);
-            if (sourceMilestone) {
-              // Restore the hidden milestone
-              setHiddenMilestones((prev) => {
-                const next = new Set(prev);
-                next.delete(sourceMilestone.id);
-                return next;
-              });
-            }
-            // Remove from merged list
-            setMergedMilestones((prev) => {
-              const newList = [...(prev[targetId] || [])].filter((n) => n !== sourceName);
-              if (newList.length === 0) {
-                const { [targetId]: _, ...rest } = prev;
-                return rest;
-              }
-              return { ...prev, [targetId]: newList };
-            });
-            toast.success(`${sourceName} unmerged`);
-          }}
-        />
+            <MilestoneTable
+              milestones={milestones}
+              showDetailed={showDetailed}
+              useWorkDays={useWorkDays}
+              onDaysChange={handleDaysChange}
+              onRemoveMilestone={handleRemoveMilestone}
+              onMergeMilestones={handleMergeMilestones}
+              hiddenMilestones={hiddenMilestones}
+              allMilestones={customMilestones}
+              onRestoreMilestone={handleRestoreMilestone}
+              mergedMilestones={mergedMilestones}
+              onUnmergeMilestone={(targetId: string, sourceName: string) => {
+                // Find the source milestone id by name
+                const sourceMilestone = customMilestones.find((m) => m.name === sourceName);
+                if (sourceMilestone) {
+                  // Restore the hidden milestone
+                  setHiddenMilestones((prev) => {
+                    const next = new Set(prev);
+                    next.delete(sourceMilestone.id);
+                    return next;
+                  });
+                }
+                // Remove from merged list
+                setMergedMilestones((prev) => {
+                  const newList = [...(prev[targetId] || [])].filter((n) => n !== sourceName);
+                  if (newList.length === 0) {
+                    const { [targetId]: _, ...rest } = prev;
+                    return rest;
+                  }
+                  return { ...prev, [targetId]: newList };
+                });
+                toast.success(`${sourceName} unmerged`);
+              }}
+            />
+          </>
+        )}
         </main>
 
         {/* JSON Modal */}
