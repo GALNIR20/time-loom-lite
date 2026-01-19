@@ -38,7 +38,6 @@ export const DEFAULT_MILESTONES: MilestoneConfig[] = [
   { id: 'art-sketch', phase: 'Sketch Phase', name: 'Art Sketch' },
   { id: 'sketch', phase: 'Sketch Phase', name: 'Sketch' },
   { id: 'i-phase', phase: 'Development', name: 'I-Phase' },
-  { id: 'sprint-1', phase: 'Development', name: 'Sprint 1' },
 ];
 
 export const SPRINT_DURATION_DAYS = 14;

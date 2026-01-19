@@ -137,7 +137,12 @@
   }
 
   .table-body-row {
-    @apply border-t border-border/50 hover:bg-muted/30 transition-colors;
+    @apply hover:bg-muted/30 transition-colors;
+    border-bottom: 8px solid hsl(var(--background));
+  }
+
+  .table-body-row:last-child {
+    border-bottom: none;
   }
 
   .table-body-cell {
