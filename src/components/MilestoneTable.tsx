@@ -42,11 +42,19 @@ function getSprintCode(startDate: string): string {
   return `2.${year}${week.toString().padStart(2, '0')}`;
 }
 
-// Get sprint display name: "Sprint X (2.YWW)"
+// Format date as D.M (day.month)
+function formatShortDate(isoDate: string): string {
+  const date = parseISO(isoDate);
+  return format(date, 'd.M');
+}
+
+// Get sprint display name: "Sprint X (2.YWW - D.M - D.M)"
 function getSprintDisplayName(milestone: MilestoneState): string {
   const sprintNumber = milestone.id.replace('sprint-', '');
   const sprintCode = getSprintCode(milestone.start);
-  return `Sprint ${sprintNumber} (${sprintCode})`;
+  const startShort = formatShortDate(milestone.start);
+  const endShort = formatShortDate(milestone.end);
+  return `Sprint ${sprintNumber} (${sprintCode} - ${startShort} - ${endShort})`;
 }
 
 export function MilestoneTable({
