@@ -470,14 +470,14 @@ const Index = () => {
             />
 
             <MilestoneTable
-              milestones={milestones.filter(m => !m.id.startsWith('sprint-'))}
+              milestones={milestones}
               showDetailed={showDetailed}
               useWorkDays={useWorkDays}
               onDaysChange={handleDaysChange}
               onRemoveMilestone={handleRemoveMilestone}
               onMergeMilestones={handleMergeMilestones}
               hiddenMilestones={hiddenMilestones}
-              allMilestones={customMilestones.filter(m => !m.id.startsWith('sprint-'))}
+              allMilestones={customMilestones}
               onRestoreMilestone={handleRestoreMilestone}
               mergedMilestones={mergedMilestones}
               onUnmergeMilestone={(targetId: string, sourceName: string) => {
