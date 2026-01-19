@@ -31,7 +31,7 @@ export function SprintManager({ milestones, onAddSprint, onRemoveSprint }: Sprin
           <div className="flex items-center gap-1">
             <button
               onClick={onRemoveSprint}
-              disabled={sprintCount <= 1}
+              disabled={sprintCount <= 0}
               className="btn-secondary p-2 disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Remove sprint"
               title="Remove last sprint"
