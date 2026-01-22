@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, FolderOpen, Trash2, ChevronLeft, ChevronRight, ChevronDown, LogOut } from 'lucide-react';
+import { Plus, FolderOpen, Trash2, ChevronDown, LayoutDashboard, Calendar, Users, MessageSquare, Settings, HelpCircle, LogOut } from 'lucide-react';
 import { PresetType } from '@/types/timeline';
 import predictorLogo from '@/assets/predictor-logo.png';
 
@@ -39,80 +39,92 @@ export function ProjectSidebar({
 
   if (isCollapsed) {
     return (
-      <div className="w-14 bg-card border-r border-border flex flex-col items-center py-4">
+      <div className="w-16 bg-background border-r border-border/50 flex flex-col items-center py-6 shadow-sm">
         <button
           onClick={onToggleCollapse}
-          className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground mb-4"
+          className="mb-8"
           aria-label="Expand sidebar"
         >
-          <ChevronRight className="w-5 h-5" />
+          <img src={predictorLogo} alt="Predictor" className="w-9 h-9 rounded-xl" />
         </button>
-        <button
-          onClick={onCreateNew}
-          className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground mb-2"
-          aria-label="New project"
-        >
-          <Plus className="w-5 h-5" />
-        </button>
-        <div className="flex-1 flex flex-col gap-1 mt-2 overflow-y-auto px-1">
-          {projects.map((project) => (
+        <nav className="flex-1 flex flex-col items-center gap-2 w-full px-2">
+          <button
+            onClick={onCreateNew}
+            className="p-3 rounded-xl hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            aria-label="New project"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+          <button
+            className="p-3 rounded-xl bg-primary/10 text-primary relative"
+            aria-label="Dashboard"
+          >
+            <LayoutDashboard className="w-5 h-5" />
+            <span className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-l-full" />
+          </button>
+          {projects.slice(0, 5).map((project) => (
             <button
               key={project.id}
               onClick={() => onSelectProject(project)}
-              className={`p-2 rounded-lg transition-colors ${
+              className={`p-3 rounded-xl transition-colors relative ${
                 currentProjectId === project.id
-                  ? 'bg-primary text-primary-foreground'
+                  ? 'bg-primary/10 text-primary'
                   : 'hover:bg-muted text-muted-foreground hover:text-foreground'
               }`}
               aria-label={project.featureName || 'Untitled project'}
               title={project.featureName || 'Untitled project'}
             >
               <FolderOpen className="w-5 h-5" />
+              {currentProjectId === project.id && (
+                <span className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-l-full" />
+              )}
             </button>
           ))}
-        </div>
+        </nav>
       </div>
     );
   }
 
   return (
-    <div className="w-56 bg-card border-r border-border flex flex-col h-full">
+    <div className="w-60 bg-background border-r border-border/50 flex flex-col h-full shadow-sm">
       {/* Logo Header */}
-      <div className="p-4 flex items-center gap-2.5">
-        <img src={predictorLogo} alt="Predictor" className="w-8 h-8 rounded-lg" />
-        <span className="font-semibold text-foreground text-lg">Predictor</span>
+      <div className="p-6 flex items-center gap-3">
+        <img src={predictorLogo} alt="Predictor" className="w-9 h-9 rounded-xl" />
+        <span className="font-bold text-foreground text-xl tracking-tight">PREDICTOR</span>
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 px-3 py-2 overflow-y-auto">
-        {/* New Project Button */}
-        <button
-          onClick={onCreateNew}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-full text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors mb-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>New Project</span>
-        </button>
+      <nav className="flex-1 px-4 py-2 overflow-y-auto">
+        {/* Dashboard - Active by default */}
+        <div className="relative mb-1">
+          <button
+            onClick={onCreateNew}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm bg-primary/10 text-primary font-medium transition-colors"
+          >
+            <LayoutDashboard className="w-5 h-5" />
+            <span>Dashboard</span>
+          </button>
+          <span className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-l-full" />
+        </div>
 
         {/* Projects Folder */}
-        <div>
-          {/* Projects Header */}
+        <div className="mt-2">
           <button
             onClick={() => setIsProjectsExpanded(!isProjectsExpanded)}
-            className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-all"
+            className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-all"
           >
             <div className="flex items-center gap-3">
-              <FolderOpen className="w-4 h-4" />
-              <span>Projects</span>
+              <FolderOpen className="w-5 h-5" />
+              <span>Project</span>
             </div>
-            <ChevronDown className={`w-4 h-4 transition-transform ${isProjectsExpanded ? 'rotate-0' : '-rotate-90'}`} />
+            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isProjectsExpanded ? 'rotate-0' : '-rotate-90'}`} />
           </button>
 
           {/* Projects List */}
           {isProjectsExpanded && (
-            <div className="mt-1 ml-4 border-l-2 border-border pl-3 space-y-0.5">
+            <div className="mt-1 ml-6 pl-4 border-l-2 border-border/50 space-y-1">
               {projects.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-2">
+                <p className="text-xs text-muted-foreground py-2 pl-2">
                   No projects yet
                 </p>
               ) : (
@@ -121,14 +133,14 @@ export function ProjectSidebar({
                   return (
                     <div
                       key={project.id}
-                      className="group flex items-center justify-between"
+                      className="group flex items-center justify-between relative"
                     >
                       <button
                         onClick={() => onSelectProject(project)}
-                        className={`flex-1 text-left text-sm py-1.5 transition-colors truncate ${
+                        className={`flex-1 text-left text-sm py-2.5 px-2 rounded-lg transition-colors truncate ${
                           isActive
-                            ? 'text-primary font-medium'
-                            : 'text-muted-foreground hover:text-foreground'
+                            ? 'text-primary font-medium bg-primary/5'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                         }`}
                       >
                         {project.featureName || 'Untitled Project'}
@@ -138,10 +150,10 @@ export function ProjectSidebar({
                           e.stopPropagation();
                           onDeleteProject(project.id);
                         }}
-                        className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
+                        className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
                         aria-label={`Delete ${project.featureName || 'project'}`}
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   );
@@ -150,16 +162,41 @@ export function ProjectSidebar({
             </div>
           )}
         </div>
+
+        {/* Other Nav Items */}
+        <div className="mt-2 space-y-1">
+          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+            <Calendar className="w-5 h-5" />
+            <span>Calendar</span>
+          </button>
+          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+            <Users className="w-5 h-5" />
+            <span>Team</span>
+          </button>
+          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors relative">
+            <MessageSquare className="w-5 h-5" />
+            <span>Messages</span>
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 w-2 h-2 bg-destructive rounded-full" />
+          </button>
+          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+            <Settings className="w-5 h-5" />
+            <span>Settings</span>
+          </button>
+        </div>
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-border p-3">
+      <div className="border-t border-border/50 p-4 space-y-1">
+        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+          <HelpCircle className="w-5 h-5" />
+          <span>Help & Support</span>
+        </button>
         <button
           onClick={onToggleCollapse}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
-          <LogOut className="w-4 h-4" />
-          <span>Collapse</span>
+          <LogOut className="w-5 h-5" />
+          <span>Log Out</span>
         </button>
       </div>
     </div>
