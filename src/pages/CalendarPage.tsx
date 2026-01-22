@@ -2,12 +2,14 @@ import { Calendar } from '@/components/ui/calendar';
 import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, addMonths, subMonths } from 'date-fns';
 import { SavedProject } from '@/components/ProjectSidebar';
 import { calculateTimeline, DEFAULT_MILESTONES, createSprintMilestone } from '@/lib/timeline';
 import { MilestoneState } from '@/types/timeline';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const PROJECTS_STORAGE_KEY = 'timeline-predictor-projects';
 
@@ -17,8 +19,28 @@ interface MilestoneEvent {
   projectId: string;
 }
 
+// Milestone color mapping based on milestone ID
+const getMilestoneColor = (milestoneId: string): { bg: string; text: string; border: string } => {
+  const colorMap: Record<string, { bg: string; text: string; border: string }> = {
+    'brief': { bg: 'bg-milestone-brief/10', text: 'text-milestone-brief', border: 'border-milestone-brief/30' },
+    'pre-concept': { bg: 'bg-milestone-pre-concept/10', text: 'text-milestone-pre-concept', border: 'border-milestone-pre-concept/30' },
+    'concept': { bg: 'bg-milestone-concept/10', text: 'text-milestone-concept', border: 'border-milestone-concept/30' },
+    'art-sketch': { bg: 'bg-milestone-art-sketch/10', text: 'text-milestone-art-sketch', border: 'border-milestone-art-sketch/30' },
+    'sketch': { bg: 'bg-milestone-sketch/10', text: 'text-milestone-sketch', border: 'border-milestone-sketch/30' },
+    'i-phase': { bg: 'bg-milestone-i-phase/10', text: 'text-milestone-i-phase', border: 'border-milestone-i-phase/30' },
+  };
+
+  // Handle sprints
+  if (milestoneId.startsWith('sprint-')) {
+    return { bg: 'bg-milestone-sprint/10', text: 'text-milestone-sprint', border: 'border-milestone-sprint/30' };
+  }
+
+  return colorMap[milestoneId] || { bg: 'bg-muted/50', text: 'text-foreground', border: 'border-border' };
+};
+
 export default function CalendarPage() {
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const [month, setMonth] = useState<Date>(new Date());
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
 
@@ -79,10 +101,8 @@ export default function CalendarPage() {
 
   // Filter milestones for the selected month
   const monthMilestones = useMemo(() => {
-    if (!date) return [];
-
-    const monthStart = startOfMonth(date);
-    const monthEnd = endOfMonth(date);
+    const monthStart = startOfMonth(month);
+    const monthEnd = endOfMonth(month);
 
     const filtered = selectedProjectId === 'all'
       ? allMilestones
@@ -109,21 +129,47 @@ export default function CalendarPage() {
     return events.sort((a, b) => 
       parseISO(a.milestone.start).getTime() - parseISO(b.milestone.start).getTime()
     );
-  }, [date, allMilestones, selectedProjectId]);
+  }, [month, allMilestones, selectedProjectId]);
+
+  const handlePrevMonth = () => {
+    setMonth(prev => subMonths(prev, 1));
+  };
+
+  const handleNextMonth = () => {
+    setMonth(prev => addMonths(prev, 1));
+  };
+
+  const handleToday = () => {
+    setMonth(new Date());
+    setDate(new Date());
+  };
 
   return (
     <div className="flex-1 p-8 bg-muted/30 overflow-auto">
       <div className="max-w-6xl mx-auto">
+        {/* Header with month navigation */}
         <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Calendar</h1>
-            <p className="text-muted-foreground">View your project milestones</p>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="icon" onClick={handlePrevMonth}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" onClick={handleNextMonth}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleToday}>
+                Today
+              </Button>
+            </div>
+            <h1 className="text-2xl font-bold text-foreground">
+              {format(month, 'MMMM yyyy')}
+            </h1>
           </div>
           <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-[200px] bg-background">
               <SelectValue placeholder="Select project" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background">
               <SelectItem value="all">All Projects</SelectItem>
               {savedProjects.filter(p => p.isFeatureNameSet).map((project) => (
                 <SelectItem key={project.id} value={project.id}>
@@ -141,15 +187,18 @@ export default function CalendarPage() {
                 mode="single"
                 selected={date}
                 onSelect={setDate}
+                month={month}
+                onMonthChange={setMonth}
                 className="rounded-md pointer-events-auto"
               />
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">
-                {date ? format(date, 'MMMM yyyy') : 'Select a month'}
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center justify-between">
+                <span>Milestones in {format(month, 'MMMM')}</span>
+                <Badge variant="secondary">{monthMilestones.length}</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -160,36 +209,42 @@ export default function CalendarPage() {
                 </div>
               ) : monthMilestones.length > 0 ? (
                 <ScrollArea className="h-[400px]">
-                  <div className="space-y-3 pr-4">
-                    {monthMilestones.map((event, idx) => (
-                      <div key={idx} className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
-                        <div className="w-14 h-14 rounded-lg bg-primary/10 flex flex-col items-center justify-center">
-                          <span className="text-primary font-semibold text-sm">
-                            {format(parseISO(event.milestone.start), 'd')}
-                          </span>
-                          <span className="text-primary text-[10px]">
-                            {format(parseISO(event.milestone.start), 'MMM')}
-                          </span>
+                  <div className="space-y-2 pr-4">
+                    {monthMilestones.map((event, idx) => {
+                      const colors = getMilestoneColor(event.milestone.id);
+                      return (
+                        <div 
+                          key={idx} 
+                          className={`flex items-center gap-4 p-4 rounded-xl border ${colors.bg} ${colors.border}`}
+                        >
+                          <div className={`w-14 h-14 rounded-lg ${colors.bg} flex flex-col items-center justify-center border ${colors.border}`}>
+                            <span className={`font-bold text-sm ${colors.text}`}>
+                              {format(parseISO(event.milestone.start), 'd')}
+                            </span>
+                            <span className={`text-[10px] ${colors.text}`}>
+                              {format(parseISO(event.milestone.start), 'MMM')}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-semibold truncate ${colors.text}`}>{event.milestone.name}</p>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {event.projectName}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {format(parseISO(event.milestone.start), 'MMM d')} → {format(parseISO(event.milestone.end), 'MMM d')}
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end gap-1">
+                            <Badge variant="outline" className={`${colors.text} border-current`}>
+                              {event.milestone.durationDays}d
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {event.milestone.phase}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground truncate">{event.milestone.name}</p>
-                          <p className="text-sm text-muted-foreground truncate">
-                            {event.projectName}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {format(parseISO(event.milestone.start), 'MMM d')} - {format(parseISO(event.milestone.end), 'MMM d, yyyy')}
-                          </p>
-                        </div>
-                        <div className="flex flex-col items-end gap-1">
-                          <Badge variant="outline">
-                            {event.milestone.durationDays}d
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {event.milestone.phase}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </ScrollArea>
               ) : (
