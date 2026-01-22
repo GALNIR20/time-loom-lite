@@ -240,7 +240,7 @@ export function MilestoneTable({
                       </div>
                       {useWorkDays && milestone.durationDays > 0 && (
                         <span className="text-xs text-success font-medium px-1.5 py-0.5 bg-success/10 rounded">
-                          {Math.round(milestone.durationDays / 7)}w
+                          {calendarToWorkDays(milestone.durationDays)}d
                         </span>
                       )}
                       {milestone.durationDays === 0 && getMergeTargets(index).length > 0 && (
