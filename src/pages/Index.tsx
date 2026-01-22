@@ -162,7 +162,8 @@ const Index = () => {
   const handleSelectProject = useCallback((project: SavedProject) => {
     setCurrentProjectId(project.id);
     setFeatureName(project.featureName || '');
-    setIsFeatureNameSet(project.isFeatureNameSet || false);
+    // When selecting a saved project, always show full content (project was previously set up)
+    setIsFeatureNameSet(true);
     setProjectStart(project.projectStart || getTodayISO());
     setPreset(project.preset || 'Big');
     setShowDetailed(project.showDetailed ?? true);
