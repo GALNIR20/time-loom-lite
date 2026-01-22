@@ -34,7 +34,7 @@
     --input: 214 32% 91%;
     --ring: 217 91% 50%;
 
-    --radius: 0.625rem;
+    --radius: 1rem;
 
     /* Custom tokens */
     --success: 142 71% 45%;
@@ -42,6 +42,11 @@
     
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
+
+    /* Refined shadow system - softer, more elegant */
+    --shadow-soft: 0 2px 8px -2px hsl(222 47% 11% / 0.04), 0 4px 16px -4px hsl(222 47% 11% / 0.06);
+    --shadow-card: 0 1px 3px 0 hsl(222 47% 11% / 0.03), 0 4px 12px -2px hsl(222 47% 11% / 0.05);
+    --shadow-elevated: 0 4px 20px -4px hsl(222 47% 11% / 0.08), 0 8px 32px -8px hsl(222 47% 11% / 0.06);
 
     --phase-concept: 217 91% 50%;
     --phase-sketch: 38 92% 50%;
@@ -117,30 +122,39 @@
 
 @layer components {
   .card-elevated {
-    @apply bg-card rounded-lg border border-border;
-    box-shadow: var(--shadow-md);
+    @apply bg-card rounded-2xl border border-border/50;
+    box-shadow: var(--shadow-card);
   }
 
   .input-field {
-    @apply h-9 px-3 py-2 bg-background border border-input rounded-md text-sm
-           focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1
+    @apply h-10 px-4 py-2.5 bg-background border border-border/60 rounded-xl text-sm
+           focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary/40
            transition-all duration-200 min-w-0 max-w-full box-border;
   }
 
   .table-container {
-    @apply overflow-x-auto rounded-xl bg-card;
-    box-shadow: 0 0 0 1px hsl(var(--border) / 0.5), var(--shadow-md);
+    @apply overflow-x-auto rounded-2xl bg-card border border-border/40;
+    box-shadow: var(--shadow-card);
   }
 
   .table-header-cell {
     @apply text-left px-6 py-4 font-semibold uppercase tracking-wider text-xs whitespace-nowrap;
     color: hsl(217 91% 50%);
     background-color: hsl(217 91% 97%);
+    border-radius: 0;
+  }
+
+  .table-header-cell:first-child {
+    border-top-left-radius: 1rem;
+  }
+
+  .table-header-cell:last-child {
+    border-top-right-radius: 1rem;
   }
 
   .table-body-row {
-    @apply hover:bg-muted/30 transition-colors;
-    border-bottom: 8px solid hsl(var(--background));
+    @apply hover:bg-muted/20 transition-colors;
+    border-bottom: 6px solid hsl(var(--background));
   }
 
   .table-body-row:last-child {
@@ -175,36 +189,38 @@
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 
-           bg-primary text-primary-foreground font-medium text-sm rounded-md
-           hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 
+           bg-primary text-primary-foreground font-medium text-sm rounded-xl
+           hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring/30 focus:ring-offset-2
            transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none;
+    box-shadow: 0 2px 8px -2px hsl(var(--primary) / 0.3);
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 
-           bg-secondary text-secondary-foreground font-medium text-sm rounded-md
-           hover:bg-secondary/80 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 
+           bg-secondary text-secondary-foreground font-medium text-sm rounded-xl
+           hover:bg-secondary/80 focus:outline-none focus:ring-2 focus:ring-ring/20 focus:ring-offset-2
            transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-1 px-2 py-1
-           text-muted-foreground text-xs font-medium rounded
+    @apply inline-flex items-center justify-center gap-1 px-2.5 py-1.5
+           text-muted-foreground text-xs font-medium rounded-lg
            hover:bg-accent hover:text-accent-foreground
            transition-all duration-200;
   }
 
   .summary-card {
-    @apply card-elevated p-4 flex flex-col gap-1;
+    @apply bg-card rounded-2xl border border-border/40 p-5 flex flex-col gap-1.5;
+    box-shadow: var(--shadow-card);
   }
 
   .summary-label {
-    @apply text-xs font-medium text-muted-foreground uppercase tracking-wide;
+    @apply text-[11px] font-semibold text-muted-foreground uppercase tracking-wider;
   }
 
   .summary-value {
-    @apply text-2xl font-semibold text-foreground;
+    @apply text-2xl font-bold text-foreground;
   }
 
   .summary-subtext {

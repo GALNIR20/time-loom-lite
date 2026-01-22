@@ -57,10 +57,10 @@ export function ControlsPanel({
   onShowCompare,
 }: ControlsPanelProps) {
   return (
-    <div className="card-elevated p-3 sm:p-5 overflow-hidden">
-      <h2 className="text-xs sm:text-sm font-semibold text-foreground mb-3 sm:mb-4">Configuration</h2>
+    <div className="bg-card rounded-2xl border border-border/40 p-4 sm:p-6 overflow-hidden" style={{ boxShadow: 'var(--shadow-card)' }}>
+      <h2 className="text-sm sm:text-base font-semibold text-foreground mb-4 sm:mb-5">Configuration</h2>
       
-      <div className="space-y-3 sm:space-y-4">
+      <div className="space-y-4 sm:space-y-5">
         {/* Feature Name and Preset row */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
           {/* Feature Name */}
@@ -161,7 +161,7 @@ export function ControlsPanel({
 
         {/* Options and Actions row - only show after feature name is set */}
         {isFeatureNameSet && (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4 pt-3 border-t border-border">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4 pt-4 border-t border-border/40">
             {/* Display Options */}
             <div className="flex flex-col gap-1.5 sm:gap-2 sm:flex-1">
               <span className="text-[10px] sm:text-xs font-medium text-muted-foreground">Display Options</span>
