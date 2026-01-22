@@ -2,7 +2,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { format, parseISO, isSameDay, isWithinInterval } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { SavedProject } from '@/components/ProjectSidebar';
 import { calculateTimeline, DEFAULT_MILESTONES, createSprintMilestone } from '@/lib/timeline';
 import { MilestoneState } from '@/types/timeline';
@@ -14,7 +14,7 @@ const PROJECTS_STORAGE_KEY = 'timeline-predictor-projects';
 interface MilestoneEvent {
   milestone: MilestoneState;
   projectName: string;
-  type: 'start' | 'end' | 'ongoing';
+  projectId: string;
 }
 
 export default function CalendarPage() {
@@ -77,9 +77,12 @@ export default function CalendarPage() {
     return result;
   }, [savedProjects]);
 
-  // Filter milestones for selected date
-  const eventsForDate = useMemo(() => {
+  // Filter milestones for the selected month
+  const monthMilestones = useMemo(() => {
     if (!date) return [];
+
+    const monthStart = startOfMonth(date);
+    const monthEnd = endOfMonth(date);
 
     const filtered = selectedProjectId === 'all'
       ? allMilestones
@@ -87,49 +90,26 @@ export default function CalendarPage() {
 
     const events: MilestoneEvent[] = [];
 
-    filtered.forEach(({ milestone, projectName }) => {
+    filtered.forEach(({ milestone, projectName, projectId }) => {
       const startDate = parseISO(milestone.start);
       const endDate = parseISO(milestone.end);
 
-      if (isSameDay(date, startDate)) {
-        events.push({ milestone, projectName, type: 'start' });
-      } else if (isSameDay(date, endDate)) {
-        events.push({ milestone, projectName, type: 'end' });
-      } else if (isWithinInterval(date, { start: startDate, end: endDate })) {
-        events.push({ milestone, projectName, type: 'ongoing' });
+      // Check if milestone overlaps with the current month
+      const milestoneOverlapsMonth = 
+        isWithinInterval(startDate, { start: monthStart, end: monthEnd }) ||
+        isWithinInterval(endDate, { start: monthStart, end: monthEnd }) ||
+        (startDate <= monthStart && endDate >= monthEnd);
+
+      if (milestoneOverlapsMonth) {
+        events.push({ milestone, projectName, projectId });
       }
     });
 
-    return events;
+    // Sort by start date
+    return events.sort((a, b) => 
+      parseISO(a.milestone.start).getTime() - parseISO(b.milestone.start).getTime()
+    );
   }, [date, allMilestones, selectedProjectId]);
-
-  // Get all milestones for selected project(s) to show in list
-  const upcomingMilestones = useMemo(() => {
-    const filtered = selectedProjectId === 'all'
-      ? allMilestones
-      : allMilestones.filter(m => m.projectId === selectedProjectId);
-
-    return filtered
-      .filter(m => parseISO(m.milestone.end) >= new Date())
-      .sort((a, b) => parseISO(a.milestone.start).getTime() - parseISO(b.milestone.start).getTime())
-      .slice(0, 10);
-  }, [allMilestones, selectedProjectId]);
-
-  const getTypeColor = (type: 'start' | 'end' | 'ongoing') => {
-    switch (type) {
-      case 'start': return 'default';
-      case 'end': return 'destructive';
-      case 'ongoing': return 'secondary';
-    }
-  };
-
-  const getTypeLabel = (type: 'start' | 'end' | 'ongoing') => {
-    switch (type) {
-      case 'start': return 'Starts';
-      case 'end': return 'Ends';
-      case 'ongoing': return 'In Progress';
-    }
-  };
 
   return (
     <div className="flex-1 p-8 bg-muted/30 overflow-auto">
@@ -169,7 +149,7 @@ export default function CalendarPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">
-                {date ? format(date, 'MMMM d, yyyy') : 'Select a date'}
+                {date ? format(date, 'MMMM yyyy') : 'Select a month'}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -178,14 +158,17 @@ export default function CalendarPage() {
                   <p>No projects yet</p>
                   <p className="text-sm mt-1">Create a project to see milestones here</p>
                 </div>
-              ) : eventsForDate.length > 0 ? (
-                <ScrollArea className="h-[300px]">
+              ) : monthMilestones.length > 0 ? (
+                <ScrollArea className="h-[400px]">
                   <div className="space-y-3 pr-4">
-                    {eventsForDate.map((event, idx) => (
+                    {monthMilestones.map((event, idx) => (
                       <div key={idx} className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
-                        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <span className="text-primary font-semibold text-xs text-center leading-tight">
-                            {event.milestone.durationDays}d
+                        <div className="w-14 h-14 rounded-lg bg-primary/10 flex flex-col items-center justify-center">
+                          <span className="text-primary font-semibold text-sm">
+                            {format(parseISO(event.milestone.start), 'd')}
+                          </span>
+                          <span className="text-primary text-[10px]">
+                            {format(parseISO(event.milestone.start), 'MMM')}
                           </span>
                         </div>
                         <div className="flex-1 min-w-0">
@@ -194,52 +177,24 @@ export default function CalendarPage() {
                             {event.projectName}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {format(parseISO(event.milestone.start), 'MMM d')} - {format(parseISO(event.milestone.end), 'MMM d')}
+                            {format(parseISO(event.milestone.start), 'MMM d')} - {format(parseISO(event.milestone.end), 'MMM d, yyyy')}
                           </p>
                         </div>
-                        <Badge variant={getTypeColor(event.type)}>
-                          {getTypeLabel(event.type)}
-                        </Badge>
+                        <div className="flex flex-col items-end gap-1">
+                          <Badge variant="outline">
+                            {event.milestone.durationDays}d
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {event.milestone.phase}
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </div>
                 </ScrollArea>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  <p>No milestones on this date</p>
-                </div>
-              )}
-
-              {upcomingMilestones.length > 0 && eventsForDate.length === 0 && (
-                <div className="mt-6">
-                  <h3 className="text-sm font-medium text-foreground mb-3">Upcoming Milestones</h3>
-                  <ScrollArea className="h-[250px]">
-                    <div className="space-y-2 pr-4">
-                      {upcomingMilestones.map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-                          onClick={() => setDate(parseISO(item.milestone.start))}
-                        >
-                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex flex-col items-center justify-center">
-                            <span className="text-primary font-semibold text-xs">
-                              {format(parseISO(item.milestone.start), 'd')}
-                            </span>
-                            <span className="text-primary text-[10px]">
-                              {format(parseISO(item.milestone.start), 'MMM')}
-                            </span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-foreground text-sm truncate">{item.milestone.name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{item.projectName}</p>
-                          </div>
-                          <Badge variant="outline" className="text-xs">
-                            {item.milestone.durationDays}d
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
+                  <p>No milestones this month</p>
                 </div>
               )}
             </CardContent>
