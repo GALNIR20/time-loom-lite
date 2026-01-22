@@ -27,14 +27,22 @@ interface GanttBarProps {
   ) => void;
 }
 
-const getPhaseColor = (phase: string) => {
-  switch (phase) {
-    case 'Concept Phase':
-      return 'bg-primary';
-    case 'Sketch Phase':
-      return 'bg-warning';
-    case 'Development':
-    case 'Execution Phase':
+const getMilestoneColor = (milestoneId: string) => {
+  const baseId = milestoneId.replace(/-\d+$/, ''); // Handle sprint-1, sprint-2, etc.
+  switch (baseId) {
+    case 'brief':
+      return 'bg-milestone-brief';
+    case 'pre-concept':
+      return 'bg-milestone-pre-concept';
+    case 'concept':
+      return 'bg-milestone-concept';
+    case 'art-sketch':
+      return 'bg-milestone-art-sketch';
+    case 'sketch':
+      return 'bg-milestone-sketch';
+    case 'i-phase':
+      return 'bg-milestone-i-phase';
+    case 'sprint':
       return 'bg-success';
     default:
       return 'bg-muted';
@@ -70,7 +78,7 @@ export function GanttBar({
   const barContent = (
     <div
       ref={containerRef}
-      className={`absolute top-1 bottom-1 rounded ${getPhaseColor(phaseName)} flex items-center transition-all shadow-sm ${
+      className={`absolute top-1 bottom-1 rounded ${getMilestoneColor(milestoneId)} flex items-center transition-all shadow-sm ${
         isDragging ? 'ring-2 ring-ring ring-offset-1 z-20' : ''
       } ${editMode ? 'cursor-ew-resize' : ''}`}
       style={{
