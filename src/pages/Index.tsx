@@ -408,7 +408,7 @@ const Index = () => {
         }} devStart={iPhaseStart ?? projectStart} onDevStartChange={handleDevStartChange} preset={preset} onPresetChange={handlePresetChange} showDetailed={showDetailed} onShowDetailedChange={setShowDetailed} useWorkDays={useWorkDays} onUseWorkDaysChange={setUseWorkDays} onCopyJson={handleCopyJson} onSave={handleSave} onRestore={handleRestore} hasUnsavedChanges={hasUnsavedChanges} onReset={handleReset} onShowTimeline={() => setIsTimelineViewOpen(true)} onShowCompare={() => setIsCompareViewOpen(true)} />
 
         {isFeatureNameSet && <>
-            <SummaryCards totalDays={totalDays} projectedEnd={projectedEnd} iPhaseStart={iPhaseStart} daysToIPhase={daysToIPhase} showDetailed={showDetailed} devDays={devDays} />
+            <SummaryCards totalDays={totalDays} projectedEnd={projectedEnd} iPhaseStart={iPhaseStart} daysToIPhase={daysToIPhase} showDetailed={showDetailed} devDays={devDays} projectStart={projectStart} />
 
             <MilestoneTable milestones={milestones} showDetailed={showDetailed} useWorkDays={useWorkDays} onDaysChange={handleDaysChange} onRemoveMilestone={handleRemoveMilestone} onMergeMilestones={handleMergeMilestones} hiddenMilestones={hiddenMilestones} allMilestones={customMilestones} onRestoreMilestone={handleRestoreMilestone} mergedMilestones={mergedMilestones} onUnmergeMilestone={(targetId: string, sourceName: string) => {
             // Find the source milestone id by name
