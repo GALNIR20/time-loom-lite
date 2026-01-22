@@ -65,6 +65,48 @@ const Index = () => {
     }
   }, []);
 
+  // Auto-save project whenever state changes (debounced)
+  useEffect(() => {
+    // Only auto-save if we have a feature name set (user has started working)
+    if (!isFeatureNameSet) return;
+
+    const timeoutId = setTimeout(() => {
+      const now = new Date().toISOString();
+      const projectId = currentProjectId || generateId();
+      const project: SavedProject = {
+        id: projectId,
+        featureName,
+        isFeatureNameSet,
+        projectStart,
+        preset,
+        showDetailed,
+        overrides,
+        hiddenMilestones: Array.from(hiddenMilestones),
+        lockedDevStart,
+        savedAt: now
+      };
+      
+      setSavedProjects(prev => {
+        const existingIndex = prev.findIndex(p => p.id === projectId);
+        let updated: SavedProject[];
+        if (existingIndex >= 0) {
+          updated = [...prev];
+          updated[existingIndex] = project;
+        } else {
+          updated = [project, ...prev];
+        }
+        localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updated));
+        return updated;
+      });
+      
+      if (!currentProjectId) {
+        setCurrentProjectId(projectId);
+      }
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [featureName, isFeatureNameSet, projectStart, preset, showDetailed, overrides, hiddenMilestones, lockedDevStart, currentProjectId]);
+
   // Get the current project from saved projects
   const currentSavedProject = useMemo(() => {
     return savedProjects.find(p => p.id === currentProjectId) || null;
