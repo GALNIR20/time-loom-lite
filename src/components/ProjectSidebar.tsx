@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Plus, FolderOpen, Trash2, ChevronDown, Calendar, Settings, LogOut } from 'lucide-react';
 import { PresetType } from '@/types/timeline';
-import predictorLogo from '@/assets/predictor-logo.png';
+import { PredictorLogo } from '@/components/PredictorLogo';
 
 export interface SavedProject {
   id: string;
@@ -55,7 +55,7 @@ export function ProjectSidebar({
           className="mb-8"
           aria-label="Expand sidebar"
         >
-          <img src={predictorLogo} alt="Predictor" className="w-9 h-9 rounded-xl" />
+          <PredictorLogo size="md" />
         </button>
         <nav className="flex-1 flex flex-col items-center gap-2 w-full px-2">
           <button
@@ -95,7 +95,7 @@ export function ProjectSidebar({
     <div className="w-60 bg-background border-r border-border/50 flex flex-col h-full shadow-sm">
       {/* Logo Header */}
       <div className="p-6 flex items-center gap-3">
-        <img src={predictorLogo} alt="Predictor" className="w-9 h-9 rounded-xl" />
+        <PredictorLogo size="md" />
         <span className="font-bold text-foreground text-xl tracking-tight">PREDICTOR</span>
       </div>
 

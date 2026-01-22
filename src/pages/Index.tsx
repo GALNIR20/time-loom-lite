@@ -11,7 +11,7 @@ import { SavedProject } from '@/components/ProjectSidebar';
 import { SprintManager } from '@/components/SprintManager';
 import { DEFAULT_MILESTONES, calculateTimeline, getPresetDuration, PRESET_CONFIGS, getTodayISO, createSprintMilestone, SPRINT_DURATION_DAYS } from '@/lib/timeline';
 import { TimelineExport, PresetType, MilestoneConfig } from '@/types/timeline';
-import predictorLogo from '@/assets/predictor-logo.png';
+import { PredictorLogo } from '@/components/PredictorLogo';
 
 // Calculate days before I-Phase for a given preset and overrides
 function calculateDaysBeforeIPhase(presetType: PresetType, overrides: Record<string, number | null>, milestoneConfigs: MilestoneConfig[]): number {
@@ -429,7 +429,8 @@ const Index = () => {
       <header className="border-b border-border bg-card">
         <div className="container max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-6">
           <div className="flex items-center gap-2 sm:gap-3">
-            <img src={predictorLogo} alt="Predictor" className="h-[42px] sm:h-[58px]" />
+            <PredictorLogo size="lg" />
+            <span className="font-bold text-foreground text-xl sm:text-2xl tracking-tight">PREDICTOR</span>
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Plan your product lifecycle with flexible milestone durations
