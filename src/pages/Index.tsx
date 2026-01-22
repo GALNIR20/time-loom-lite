@@ -7,7 +7,7 @@ import { MilestoneTable } from '@/components/MilestoneTable';
 import { JsonExportModal } from '@/components/JsonExportModal';
 import { TimelineView } from '@/components/TimelineView';
 import { ProjectCompareView } from '@/components/ProjectCompareView';
-import { ProjectSidebar, SavedProject } from '@/components/ProjectSidebar';
+import { SavedProject } from '@/components/ProjectSidebar';
 import { SprintManager } from '@/components/SprintManager';
 import { DEFAULT_MILESTONES, calculateTimeline, getPresetDuration, PRESET_CONFIGS, getTodayISO, createSprintMilestone, SPRINT_DURATION_DAYS } from '@/lib/timeline';
 import { TimelineExport, PresetType, MilestoneConfig } from '@/types/timeline';
@@ -50,7 +50,6 @@ const Index = () => {
   // Multi-project management
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Load saved projects on mount
   useEffect(() => {
@@ -106,6 +105,51 @@ const Index = () => {
 
     return () => clearTimeout(timeoutId);
   }, [featureName, isFeatureNameSet, projectStart, preset, showDetailed, overrides, hiddenMilestones, lockedDevStart, currentProjectId]);
+
+  // Sync with Layout component
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('projectsUpdated', { detail: savedProjects }));
+  }, [savedProjects]);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('currentProjectUpdated', { detail: currentProjectId }));
+  }, [currentProjectId]);
+
+  // Listen for events from Layout sidebar
+  useEffect(() => {
+    const handleLoadProject = (e: CustomEvent<SavedProject>) => {
+      const project = e.detail;
+      setCurrentProjectId(project.id);
+      setFeatureName(project.featureName || '');
+      setIsFeatureNameSet(true);
+      setProjectStart(project.projectStart || getTodayISO());
+      setPreset(project.preset || 'Big');
+      setShowDetailed(project.showDetailed ?? true);
+      setOverrides(project.overrides || {});
+      setHiddenMilestones(new Set(project.hiddenMilestones || []));
+      setLockedDevStart(project.lockedDevStart || null);
+    };
+
+    const handleCreateNew = () => {
+      setCurrentProjectId(null);
+      setFeatureName('');
+      setIsFeatureNameSet(false);
+      setProjectStart(getTodayISO());
+      setPreset('Big');
+      setShowDetailed(true);
+      setOverrides({});
+      setHiddenMilestones(new Set());
+      setLockedDevStart(null);
+    };
+
+    window.addEventListener('loadProject', handleLoadProject as EventListener);
+    window.addEventListener('createNewProject', handleCreateNew as EventListener);
+
+    return () => {
+      window.removeEventListener('loadProject', handleLoadProject as EventListener);
+      window.removeEventListener('createNewProject', handleCreateNew as EventListener);
+    };
+  }, []);
 
   // Get the current project from saved projects
   const currentSavedProject = useMemo(() => {
@@ -379,80 +423,123 @@ const Index = () => {
     });
     toast.success(`${lastSprint.name} removed`);
   }, [customMilestones]);
-  return <div className="min-h-screen bg-background flex">
-      {/* Project Sidebar */}
-      <ProjectSidebar projects={savedProjects} currentProjectId={currentProjectId} isCollapsed={isSidebarCollapsed} onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)} onSelectProject={handleSelectProject} onCreateNew={handleCreateNewProject} onDeleteProject={handleDeleteProject} />
-
-      {/* Main Area */}
-      <div className="flex-1 min-h-screen overflow-auto">
-        {/* Header */}
-        <header className="border-b border-border bg-card">
-          <div className="container max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-6">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <img src={predictorLogo} alt="Predictor" className="h-[42px] sm:h-[58px]" />
-            </div>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              Plan your product lifecycle with flexible milestone durations
-            </p>
+  return (
+    <div className="flex-1 min-h-screen overflow-auto">
+      {/* Header */}
+      <header className="border-b border-border bg-card">
+        <div className="container max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-6">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <img src={predictorLogo} alt="Predictor" className="h-[42px] sm:h-[58px]" />
           </div>
-        </header>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            Plan your product lifecycle with flexible milestone durations
+          </p>
+        </div>
+      </header>
 
-        {/* Main Content */}
-        <main className="container max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 bg-gray-50">
-        <ControlsPanel featureName={featureName} onFeatureNameChange={setFeatureName} isFeatureNameSet={isFeatureNameSet} onSetFeatureName={() => {
-          setIsFeatureNameSet(true);
-          // Auto-save after setting feature name
-          setTimeout(() => handleSave(), 0);
-        }} onEditFeatureName={() => setIsFeatureNameSet(false)} projectStart={projectStart} onProjectStartChange={date => {
-          setProjectStart(date);
-          setLockedDevStart(null); // Clear locked dev start when project start is manually changed
-        }} devStart={iPhaseStart ?? projectStart} onDevStartChange={handleDevStartChange} preset={preset} onPresetChange={handlePresetChange} showDetailed={showDetailed} onShowDetailedChange={setShowDetailed} useWorkDays={useWorkDays} onUseWorkDaysChange={setUseWorkDays} onCopyJson={handleCopyJson} onSave={handleSave} onRestore={handleRestore} hasUnsavedChanges={hasUnsavedChanges} onReset={handleReset} onShowTimeline={() => setIsTimelineViewOpen(true)} onShowCompare={() => setIsCompareViewOpen(true)} />
+      {/* Main Content */}
+      <main className="container max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 bg-gray-50">
+        <ControlsPanel
+          featureName={featureName}
+          onFeatureNameChange={setFeatureName}
+          isFeatureNameSet={isFeatureNameSet}
+          onSetFeatureName={() => {
+            setIsFeatureNameSet(true);
+            setTimeout(() => handleSave(), 0);
+          }}
+          onEditFeatureName={() => setIsFeatureNameSet(false)}
+          projectStart={projectStart}
+          onProjectStartChange={date => {
+            setProjectStart(date);
+            setLockedDevStart(null);
+          }}
+          devStart={iPhaseStart ?? projectStart}
+          onDevStartChange={handleDevStartChange}
+          preset={preset}
+          onPresetChange={handlePresetChange}
+          showDetailed={showDetailed}
+          onShowDetailedChange={setShowDetailed}
+          useWorkDays={useWorkDays}
+          onUseWorkDaysChange={setUseWorkDays}
+          onCopyJson={handleCopyJson}
+          onSave={handleSave}
+          onRestore={handleRestore}
+          hasUnsavedChanges={hasUnsavedChanges}
+          onReset={handleReset}
+          onShowTimeline={() => setIsTimelineViewOpen(true)}
+          onShowCompare={() => setIsCompareViewOpen(true)}
+        />
 
-        {isFeatureNameSet && <>
-            <SummaryCards totalDays={totalDays} projectedEnd={projectedEnd} iPhaseStart={iPhaseStart} daysToIPhase={daysToIPhase} showDetailed={showDetailed} devDays={devDays} projectStart={projectStart} />
+        {isFeatureNameSet && (
+          <>
+            <SummaryCards
+              totalDays={totalDays}
+              projectedEnd={projectedEnd}
+              iPhaseStart={iPhaseStart}
+              daysToIPhase={daysToIPhase}
+              showDetailed={showDetailed}
+              devDays={devDays}
+              projectStart={projectStart}
+            />
 
-            <MilestoneTable milestones={milestones} showDetailed={showDetailed} useWorkDays={useWorkDays} onDaysChange={handleDaysChange} onRemoveMilestone={handleRemoveMilestone} onMergeMilestones={handleMergeMilestones} hiddenMilestones={hiddenMilestones} allMilestones={customMilestones} onRestoreMilestone={handleRestoreMilestone} mergedMilestones={mergedMilestones} onUnmergeMilestone={(targetId: string, sourceName: string) => {
-            // Find the source milestone id by name
-            const sourceMilestone = customMilestones.find(m => m.name === sourceName);
-            if (sourceMilestone) {
-              // Restore the hidden milestone
-              setHiddenMilestones(prev => {
-                const next = new Set(prev);
-                next.delete(sourceMilestone.id);
-                return next;
-              });
-            }
-            // Remove from merged list
-            setMergedMilestones(prev => {
-              const newList = [...(prev[targetId] || [])].filter(n => n !== sourceName);
-              if (newList.length === 0) {
-                const {
-                  [targetId]: _,
-                  ...rest
-                } = prev;
-                return rest;
-              }
-              return {
-                ...prev,
-                [targetId]: newList
-              };
-            });
-            toast.success(`${sourceName} unmerged`);
-          }} />
+            <MilestoneTable
+              milestones={milestones}
+              showDetailed={showDetailed}
+              useWorkDays={useWorkDays}
+              onDaysChange={handleDaysChange}
+              onRemoveMilestone={handleRemoveMilestone}
+              onMergeMilestones={handleMergeMilestones}
+              hiddenMilestones={hiddenMilestones}
+              allMilestones={customMilestones}
+              onRestoreMilestone={handleRestoreMilestone}
+              mergedMilestones={mergedMilestones}
+              onUnmergeMilestone={(targetId: string, sourceName: string) => {
+                const sourceMilestone = customMilestones.find(m => m.name === sourceName);
+                if (sourceMilestone) {
+                  setHiddenMilestones(prev => {
+                    const next = new Set(prev);
+                    next.delete(sourceMilestone.id);
+                    return next;
+                  });
+                }
+                setMergedMilestones(prev => {
+                  const newList = [...(prev[targetId] || [])].filter(n => n !== sourceName);
+                  if (newList.length === 0) {
+                    const { [targetId]: _, ...rest } = prev;
+                    return rest;
+                  }
+                  return { ...prev, [targetId]: newList };
+                });
+                toast.success(`${sourceName} unmerged`);
+              }}
+            />
 
-            <SprintManager milestones={customMilestones} onAddSprint={handleAddSprint} onRemoveSprint={handleRemoveSprint} />
-          </>}
-        </main>
+            <SprintManager
+              milestones={customMilestones}
+              onAddSprint={handleAddSprint}
+              onRemoveSprint={handleRemoveSprint}
+            />
+          </>
+        )}
+      </main>
 
-        {/* JSON Modal */}
-        <JsonExportModal data={exportData} isOpen={isJsonModalOpen} onClose={() => setIsJsonModalOpen(false)} />
+      {/* JSON Modal */}
+      <JsonExportModal data={exportData} isOpen={isJsonModalOpen} onClose={() => setIsJsonModalOpen(false)} />
 
-        {/* Timeline View Modal */}
-        <TimelineView milestones={milestones} featureName={isFeatureNameSet ? featureName : undefined} preset={preset} isOpen={isTimelineViewOpen} onClose={() => setIsTimelineViewOpen(false)} onDaysChange={handleDaysChange} onRemoveMilestone={handleRemoveMilestone} />
+      {/* Timeline View Modal */}
+      <TimelineView
+        milestones={milestones}
+        featureName={isFeatureNameSet ? featureName : undefined}
+        preset={preset}
+        isOpen={isTimelineViewOpen}
+        onClose={() => setIsTimelineViewOpen(false)}
+        onDaysChange={handleDaysChange}
+        onRemoveMilestone={handleRemoveMilestone}
+      />
 
-        {/* Project Compare View Modal */}
-        <ProjectCompareView isOpen={isCompareViewOpen} onClose={() => setIsCompareViewOpen(false)} projects={savedProjects} />
-      </div>
-    </div>;
+      {/* Project Compare View Modal */}
+      <ProjectCompareView isOpen={isCompareViewOpen} onClose={() => setIsCompareViewOpen(false)} projects={savedProjects} />
+    </div>
+  );
 };
 export default Index;
