@@ -379,151 +379,80 @@ const Index = () => {
     });
     toast.success(`${lastSprint.name} removed`);
   }, [customMilestones]);
-  return (
-    <div className="min-h-screen bg-background flex w-full">
+  return <div className="min-h-screen bg-background flex">
       {/* Project Sidebar */}
-      <ProjectSidebar 
-        projects={savedProjects} 
-        currentProjectId={currentProjectId} 
-        isCollapsed={isSidebarCollapsed} 
-        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
-        onSelectProject={handleSelectProject} 
-        onCreateNew={handleCreateNewProject} 
-        onDeleteProject={handleDeleteProject} 
-      />
+      <ProjectSidebar projects={savedProjects} currentProjectId={currentProjectId} isCollapsed={isSidebarCollapsed} onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)} onSelectProject={handleSelectProject} onCreateNew={handleCreateNewProject} onDeleteProject={handleDeleteProject} />
 
       {/* Main Area */}
       <div className="flex-1 min-h-screen overflow-auto">
         {/* Header */}
-        <header className="bg-background px-6 py-5">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-semibold text-foreground">
-                  {isFeatureNameSet && featureName ? featureName : 'Welcome back!'}
-                </h1>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {isFeatureNameSet 
-                    ? 'Manage your project timeline and milestones'
-                    : 'Start a new project or select one from the sidebar'}
-                </p>
-              </div>
-              <img src={predictorLogo} alt="Predictor" className="h-10 opacity-80" />
+        <header className="border-b border-border bg-card">
+          <div className="container max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-6">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <img src={predictorLogo} alt="Predictor" className="h-[42px] sm:h-[58px]" />
             </div>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+              Plan your product lifecycle with flexible milestone durations
+            </p>
           </div>
         </header>
 
         {/* Main Content */}
-        <main className="px-6 py-4 space-y-5">
-          <div className="max-w-6xl mx-auto space-y-5">
-            <ControlsPanel 
-              featureName={featureName} 
-              onFeatureNameChange={setFeatureName} 
-              isFeatureNameSet={isFeatureNameSet} 
-              onSetFeatureName={() => {
-                setIsFeatureNameSet(true);
-                setTimeout(() => handleSave(), 0);
-              }} 
-              onEditFeatureName={() => setIsFeatureNameSet(false)} 
-              projectStart={projectStart} 
-              onProjectStartChange={date => {
-                setProjectStart(date);
-                setLockedDevStart(null);
-              }} 
-              devStart={iPhaseStart ?? projectStart} 
-              onDevStartChange={handleDevStartChange} 
-              preset={preset} 
-              onPresetChange={handlePresetChange} 
-              showDetailed={showDetailed} 
-              onShowDetailedChange={setShowDetailed} 
-              useWorkDays={useWorkDays} 
-              onUseWorkDaysChange={setUseWorkDays} 
-              onCopyJson={handleCopyJson} 
-              onSave={handleSave} 
-              onRestore={handleRestore} 
-              hasUnsavedChanges={hasUnsavedChanges} 
-              onReset={handleReset} 
-              onShowTimeline={() => setIsTimelineViewOpen(true)} 
-              onShowCompare={() => setIsCompareViewOpen(true)} 
-            />
+        <main className="container max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 bg-gray-50">
+        <ControlsPanel featureName={featureName} onFeatureNameChange={setFeatureName} isFeatureNameSet={isFeatureNameSet} onSetFeatureName={() => {
+          setIsFeatureNameSet(true);
+          // Auto-save after setting feature name
+          setTimeout(() => handleSave(), 0);
+        }} onEditFeatureName={() => setIsFeatureNameSet(false)} projectStart={projectStart} onProjectStartChange={date => {
+          setProjectStart(date);
+          setLockedDevStart(null); // Clear locked dev start when project start is manually changed
+        }} devStart={iPhaseStart ?? projectStart} onDevStartChange={handleDevStartChange} preset={preset} onPresetChange={handlePresetChange} showDetailed={showDetailed} onShowDetailedChange={setShowDetailed} useWorkDays={useWorkDays} onUseWorkDaysChange={setUseWorkDays} onCopyJson={handleCopyJson} onSave={handleSave} onRestore={handleRestore} hasUnsavedChanges={hasUnsavedChanges} onReset={handleReset} onShowTimeline={() => setIsTimelineViewOpen(true)} onShowCompare={() => setIsCompareViewOpen(true)} />
 
-            {isFeatureNameSet && (
-              <>
-                <SummaryCards 
-                  totalDays={totalDays} 
-                  projectedEnd={projectedEnd} 
-                  iPhaseStart={iPhaseStart} 
-                  daysToIPhase={daysToIPhase} 
-                  showDetailed={showDetailed} 
-                  devDays={devDays} 
-                  projectStart={projectStart} 
-                />
+        {isFeatureNameSet && <>
+            <SummaryCards totalDays={totalDays} projectedEnd={projectedEnd} iPhaseStart={iPhaseStart} daysToIPhase={daysToIPhase} showDetailed={showDetailed} devDays={devDays} projectStart={projectStart} />
 
-                <MilestoneTable 
-                  milestones={milestones} 
-                  showDetailed={showDetailed} 
-                  useWorkDays={useWorkDays} 
-                  onDaysChange={handleDaysChange} 
-                  onRemoveMilestone={handleRemoveMilestone} 
-                  onMergeMilestones={handleMergeMilestones} 
-                  hiddenMilestones={hiddenMilestones} 
-                  allMilestones={customMilestones} 
-                  onRestoreMilestone={handleRestoreMilestone} 
-                  mergedMilestones={mergedMilestones} 
-                  onUnmergeMilestone={(targetId: string, sourceName: string) => {
-                    const sourceMilestone = customMilestones.find(m => m.name === sourceName);
-                    if (sourceMilestone) {
-                      setHiddenMilestones(prev => {
-                        const next = new Set(prev);
-                        next.delete(sourceMilestone.id);
-                        return next;
-                      });
-                    }
-                    setMergedMilestones(prev => {
-                      const newList = [...(prev[targetId] || [])].filter(n => n !== sourceName);
-                      if (newList.length === 0) {
-                        const { [targetId]: _, ...rest } = prev;
-                        return rest;
-                      }
-                      return { ...prev, [targetId]: newList };
-                    });
-                    toast.success(`${sourceName} unmerged`);
-                  }} 
-                />
+            <MilestoneTable milestones={milestones} showDetailed={showDetailed} useWorkDays={useWorkDays} onDaysChange={handleDaysChange} onRemoveMilestone={handleRemoveMilestone} onMergeMilestones={handleMergeMilestones} hiddenMilestones={hiddenMilestones} allMilestones={customMilestones} onRestoreMilestone={handleRestoreMilestone} mergedMilestones={mergedMilestones} onUnmergeMilestone={(targetId: string, sourceName: string) => {
+            // Find the source milestone id by name
+            const sourceMilestone = customMilestones.find(m => m.name === sourceName);
+            if (sourceMilestone) {
+              // Restore the hidden milestone
+              setHiddenMilestones(prev => {
+                const next = new Set(prev);
+                next.delete(sourceMilestone.id);
+                return next;
+              });
+            }
+            // Remove from merged list
+            setMergedMilestones(prev => {
+              const newList = [...(prev[targetId] || [])].filter(n => n !== sourceName);
+              if (newList.length === 0) {
+                const {
+                  [targetId]: _,
+                  ...rest
+                } = prev;
+                return rest;
+              }
+              return {
+                ...prev,
+                [targetId]: newList
+              };
+            });
+            toast.success(`${sourceName} unmerged`);
+          }} />
 
-                <SprintManager 
-                  milestones={customMilestones} 
-                  onAddSprint={handleAddSprint} 
-                  onRemoveSprint={handleRemoveSprint} 
-                />
-              </>
-            )}
-          </div>
+            <SprintManager milestones={customMilestones} onAddSprint={handleAddSprint} onRemoveSprint={handleRemoveSprint} />
+          </>}
         </main>
 
         {/* JSON Modal */}
         <JsonExportModal data={exportData} isOpen={isJsonModalOpen} onClose={() => setIsJsonModalOpen(false)} />
 
         {/* Timeline View Modal */}
-        <TimelineView 
-          milestones={milestones} 
-          featureName={isFeatureNameSet ? featureName : undefined} 
-          preset={preset} 
-          isOpen={isTimelineViewOpen} 
-          onClose={() => setIsTimelineViewOpen(false)} 
-          onDaysChange={handleDaysChange} 
-          onRemoveMilestone={handleRemoveMilestone} 
-        />
+        <TimelineView milestones={milestones} featureName={isFeatureNameSet ? featureName : undefined} preset={preset} isOpen={isTimelineViewOpen} onClose={() => setIsTimelineViewOpen(false)} onDaysChange={handleDaysChange} onRemoveMilestone={handleRemoveMilestone} />
 
         {/* Project Compare View Modal */}
-        <ProjectCompareView 
-          isOpen={isCompareViewOpen} 
-          onClose={() => setIsCompareViewOpen(false)} 
-          projects={savedProjects} 
-        />
+        <ProjectCompareView isOpen={isCompareViewOpen} onClose={() => setIsCompareViewOpen(false)} projects={savedProjects} />
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
