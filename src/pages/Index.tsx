@@ -386,19 +386,19 @@ const Index = () => {
       {/* Main Area */}
       <div className="flex-1 min-h-screen overflow-auto">
         {/* Header */}
-        <header className="border-b border-border/40 bg-card/80 backdrop-blur-sm">
-          <div className="container max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+        <header className="border-b border-border bg-card">
+          <div className="container max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-6">
             <div className="flex items-center gap-2 sm:gap-3">
               <img src={predictorLogo} alt="Predictor" className="h-[42px] sm:h-[58px]" />
             </div>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1.5">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               Plan your product lifecycle with flexible milestone durations
             </p>
           </div>
         </header>
 
         {/* Main Content */}
-        <main className="container max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
+        <main className="container max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 bg-gray-50">
         <ControlsPanel featureName={featureName} onFeatureNameChange={setFeatureName} isFeatureNameSet={isFeatureNameSet} onSetFeatureName={() => {
           setIsFeatureNameSet(true);
           // Auto-save after setting feature name
