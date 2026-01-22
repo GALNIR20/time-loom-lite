@@ -274,42 +274,65 @@ export default function CalendarPage() {
                 </div>
               ) : monthMilestones.length > 0 ? (
                 <ScrollArea className="h-[400px]">
-                  <div className="space-y-2 pr-4">
-                    {monthMilestones.map((event, idx) => {
-                      const colors = getMilestoneColor(event.milestone.id);
-                      return (
-                        <div 
-                          key={idx} 
-                          className={`flex items-center gap-4 p-4 rounded-xl border ${colors.bg} ${colors.border}`}
-                        >
-                          <div className={`w-14 h-14 rounded-lg ${colors.bg} flex flex-col items-center justify-center border ${colors.border}`}>
-                            <span className={`font-bold text-sm ${colors.text}`}>
-                              {format(parseISO(event.milestone.start), 'd')}
-                            </span>
-                            <span className={`text-[10px] ${colors.text}`}>
-                              {format(parseISO(event.milestone.start), 'MMM')}
-                            </span>
+                  <div className="pr-4">
+                    {(() => {
+                      // Group milestones by month
+                      const groupedByMonth: Record<string, MilestoneEvent[]> = {};
+                      monthMilestones.forEach(event => {
+                        const monthKey = format(parseISO(event.milestone.start), 'MMMM yyyy');
+                        if (!groupedByMonth[monthKey]) {
+                          groupedByMonth[monthKey] = [];
+                        }
+                        groupedByMonth[monthKey].push(event);
+                      });
+
+                      return Object.entries(groupedByMonth).map(([monthKey, events]) => (
+                        <div key={monthKey} className="mb-4">
+                          <div className="sticky top-0 bg-card z-10 py-2 mb-2 border-b border-border">
+                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                              {monthKey}
+                            </h3>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={`font-semibold truncate ${colors.text}`}>{event.milestone.name}</p>
-                            <p className="text-sm text-muted-foreground truncate">
-                              {event.projectName}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {format(parseISO(event.milestone.start), 'MMM d')} → {format(parseISO(event.milestone.end), 'MMM d')}
-                            </p>
-                          </div>
-                          <div className="flex flex-col items-end gap-1">
-                            <Badge variant="outline" className={`${colors.text} border-current`}>
-                              {event.milestone.durationDays}d
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {event.milestone.phase}
-                            </span>
+                          <div className="space-y-2">
+                            {events.map((event, idx) => {
+                              const colors = getMilestoneColor(event.milestone.id);
+                              return (
+                                <div 
+                                  key={idx} 
+                                  className={`flex items-center gap-4 p-4 rounded-xl border ${colors.bg} ${colors.border}`}
+                                >
+                                  <div className={`w-14 h-14 rounded-lg ${colors.bg} flex flex-col items-center justify-center border ${colors.border}`}>
+                                    <span className={`font-bold text-sm ${colors.text}`}>
+                                      {format(parseISO(event.milestone.start), 'd')}
+                                    </span>
+                                    <span className={`text-[10px] ${colors.text}`}>
+                                      {format(parseISO(event.milestone.start), 'MMM')}
+                                    </span>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className={`font-semibold truncate ${colors.text}`}>{event.milestone.name}</p>
+                                    <p className="text-sm text-muted-foreground truncate">
+                                      {event.projectName}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {format(parseISO(event.milestone.start), 'MMM d')} → {format(parseISO(event.milestone.end), 'MMM d')}
+                                    </p>
+                                  </div>
+                                  <div className="flex flex-col items-end gap-1">
+                                    <Badge variant="outline" className={`${colors.text} border-current`}>
+                                      {event.milestone.durationDays}d
+                                    </Badge>
+                                    <span className="text-xs text-muted-foreground">
+                                      {event.milestone.phase}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
-                      );
-                    })}
+                      ));
+                    })()}
                   </div>
                 </ScrollArea>
               ) : (
