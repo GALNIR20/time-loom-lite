@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Plus, FolderOpen, Trash2, ChevronDown, LayoutDashboard, Calendar, Users, MessageSquare, Settings, HelpCircle, LogOut } from 'lucide-react';
+import { Plus, FolderOpen, Trash2, ChevronDown, Calendar, Settings, LogOut } from 'lucide-react';
 import { PresetType } from '@/types/timeline';
 import predictorLogo from '@/assets/predictor-logo.png';
 
@@ -42,8 +42,6 @@ export function ProjectSidebar({
 
   const navItems = [
     { path: '/calendar', icon: Calendar, label: 'Calendar' },
-    { path: '/team', icon: Users, label: 'Team' },
-    { path: '/messages', icon: MessageSquare, label: 'Messages', hasNotification: true },
     { path: '/settings', icon: Settings, label: 'Settings' },
   ];
 
@@ -61,18 +59,14 @@ export function ProjectSidebar({
         </button>
         <nav className="flex-1 flex flex-col items-center gap-2 w-full px-2">
           <button
-            onClick={onCreateNew}
-            className="p-3 rounded-xl hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-            aria-label="New project"
+            onClick={() => {
+              navigate('/');
+              onCreateNew();
+            }}
+            className="p-3 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            aria-label="Create project"
           >
             <Plus className="w-5 h-5" />
-          </button>
-          <button
-            className="p-3 rounded-xl bg-primary/10 text-primary relative"
-            aria-label="Dashboard"
-          >
-            <LayoutDashboard className="w-5 h-5" />
-            <span className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-l-full" />
           </button>
           {projects.slice(0, 5).map((project) => (
             <button
@@ -107,24 +101,17 @@ export function ProjectSidebar({
 
       {/* Navigation Menu */}
       <nav className="flex-1 px-4 py-2 overflow-y-auto">
-        {/* Dashboard - Active when on home */}
-        <div className="relative mb-1">
-          <button
-            onClick={() => {
-              navigate('/');
-              onCreateNew();
-            }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
-              isOnDashboard ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-            }`}
-          >
-            <LayoutDashboard className="w-5 h-5" />
-            <span>Dashboard</span>
-          </button>
-          {isOnDashboard && (
-            <span className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-l-full" />
-          )}
-        </div>
+        {/* Create Project Button */}
+        <button
+          onClick={() => {
+            navigate('/');
+            onCreateNew();
+          }}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors mb-3"
+        >
+          <Plus className="w-5 h-5" />
+          <span>Create Project</span>
+        </button>
 
         {/* Projects Folder */}
         <div className="mt-2">
@@ -199,9 +186,6 @@ export function ProjectSidebar({
                 >
                   <Icon className="w-5 h-5" />
                   <span>{item.label}</span>
-                  {item.hasNotification && !isActive && (
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 w-2 h-2 bg-destructive rounded-full" />
-                  )}
                 </button>
                 {isActive && (
                   <span className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-l-full" />
@@ -213,17 +197,13 @@ export function ProjectSidebar({
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-border/50 p-4 space-y-1">
-        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-          <HelpCircle className="w-5 h-5" />
-          <span>Help & Support</span>
-        </button>
+      <div className="border-t border-border/50 p-4">
         <button
           onClick={onToggleCollapse}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           <LogOut className="w-5 h-5" />
-          <span>Log Out</span>
+          <span>Collapse</span>
         </button>
       </div>
     </div>
