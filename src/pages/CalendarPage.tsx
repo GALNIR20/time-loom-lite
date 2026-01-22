@@ -1,15 +1,16 @@
 import { Calendar } from '@/components/ui/calendar';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, addMonths, subMonths } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, addMonths, subMonths, isSameDay, eachDayOfInterval } from 'date-fns';
 import { SavedProject } from '@/components/ProjectSidebar';
 import { calculateTimeline, DEFAULT_MILESTONES, createSprintMilestone } from '@/lib/timeline';
 import { MilestoneState } from '@/types/timeline';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { DayContentProps } from 'react-day-picker';
 
 const PROJECTS_STORAGE_KEY = 'timeline-predictor-projects';
 
@@ -131,6 +132,67 @@ export default function CalendarPage() {
     );
   }, [month, allMilestones, selectedProjectId]);
 
+  // Build a map of dates to milestone colors for the calendar dots
+  const dateMilestoneMap = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    
+    const filtered = selectedProjectId === 'all'
+      ? allMilestones
+      : allMilestones.filter(m => m.projectId === selectedProjectId);
+
+    filtered.forEach(({ milestone }) => {
+      const startDate = parseISO(milestone.start);
+      const endDate = parseISO(milestone.end);
+      
+      // Get all days in the milestone range
+      const days = eachDayOfInterval({ start: startDate, end: endDate });
+      days.forEach(day => {
+        const dateKey = format(day, 'yyyy-MM-dd');
+        if (!map.has(dateKey)) {
+          map.set(dateKey, new Set());
+        }
+        map.get(dateKey)!.add(milestone.id);
+      });
+    });
+
+    return map;
+  }, [allMilestones, selectedProjectId]);
+
+  // Custom day content renderer with milestone dots
+  const renderDayContent = useCallback((props: DayContentProps) => {
+    const dateKey = format(props.date, 'yyyy-MM-dd');
+    const milestoneIds = dateMilestoneMap.get(dateKey);
+    
+    // Get unique colors for this day (max 4 dots)
+    const dots: string[] = [];
+    if (milestoneIds) {
+      const uniqueColors = new Set<string>();
+      milestoneIds.forEach(id => {
+        const colors = getMilestoneColor(id);
+        if (!uniqueColors.has(colors.text) && dots.length < 4) {
+          uniqueColors.add(colors.text);
+          dots.push(colors.text);
+        }
+      });
+    }
+
+    return (
+      <div className="relative flex flex-col items-center">
+        <span>{props.date.getDate()}</span>
+        {dots.length > 0 && (
+          <div className="absolute -bottom-1 flex gap-0.5">
+            {dots.map((color, idx) => (
+              <div 
+                key={idx} 
+                className={`w-1 h-1 rounded-full ${color.replace('text-', 'bg-')}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }, [dateMilestoneMap]);
+
   const handlePrevMonth = () => {
     setMonth(prev => subMonths(prev, 1));
   };
@@ -190,6 +252,9 @@ export default function CalendarPage() {
                 month={month}
                 onMonthChange={setMonth}
                 className="rounded-md pointer-events-auto"
+                components={{
+                  DayContent: renderDayContent
+                }}
               />
             </CardContent>
           </Card>
