@@ -72,14 +72,22 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
     }
   };
 
-  const getPhaseColor = (phase: string) => {
-    switch (phase) {
-      case 'Concept Phase':
-        return 'bg-primary';
-      case 'Sketch Phase':
-        return 'bg-warning';
-      case 'Development':
-      case 'Execution Phase':
+  const getMilestoneColor = (milestoneId: string) => {
+    const baseId = milestoneId.replace(/-\d+$/, '');
+    switch (baseId) {
+      case 'brief':
+        return 'bg-milestone-brief';
+      case 'pre-concept':
+        return 'bg-milestone-pre-concept';
+      case 'concept':
+        return 'bg-milestone-concept';
+      case 'art-sketch':
+        return 'bg-milestone-art-sketch';
+      case 'sketch':
+        return 'bg-milestone-sketch';
+      case 'i-phase':
+        return 'bg-milestone-i-phase';
+      case 'sprint':
         return 'bg-success';
       default:
         return 'bg-muted';
@@ -203,7 +211,7 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
                       <div className="flex flex-col items-center">
                         {/* Node circle */}
                         <div 
-                          className={`w-12 h-12 rounded-full ${getPhaseColor(milestone.phase)} flex items-center justify-center shadow-lg z-10 border-4 border-card`}
+                          className={`w-12 h-12 rounded-full ${getMilestoneColor(milestone.id)} flex items-center justify-center shadow-lg z-10 border-4 border-card`}
                         >
                           <span className="text-xs font-bold text-white">{index + 1}</span>
                         </div>
@@ -224,7 +232,7 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
                         <div className="flex flex-col items-center mx-2" style={{ marginTop: '20px' }}>
                           {/* Line and days input */}
                           <div className="flex items-center">
-                            <div className={`h-1 ${editMode ? 'w-8' : 'w-16'} ${getPhaseColor(milestone.phase)}`} />
+                            <div className={`h-1 ${editMode ? 'w-8' : 'w-16'} ${getMilestoneColor(milestone.id)}`} />
                             {editMode && (
                               <div className="flex flex-col items-center mx-1">
                                 <input
@@ -239,7 +247,7 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
                                 <span className="text-[10px] text-muted-foreground mt-0.5">days</span>
                               </div>
                             )}
-                            <div className={`h-1 ${editMode ? 'w-8' : 'w-16'} ${getPhaseColor(milestones[index + 1].phase)}`} />
+                            <div className={`h-1 ${editMode ? 'w-8' : 'w-16'} ${getMilestoneColor(milestones[index + 1].id)}`} />
                           </div>
                         </div>
                       )}
