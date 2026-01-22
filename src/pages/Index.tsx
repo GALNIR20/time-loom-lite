@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
-import { parseISO, subDays, format } from 'date-fns';
+import { parseISO, subDays, format, addDays } from 'date-fns';
 import { ControlsPanel } from '@/components/ControlsPanel';
 import { SummaryCards } from '@/components/SummaryCards';
 import { MilestoneTable } from '@/components/MilestoneTable';
@@ -249,7 +249,11 @@ const Index = () => {
     const iPhaseIndex = milestones.indexOf(iPhase);
     return milestones.slice(0, iPhaseIndex + 1).reduce((sum, m) => sum + m.durationDays, 0);
   }, [milestones]);
-  const projectedEnd = useMemo(() => milestones[milestones.length - 1]?.end ?? projectStart, [milestones, projectStart]);
+  // RFC is always 2 weeks after the last day of the last sprint/milestone
+  const projectedEnd = useMemo(() => {
+    const lastMilestoneEnd = milestones[milestones.length - 1]?.end ?? projectStart;
+    return format(addDays(parseISO(lastMilestoneEnd), 14), 'yyyy-MM-dd');
+  }, [milestones, projectStart]);
   const iPhaseStart = useMemo(() => {
     const iPhase = milestones.find(m => m.id === 'i-phase');
     return iPhase?.start ?? null;
