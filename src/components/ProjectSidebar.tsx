@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Plus, FolderOpen, Trash2, ChevronRight, ChevronDown, Settings, Star, Clock, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { LayoutDashboard, Star, Users, Trash2, Sparkles, Settings, ChevronDown, FolderOpen } from 'lucide-react';
 import { PresetType } from '@/types/timeline';
-import predictorLogo from '@/assets/predictor-logo.png';
 
 export interface SavedProject {
   id: string;
@@ -29,160 +28,150 @@ interface ProjectSidebarProps {
 export function ProjectSidebar({
   projects,
   currentProjectId,
-  isCollapsed,
-  onToggleCollapse,
   onSelectProject,
   onCreateNew,
   onDeleteProject,
 }: ProjectSidebarProps) {
   const [isProjectsExpanded, setIsProjectsExpanded] = useState(true);
 
-  if (isCollapsed) {
-    return (
-      <div className="w-16 bg-sidebar flex flex-col items-center py-4 min-h-screen">
-        <button
-          onClick={onToggleCollapse}
-          className="p-2.5 rounded-xl hover:bg-sidebar-accent transition-colors text-sidebar-foreground/70 hover:text-sidebar-foreground mb-6"
-          aria-label="Expand sidebar"
-        >
-          <PanelLeft className="w-5 h-5" />
-        </button>
-        <button
-          onClick={onCreateNew}
-          className="p-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors mb-4 shadow-md"
-          aria-label="New project"
-        >
-          <Plus className="w-5 h-5" />
-        </button>
-        <div className="flex-1 flex flex-col gap-2 mt-2 overflow-y-auto px-2">
-          {projects.map((project) => (
-            <button
-              key={project.id}
-              onClick={() => onSelectProject(project)}
-              className={`p-2.5 rounded-xl transition-all ${
-                currentProjectId === project.id
-                  ? 'bg-primary text-primary-foreground shadow-md'
-                  : 'hover:bg-sidebar-accent text-sidebar-foreground/70 hover:text-sidebar-foreground'
-              }`}
-              aria-label={project.featureName || 'Untitled project'}
-              title={project.featureName || 'Untitled project'}
-            >
-              <FolderOpen className="w-5 h-5" />
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="w-60 bg-sidebar flex flex-col min-h-screen">
-      {/* Logo Header */}
-      <div className="p-5 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center">
-          <img src={predictorLogo} alt="Predictor" className="w-6 h-6" />
-        </div>
-        <span className="font-semibold text-sidebar-foreground text-lg tracking-tight">Predictor</span>
-      </div>
-
-      {/* New Project Button */}
-      <div className="px-4 mb-4">
-        <button
-          onClick={onCreateNew}
-          className="w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md hover:shadow-lg"
-        >
-          <Plus className="w-4 h-4" />
-          <span>New Project</span>
-        </button>
+    <div className="w-56 bg-sidebar flex flex-col min-h-screen border-r border-sidebar-border">
+      {/* Brand Header */}
+      <div className="px-6 pt-8 pb-6">
+        <h1 className="text-xl font-semibold" style={{ color: 'hsl(217, 91%, 60%)' }}>
+          Predictor
+        </h1>
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 px-3 overflow-y-auto">
-        {/* Quick Links */}
-        <div className="space-y-1 mb-4">
-          <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all">
-            <Star className="w-4 h-4" />
-            <span>Favorites</span>
-          </button>
-          <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all">
-            <Clock className="w-4 h-4" />
-            <span>Recent</span>
-          </button>
-        </div>
+      <nav className="flex-1 px-4">
+        <ul className="space-y-1">
+          {/* Dashboard - Main action */}
+          <li>
+            <button
+              onClick={onCreateNew}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+            >
+              <LayoutDashboard className="w-5 h-5 text-sidebar-muted" />
+              <span>Dashboard</span>
+            </button>
+          </li>
 
-        {/* Projects Folder */}
-        <div>
-          {/* Projects Header */}
-          <button
-            onClick={() => setIsProjectsExpanded(!isProjectsExpanded)}
-            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <FolderOpen className="w-4 h-4" />
-              <span>Projects</span>
-            </div>
-            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isProjectsExpanded ? 'rotate-0' : '-rotate-90'}`} />
-          </button>
+          {/* Favorites */}
+          <li>
+            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors">
+              <Star className="w-5 h-5" />
+              <span>Favorites</span>
+            </button>
+          </li>
 
-          {/* Projects List */}
-          {isProjectsExpanded && (
-            <div className="mt-1 ml-3 pl-4 border-l border-sidebar-border space-y-0.5">
-              {projects.length === 0 ? (
-                <p className="text-xs text-sidebar-foreground/50 py-3 px-2">
-                  No projects yet
-                </p>
-              ) : (
-                projects.map((project) => {
+          {/* Projects */}
+          <li>
+            <button
+              onClick={() => setIsProjectsExpanded(!isProjectsExpanded)}
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <FolderOpen className="w-5 h-5" />
+                <span>Projects</span>
+              </div>
+              <ChevronDown 
+                className={`w-4 h-4 transition-transform duration-200 ${
+                  isProjectsExpanded ? 'rotate-0' : '-rotate-90'
+                }`} 
+              />
+            </button>
+            
+            {/* Projects List */}
+            {isProjectsExpanded && projects.length > 0 && (
+              <ul className="mt-1 ml-8 space-y-0.5">
+                {projects.map((project) => {
                   const isActive = currentProjectId === project.id;
                   return (
-                    <div
-                      key={project.id}
-                      className={`group flex items-center justify-between rounded-lg transition-all ${
-                        isActive ? 'bg-sidebar-accent' : 'hover:bg-sidebar-accent/50'
-                      }`}
-                    >
-                      <button
-                        onClick={() => onSelectProject(project)}
-                        className={`flex-1 text-left text-sm py-2 px-2 transition-colors truncate ${
-                          isActive
-                            ? 'text-primary font-medium'
-                            : 'text-sidebar-foreground/70 hover:text-sidebar-foreground'
+                    <li key={project.id}>
+                      <div
+                        className={`group flex items-center justify-between rounded-md transition-colors ${
+                          isActive ? 'bg-sidebar-accent' : 'hover:bg-sidebar-accent/50'
                         }`}
                       >
-                        {project.featureName || 'Untitled Project'}
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDeleteProject(project.id);
-                        }}
-                        className="p-1.5 mr-1 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-destructive/20 text-sidebar-foreground/50 hover:text-destructive transition-all"
-                        aria-label={`Delete ${project.featureName || 'project'}`}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                        <button
+                          onClick={() => onSelectProject(project)}
+                          className={`flex-1 text-left text-sm py-1.5 px-2 truncate transition-colors ${
+                            isActive
+                              ? 'text-sidebar-primary font-medium'
+                              : 'text-sidebar-muted hover:text-sidebar-foreground'
+                          }`}
+                        >
+                          {project.featureName || 'Untitled'}
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteProject(project.id);
+                          }}
+                          className="p-1 mr-1 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-sidebar-muted hover:text-destructive transition-all"
+                          aria-label={`Delete ${project.featureName || 'project'}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </li>
                   );
-                })
-              )}
-            </div>
-          )}
-        </div>
+                })}
+              </ul>
+            )}
+          </li>
+
+          {/* Recycle Bin */}
+          <li>
+            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors">
+              <Trash2 className="w-5 h-5" />
+              <span>Recycle Bin</span>
+            </button>
+          </li>
+
+          {/* Deep Clean */}
+          <li>
+            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors">
+              <Sparkles className="w-5 h-5" />
+              <span>Deep Clean</span>
+            </button>
+          </li>
+
+          {/* Settings */}
+          <li>
+            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors">
+              <Settings className="w-5 h-5" />
+              <span>Settings</span>
+            </button>
+          </li>
+        </ul>
       </nav>
 
-      {/* Footer */}
-      <div className="border-t border-sidebar-border p-3 space-y-1">
-        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all">
-          <Settings className="w-4 h-4" />
-          <span>Settings</span>
-        </button>
-        <button
-          onClick={onToggleCollapse}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all"
-        >
-          <PanelLeftClose className="w-4 h-4" />
-          <span>Collapse</span>
-        </button>
+      {/* Upgrade Banner */}
+      <div className="px-4 pb-6 mt-auto">
+        <div className="flex flex-col items-center text-center">
+          {/* Illustration placeholder */}
+          <div className="w-24 h-20 mb-3 flex items-center justify-center">
+            <svg viewBox="0 0 80 60" className="w-full h-full" fill="none">
+              <ellipse cx="40" cy="55" rx="35" ry="4" fill="hsl(220, 14%, 92%)" />
+              <rect x="20" y="20" width="40" height="30" rx="4" fill="hsl(217, 91%, 60%)" opacity="0.1" />
+              <rect x="25" y="25" width="30" height="20" rx="2" fill="hsl(217, 91%, 60%)" opacity="0.2" />
+              <circle cx="55" cy="15" r="8" fill="hsl(217, 91%, 60%)" opacity="0.15" />
+              <path d="M35 35 L45 35 M35 40 L42 40" stroke="hsl(217, 91%, 60%)" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
+            </svg>
+          </div>
+          <p className="text-xs text-sidebar-muted mb-2">
+            Upgrade to <span className="font-medium text-sidebar-foreground">Pro</span> for<br />
+            unlimited storage
+          </p>
+          <button 
+            className="text-sm font-medium transition-colors hover:underline"
+            style={{ color: 'hsl(217, 91%, 60%)' }}
+          >
+            Upgrade Now
+          </button>
+        </div>
       </div>
     </div>
   );
