@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Plus, FolderOpen, Trash2, ChevronDown, LayoutDashboard, Calendar, Users, MessageSquare, Settings, HelpCircle, LogOut } from 'lucide-react';
 import { PresetType } from '@/types/timeline';
 import predictorLogo from '@/assets/predictor-logo.png';
@@ -36,6 +37,17 @@ export function ProjectSidebar({
   onDeleteProject,
 }: ProjectSidebarProps) {
   const [isProjectsExpanded, setIsProjectsExpanded] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const navItems = [
+    { path: '/calendar', icon: Calendar, label: 'Calendar' },
+    { path: '/team', icon: Users, label: 'Team' },
+    { path: '/messages', icon: MessageSquare, label: 'Messages', hasNotification: true },
+    { path: '/settings', icon: Settings, label: 'Settings' },
+  ];
+
+  const isOnDashboard = location.pathname === '/';
 
   if (isCollapsed) {
     return (
@@ -95,16 +107,23 @@ export function ProjectSidebar({
 
       {/* Navigation Menu */}
       <nav className="flex-1 px-4 py-2 overflow-y-auto">
-        {/* Dashboard - Active by default */}
+        {/* Dashboard - Active when on home */}
         <div className="relative mb-1">
           <button
-            onClick={onCreateNew}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm bg-primary/10 text-primary font-medium transition-colors"
+            onClick={() => {
+              navigate('/');
+              onCreateNew();
+            }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
+              isOnDashboard ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            }`}
           >
             <LayoutDashboard className="w-5 h-5" />
             <span>Dashboard</span>
           </button>
-          <span className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-l-full" />
+          {isOnDashboard && (
+            <span className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-l-full" />
+          )}
         </div>
 
         {/* Projects Folder */}
@@ -165,23 +184,31 @@ export function ProjectSidebar({
 
         {/* Other Nav Items */}
         <div className="mt-2 space-y-1">
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-            <Calendar className="w-5 h-5" />
-            <span>Calendar</span>
-          </button>
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-            <Users className="w-5 h-5" />
-            <span>Team</span>
-          </button>
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors relative">
-            <MessageSquare className="w-5 h-5" />
-            <span>Messages</span>
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 w-2 h-2 bg-destructive rounded-full" />
-          </button>
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-            <Settings className="w-5 h-5" />
-            <span>Settings</span>
-          </button>
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            const Icon = item.icon;
+            return (
+              <div key={item.path} className="relative">
+                <button
+                  onClick={() => navigate(item.path)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-colors ${
+                    isActive
+                      ? 'bg-primary/10 text-primary font-medium'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span>{item.label}</span>
+                  {item.hasNotification && !isActive && (
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 w-2 h-2 bg-destructive rounded-full" />
+                  )}
+                </button>
+                {isActive && (
+                  <span className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-l-full" />
+                )}
+              </div>
+            );
+          })}
         </div>
       </nav>
 
