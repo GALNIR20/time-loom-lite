@@ -1,11 +1,13 @@
 import { MilestoneState } from '@/types/timeline';
 import { formatDateDisplay } from '@/lib/timeline';
-import { X, Pencil, Trash2 } from 'lucide-react';
+import { X, Pencil, Trash2, Share2, Copy, Check } from 'lucide-react';
 import { useMemo, useState, useCallback } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { GanttBar } from '@/components/GanttBar';
 import { useGanttDrag } from '@/hooks/useGanttDrag';
 import { parseISO, differenceInDays, addDays, startOfWeek, format, differenceInWeeks, addWeeks, startOfQuarter, differenceInQuarters, addQuarters, startOfMonth, differenceInMonths, addMonths } from 'date-fns';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { toast } from 'sonner';
 
 interface TimelineViewProps {
   milestones: MilestoneState[];
@@ -22,6 +24,7 @@ type ViewMode = 'days' | 'weeks' | 'months' | 'quarters' | 'milestones';
 export function TimelineView({ milestones, featureName, preset, isOpen, onClose, onDaysChange, onRemoveMilestone }: TimelineViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('weeks');
   const [editMode, setEditMode] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const handleDaysUpdate = useCallback((id: string, days: number) => {
     onDaysChange(id, days);
@@ -109,6 +112,61 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
     return { offsetPercent, widthPercent };
   };
 
+  // Generate shareable summary text
+  const generateSummaryText = useCallback(() => {
+    if (milestones.length === 0) return '';
+    
+    const projectName = featureName || 'Project';
+    const presetName = preset || 'Custom';
+    const projectStart = formatDateDisplay(milestones[0].start);
+    const projectEnd = formatDateDisplay(milestones[milestones.length - 1].end);
+    const totalWeeks = Math.ceil(totalDays / 7);
+    
+    // Group milestones by phase
+    const phases: Record<string, MilestoneState[]> = {};
+    milestones.forEach(m => {
+      if (!phases[m.phase]) phases[m.phase] = [];
+      phases[m.phase].push(m);
+    });
+    
+    // Build phase summaries
+    const phaseSummaries = Object.entries(phases).map(([phase, items]) => {
+      const phaseDays = items.reduce((sum, m) => sum + m.durationDays, 0);
+      const phaseWeeks = Math.ceil(phaseDays / 7);
+      const milestoneList = items.map(m => `  • ${m.name}: ${m.durationDays}d (${formatDateDisplay(m.start)} → ${formatDateDisplay(m.end)})`).join('\n');
+      return `📌 ${phase} (${phaseDays} days / ~${phaseWeeks} weeks)\n${milestoneList}`;
+    }).join('\n\n');
+    
+    // Count sprints
+    const sprintCount = milestones.filter(m => m.id.startsWith('sprint-')).length;
+    const sprintInfo = sprintCount > 0 ? `\n🏃 Development Sprints: ${sprintCount} sprints (14 days each)` : '';
+    
+    const summary = `📊 *${projectName}* — Timeline Summary
+
+🗓️ *PLC Type:* ${presetName}
+📅 *Duration:* ${projectStart} → ${projectEnd}
+⏱️ *Total:* ${totalDays} days (~${totalWeeks} weeks)${sprintInfo}
+
+${phaseSummaries}
+
+---
+Generated with PREDICTOR`;
+    
+    return summary;
+  }, [milestones, featureName, preset, totalDays]);
+
+  const handleCopySummary = useCallback(async () => {
+    const summary = generateSummaryText();
+    try {
+      await navigator.clipboard.writeText(summary);
+      setCopied(true);
+      toast.success('Summary copied to clipboard!');
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast.error('Failed to copy summary');
+    }
+  }, [generateSummaryText]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
       <div className="bg-card rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -188,6 +246,40 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
                 Milestones
               </button>
             </div>
+            
+            {/* Share Button */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors"
+                  aria-label="Share timeline summary"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  Share
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 p-0" align="end">
+                <div className="p-3 border-b border-border">
+                  <h3 className="font-medium text-sm text-foreground">Share Timeline Summary</h3>
+                  <p className="text-xs text-muted-foreground mt-1">Copy this summary to share in Slack, Teams, or email</p>
+                </div>
+                <div className="p-3">
+                  <pre className="text-xs bg-muted/50 p-3 rounded-lg overflow-auto max-h-64 whitespace-pre-wrap text-foreground font-mono">
+                    {generateSummaryText()}
+                  </pre>
+                </div>
+                <div className="p-3 border-t border-border">
+                  <button
+                    onClick={handleCopySummary}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                  >
+                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    {copied ? 'Copied!' : 'Copy to Clipboard'}
+                  </button>
+                </div>
+              </PopoverContent>
+            </Popover>
+            
             <button
               onClick={onClose}
               className="p-2 rounded-md hover:bg-accent transition-colors"
