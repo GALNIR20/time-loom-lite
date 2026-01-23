@@ -304,8 +304,8 @@ ${milestoneLines}`;
         <div className="flex-1 overflow-auto" ref={milestonesRef}>
           {viewMode === 'milestones' ? (
             /* Visual Milestones View */
-            <div className="p-6 overflow-x-auto bg-card relative">
-              <div className="relative min-w-[800px] pr-8 pb-16">
+            <div className="p-6 overflow-x-auto bg-card">
+              <div className="relative min-w-[800px] pr-8">
                 {/* Milestone nodes with connectors */}
                 <div className="flex items-start relative">
                   {milestones.map((milestone, index) => (
@@ -356,22 +356,25 @@ ${milestoneLines}`;
                       )}
                     </div>
                   ))}
+                  
+                  {/* Generate Summary Button - Inline on the right */}
+                  <div className="flex items-start ml-4">
+                    <button
+                      onClick={handleGenerateSummary}
+                      disabled={isCapturing}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg disabled:opacity-50 whitespace-nowrap"
+                      style={{ marginTop: '6px' }}
+                    >
+                      {bothCopied ? (
+                        <Check className="w-4 h-4" />
+                      ) : (
+                        <Sparkles className="w-4 h-4" />
+                      )}
+                      {isCapturing ? 'Generating...' : bothCopied ? 'Done!' : 'Generate Summary'}
+                    </button>
+                  </div>
                 </div>
               </div>
-              
-              {/* Generate Summary Button - Bottom Right */}
-              <button
-                onClick={handleGenerateSummary}
-                disabled={isCapturing}
-                className="absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg disabled:opacity-50"
-              >
-                {bothCopied ? (
-                  <Check className="w-4 h-4" />
-                ) : (
-                  <Sparkles className="w-4 h-4" />
-                )}
-                {isCapturing ? 'Generating...' : bothCopied ? 'Done!' : 'Generate Summary'}
-              </button>
             </div>
           ) : (
             /* Gantt Chart View */
