@@ -110,7 +110,7 @@ ${milestoneLines}`;
     }
   }, [generateSummaryText]);
 
-  // Capture and download screenshot
+  // Capture screenshot and copy to clipboard
   const handleCaptureScreenshot = useCallback(async () => {
     if (!milestonesRef.current) {
       toast.error('Unable to capture screenshot');
@@ -131,7 +131,7 @@ ${milestoneLines}`;
         y: -10,
       });
 
-      // Convert to blob and download
+      // Convert to blob
       const blob = await new Promise<Blob | null>((resolve) => {
         canvas.toBlob((b) => resolve(b), 'image/png');
       });
@@ -140,19 +140,30 @@ ${milestoneLines}`;
         throw new Error('Failed to create image');
       }
 
-      // Download the image
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${featureName || 'timeline'}-plc.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      setScreenshotCopied(true);
-      toast.success('Screenshot downloaded!');
-      setTimeout(() => setScreenshotCopied(false), 2000);
+      // Try to copy to clipboard
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+        setScreenshotCopied(true);
+        toast.success('Screenshot copied to clipboard!');
+        setTimeout(() => setScreenshotCopied(false), 2000);
+      } catch (clipboardErr) {
+        // Fallback: download the image if clipboard fails
+        console.error('Clipboard write failed:', clipboardErr);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${featureName || 'timeline'}-plc.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        setScreenshotCopied(true);
+        toast.success('Screenshot downloaded (clipboard not supported)');
+        setTimeout(() => setScreenshotCopied(false), 2000);
+      }
     } catch (err) {
       console.error('Screenshot capture failed:', err);
       toast.error('Failed to capture screenshot');
