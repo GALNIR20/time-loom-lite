@@ -1,13 +1,14 @@
 import { MilestoneState } from '@/types/timeline';
 import { formatDateDisplay } from '@/lib/timeline';
-import { X, Pencil, Trash2, Share2, Copy, Check } from 'lucide-react';
-import { useMemo, useState, useCallback } from 'react';
+import { X, Pencil, Trash2, Share2, Copy, Check, Camera } from 'lucide-react';
+import { useMemo, useState, useCallback, useRef } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { GanttBar } from '@/components/GanttBar';
 import { useGanttDrag } from '@/hooks/useGanttDrag';
 import { parseISO, differenceInDays, addDays, startOfWeek, format, differenceInWeeks, addWeeks, startOfQuarter, differenceInQuarters, addQuarters, startOfMonth, differenceInMonths, addMonths } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
+import html2canvas from 'html2canvas';
 
 interface TimelineViewProps {
   milestones: MilestoneState[];
@@ -22,9 +23,12 @@ interface TimelineViewProps {
 type ViewMode = 'days' | 'weeks' | 'months' | 'quarters' | 'milestones';
 
 export function TimelineView({ milestones, featureName, preset, isOpen, onClose, onDaysChange, onRemoveMilestone }: TimelineViewProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>('weeks');
+  const [viewMode, setViewMode] = useState<ViewMode>('milestones');
   const [editMode, setEditMode] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [screenshotCopied, setScreenshotCopied] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const milestonesRef = useRef<HTMLDivElement>(null);
 
   const handleDaysUpdate = useCallback((id: string, days: number) => {
     onDaysChange(id, days);
@@ -73,44 +77,63 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
   const generateSummaryText = useCallback(() => {
     if (milestones.length === 0) return '';
     
-    const projectName = featureName || 'Project';
+    const projectName = featureName || 'Untitled Project';
     const presetName = preset || 'Custom';
-    const projectStart = milestones[0] ? formatDateDisplay(milestones[0].start) : '';
-    const projectEnd = milestones[milestones.length - 1] ? formatDateDisplay(milestones[milestones.length - 1].end) : '';
-    const totalWeeksVal = Math.ceil(totalDays / 7);
     
-    // Group milestones by phase
-    const phases: Record<string, MilestoneState[]> = {};
-    milestones.forEach(m => {
-      if (!phases[m.phase]) phases[m.phase] = [];
-      phases[m.phase].push(m);
-    });
+    // Build milestone list with dates
+    const milestoneLines = milestones.map(m => 
+      `  • ${m.name}: ${formatDateDisplay(m.start)} → ${formatDateDisplay(m.end)}`
+    ).join('\n');
     
-    // Build phase summaries
-    const phaseSummaries = Object.entries(phases).map(([phase, items]) => {
-      const phaseDays = items.reduce((sum, m) => sum + m.durationDays, 0);
-      const phaseWeeks = Math.ceil(phaseDays / 7);
-      const milestoneList = items.map(m => `  • ${m.name}: ${m.durationDays}d (${formatDateDisplay(m.start)} → ${formatDateDisplay(m.end)})`).join('\n');
-      return `📌 ${phase} (${phaseDays} days / ~${phaseWeeks} weeks)\n${milestoneList}`;
-    }).join('\n\n');
-    
-    // Count sprints
-    const sprintCount = milestones.filter(m => m.id.startsWith('sprint-')).length;
-    const sprintInfo = sprintCount > 0 ? `\n🏃 Development Sprints: ${sprintCount} sprints (14 days each)` : '';
-    
-    const summary = `📊 *${projectName}* — Timeline Summary
+    const summary = `📊 *${projectName}*
 
-🗓️ *PLC Type:* ${presetName}
-📅 *Duration:* ${projectStart} → ${projectEnd}
-⏱️ *Total:* ${totalDays} days (~${totalWeeksVal} weeks)${sprintInfo}
+🏷️ *PLC Size:* ${presetName}
 
-${phaseSummaries}
+📅 *PLC Milestones:*
+${milestoneLines}
 
 ---
 Generated with PREDICTOR`;
     
     return summary;
-  }, [milestones, featureName, preset, totalDays]);
+  }, [milestones, featureName, preset]);
+
+  // Capture screenshot and copy to clipboard
+  const handleCaptureScreenshot = useCallback(async () => {
+    if (!milestonesRef.current) {
+      toast.error('Unable to capture screenshot');
+      return;
+    }
+
+    setIsCapturing(true);
+    try {
+      const canvas = await html2canvas(milestonesRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+
+      canvas.toBlob(async (blob) => {
+        if (blob) {
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({ 'image/png': blob })
+            ]);
+            setScreenshotCopied(true);
+            toast.success('Screenshot copied to clipboard!');
+            setTimeout(() => setScreenshotCopied(false), 2000);
+          } catch (err) {
+            toast.error('Failed to copy screenshot - try downloading instead');
+          }
+        }
+      }, 'image/png');
+    } catch (err) {
+      toast.error('Failed to capture screenshot');
+    } finally {
+      setIsCapturing(false);
+    }
+  }, []);
 
   const handleCopySummary = useCallback(async () => {
     const summary = generateSummaryText();
@@ -261,21 +284,29 @@ Generated with PREDICTOR`;
               </PopoverTrigger>
               <PopoverContent className="w-96 p-0" align="end">
                 <div className="p-3 border-b border-border">
-                  <h3 className="font-medium text-sm text-foreground">Share Timeline Summary</h3>
-                  <p className="text-xs text-muted-foreground mt-1">Copy this summary to share in Slack, Teams, or email</p>
+                  <h3 className="font-medium text-sm text-foreground">Share Timeline</h3>
+                  <p className="text-xs text-muted-foreground mt-1">Copy summary text or screenshot for sharing</p>
                 </div>
                 <div className="p-3">
-                  <pre className="text-xs bg-muted/50 p-3 rounded-lg overflow-auto max-h-64 whitespace-pre-wrap text-foreground font-mono">
+                  <pre className="text-xs bg-muted/50 p-3 rounded-lg overflow-auto max-h-48 whitespace-pre-wrap text-foreground font-mono">
                     {generateSummaryText()}
                   </pre>
                 </div>
-                <div className="p-3 border-t border-border">
+                <div className="p-3 border-t border-border flex flex-col gap-2">
                   <button
                     onClick={handleCopySummary}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                   >
                     {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    {copied ? 'Copied!' : 'Copy to Clipboard'}
+                    {copied ? 'Text Copied!' : 'Copy Text'}
+                  </button>
+                  <button
+                    onClick={handleCaptureScreenshot}
+                    disabled={isCapturing}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                  >
+                    {screenshotCopied ? <Check className="w-4 h-4" /> : <Camera className="w-4 h-4" />}
+                    {isCapturing ? 'Capturing...' : screenshotCopied ? 'Screenshot Copied!' : 'Copy Screenshot'}
                   </button>
                 </div>
               </PopoverContent>
@@ -308,10 +339,10 @@ Generated with PREDICTOR`;
         </div>
 
         {/* Timeline Content */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto" ref={milestonesRef}>
           {viewMode === 'milestones' ? (
             /* Visual Milestones View */
-            <div className="p-6 overflow-x-auto">
+            <div className="p-6 overflow-x-auto bg-card">
               <div className="relative min-w-[800px]">
                 {/* Milestone nodes with connectors */}
                 <div className="flex items-start relative">
