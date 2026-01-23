@@ -296,6 +296,10 @@ export function useProjects() {
         return false;
       }
 
+      // Get project name for email
+      const project = projects.find(p => p.id === projectId);
+      const projectName = project?.feature_name || 'Untitled Project';
+
       // Create membership
       const { error: insertError } = await supabase
         .from('project_memberships')
@@ -307,6 +311,23 @@ export function useProjects() {
 
       if (insertError) throw insertError;
 
+      // Send email notification (don't block on this)
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        if (session?.session?.access_token) {
+          await supabase.functions.invoke('send-share-notification', {
+            body: {
+              recipientEmail: email.toLowerCase().trim(),
+              projectName: projectName,
+              sharedByEmail: user.email || 'Someone'
+            }
+          });
+        }
+      } catch (emailError) {
+        console.warn('Failed to send share notification email:', emailError);
+        // Don't fail the share operation if email fails
+      }
+
       toast.success(`Project shared with ${email}`);
       return true;
     } catch (error) {
@@ -314,7 +335,7 @@ export function useProjects() {
       toast.error('Failed to share project');
       return false;
     }
-  }, [user]);
+  }, [user, projects]);
 
   // Remove member from project
   const removeMember = useCallback(async (membershipId: string) => {

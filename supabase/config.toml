@@ -1,1 +1,4 @@
 project_id = "jrzcaftckeyingxygljz"
+
+[functions.send-share-notification]
+verify_jwt = false
