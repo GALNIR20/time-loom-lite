@@ -97,10 +97,17 @@ export function useProjects() {
 
     setRealtimeChannel(channel);
 
+    // Also listen for manual refetch events (for cross-component sync)
+    const handleRefetch = () => {
+      fetchProjects();
+    };
+    window.addEventListener('refetchProjects', handleRefetch);
+
     return () => {
       if (channel) {
         supabase.removeChannel(channel);
       }
+      window.removeEventListener('refetchProjects', handleRefetch);
     };
   }, [fetchProjects]);
 

@@ -85,6 +85,8 @@ const Index = () => {
         });
         if (newProject) {
           setCurrentProjectId(newProject.id);
+          // Notify other components to refetch projects
+          window.dispatchEvent(new CustomEvent('refetchProjects'));
         }
       }
       
@@ -185,6 +187,8 @@ const Index = () => {
       });
       if (newProject) {
         setCurrentProjectId(newProject.id);
+        // Notify other components to refetch projects
+        window.dispatchEvent(new CustomEvent('refetchProjects'));
         toast.success('Project created!');
       }
     }
