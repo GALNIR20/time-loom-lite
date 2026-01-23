@@ -5,7 +5,7 @@ import { useMemo, useState, useCallback } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { GanttBar } from '@/components/GanttBar';
 import { useGanttDrag } from '@/hooks/useGanttDrag';
-import { parseISO, differenceInDays, addDays, startOfWeek, format, differenceInWeeks, addWeeks, startOfQuarter, differenceInQuarters, addQuarters } from 'date-fns';
+import { parseISO, differenceInDays, addDays, startOfWeek, format, differenceInWeeks, addWeeks, startOfQuarter, differenceInQuarters, addQuarters, startOfMonth, differenceInMonths, addMonths } from 'date-fns';
 
 interface TimelineViewProps {
   milestones: MilestoneState[];
@@ -17,7 +17,7 @@ interface TimelineViewProps {
   onRemoveMilestone: (id: string) => void;
 }
 
-type ViewMode = 'days' | 'weeks' | 'quarters' | 'milestones';
+type ViewMode = 'days' | 'weeks' | 'months' | 'quarters' | 'milestones';
 
 export function TimelineView({ milestones, featureName, preset, isOpen, onClose, onDaysChange, onRemoveMilestone }: TimelineViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('weeks');
@@ -27,8 +27,8 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
     onDaysChange(id, days);
   }, [onDaysChange]);
 
-  const { totalDays, startDate, endDate, weeks, quarters } = useMemo(() => {
-    if (milestones.length === 0) return { totalDays: 0, startDate: new Date(), endDate: new Date(), weeks: [], quarters: [] };
+  const { totalDays, startDate, endDate, weeks, months, quarters, timelineStart } = useMemo(() => {
+    if (milestones.length === 0) return { totalDays: 0, startDate: new Date(), endDate: new Date(), weeks: [], months: [], quarters: [], timelineStart: new Date() };
     
     const start = parseISO(milestones[0].start);
     const end = parseISO(milestones[milestones.length - 1].end);
@@ -38,6 +38,11 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
     const weekStart = startOfWeek(start, { weekStartsOn: 1 });
     const weekCount = Math.ceil(differenceInDays(end, weekStart) / 7) + 1;
     const weeksArr = Array.from({ length: weekCount }, (_, i) => addWeeks(weekStart, i));
+    
+    // Generate months
+    const monthStart = startOfMonth(start);
+    const monthCount = differenceInMonths(end, monthStart) + 2;
+    const monthsArr = Array.from({ length: monthCount }, (_, i) => addMonths(monthStart, i));
     
     // Generate quarters
     const qStart = startOfQuarter(start);
@@ -49,7 +54,9 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
       startDate: start,
       endDate: end,
       weeks: weeksArr,
+      months: monthsArr,
       quarters: quartersArr,
+      timelineStart: weekStart, // Use week start for alignment
     };
   }, [milestones]);
 
@@ -142,7 +149,7 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
               </button>
               <button
                 onClick={() => setViewMode('weeks')}
-                className={`px-3 py-1.5 text-xs font-medium transition-colors border-x border-border ${
+                className={`px-3 py-1.5 text-xs font-medium transition-colors border-l border-border ${
                   viewMode === 'weeks' 
                     ? 'bg-primary text-primary-foreground' 
                     : 'bg-background text-foreground hover:bg-muted'
@@ -151,8 +158,18 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
                 Weeks
               </button>
               <button
+                onClick={() => setViewMode('months')}
+                className={`px-3 py-1.5 text-xs font-medium transition-colors border-l border-border ${
+                  viewMode === 'months' 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'bg-background text-foreground hover:bg-muted'
+                }`}
+              >
+                Months
+              </button>
+              <button
                 onClick={() => setViewMode('quarters')}
-                className={`px-3 py-1.5 text-xs font-medium transition-colors border-r border-border ${
+                className={`px-3 py-1.5 text-xs font-medium transition-colors border-l border-border ${
                   viewMode === 'quarters' 
                     ? 'bg-primary text-primary-foreground' 
                     : 'bg-background text-foreground hover:bg-muted'
@@ -162,7 +179,7 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
               </button>
               <button
                 onClick={() => setViewMode('milestones')}
-                className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`px-3 py-1.5 text-xs font-medium transition-colors border-l border-border ${
                   viewMode === 'milestones' 
                     ? 'bg-primary text-primary-foreground' 
                     : 'bg-background text-foreground hover:bg-muted'
@@ -282,7 +299,7 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
                   {viewMode === 'weeks' && weeks.map((week, i) => (
                     <div 
                       key={i} 
-                      className="flex-1 min-w-[60px] p-2 text-center border-r border-border last:border-r-0 bg-muted/20"
+                      className="min-w-[80px] w-[80px] p-2 text-center border-r border-border last:border-r-0 bg-muted/20"
                     >
                       <span className="text-[10px] font-medium text-muted-foreground block">
                         W{format(week, 'w')}
@@ -292,10 +309,20 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
                       </span>
                     </div>
                   ))}
+                  {viewMode === 'months' && months.map((month, i) => (
+                    <div 
+                      key={i} 
+                      className="min-w-[120px] w-[120px] p-2 text-center border-r border-border last:border-r-0 bg-muted/20"
+                    >
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {format(month, 'MMM yyyy')}
+                      </span>
+                    </div>
+                  ))}
                   {viewMode === 'quarters' && quarters.map((q, i) => (
                     <div 
                       key={i} 
-                      className="flex-1 min-w-[80px] p-2 text-center border-r border-border last:border-r-0 bg-muted/20"
+                      className="min-w-[150px] w-[150px] p-2 text-center border-r border-border last:border-r-0 bg-muted/20"
                     >
                       <span className="text-xs font-medium text-muted-foreground">
                         Q{Math.ceil((parseISO(format(q, 'yyyy-MM-dd')).getMonth() + 1) / 3)} {format(q, 'yyyy')}
@@ -316,10 +343,39 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
               {milestones.map((milestone, index) => {
                 const previewDays = editMode ? getPreviewDays(milestone.id, milestone.durationDays) : milestone.durationDays;
                 const milestoneStart = parseISO(milestone.start);
-                const offsetDays = differenceInDays(milestoneStart, startDate);
-                const offsetPercent = totalDays > 0 ? (offsetDays / totalDays) * 100 : 0;
-                const widthPercent = totalDays > 0 ? (previewDays / totalDays) * 100 : 0;
                 const nextMilestone = index < milestones.length - 1 ? milestones[index + 1] : null;
+                
+                // Calculate position based on view mode
+                let offsetPercent = 0;
+                let widthPercent = 0;
+                
+                if (viewMode === 'days') {
+                  // Days view: percentage of total days
+                  const offsetDays = differenceInDays(milestoneStart, startDate);
+                  offsetPercent = totalDays > 0 ? (offsetDays / totalDays) * 100 : 0;
+                  widthPercent = totalDays > 0 ? (previewDays / totalDays) * 100 : 0;
+                } else if (viewMode === 'weeks') {
+                  // Weeks view: each week column is 80px fixed
+                  const weekStart = startOfWeek(startDate, { weekStartsOn: 1 });
+                  const offsetDays = differenceInDays(milestoneStart, weekStart);
+                  const totalWeekDays = weeks.length * 7;
+                  offsetPercent = totalWeekDays > 0 ? (offsetDays / totalWeekDays) * 100 : 0;
+                  widthPercent = totalWeekDays > 0 ? (previewDays / totalWeekDays) * 100 : 0;
+                } else if (viewMode === 'months') {
+                  // Months view: position relative to month boundaries
+                  const monthStart = startOfMonth(startDate);
+                  const offsetDays = differenceInDays(milestoneStart, monthStart);
+                  const totalMonthDays = months.length * 30; // Approximate
+                  offsetPercent = totalMonthDays > 0 ? (offsetDays / totalMonthDays) * 100 : 0;
+                  widthPercent = totalMonthDays > 0 ? (previewDays / totalMonthDays) * 100 : 0;
+                } else if (viewMode === 'quarters') {
+                  // Quarters view: position relative to quarter boundaries
+                  const qStart = startOfQuarter(startDate);
+                  const offsetDays = differenceInDays(milestoneStart, qStart);
+                  const totalQuarterDays = quarters.length * 91; // ~3 months per quarter
+                  offsetPercent = totalQuarterDays > 0 ? (offsetDays / totalQuarterDays) * 100 : 0;
+                  widthPercent = totalQuarterDays > 0 ? (previewDays / totalQuarterDays) * 100 : 0;
+                }
 
                 return (
                   <div key={milestone.id} className="flex border-b border-border hover:bg-muted/10 transition-colors">
@@ -372,14 +428,21 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
                     )}
 
                     {/* Gantt bar */}
-                    <div className="flex-1 p-2 relative">
+                    <div className="flex-1 p-2 relative overflow-visible">
                       <div className="h-8 w-full relative">
-                        {/* Grid lines for weeks/quarters */}
+                        {/* Grid lines for weeks/months/quarters */}
                         {viewMode === 'weeks' && weeks.map((_, i) => (
                           <div
                             key={i}
                             className="absolute top-0 bottom-0 border-r border-border/50"
                             style={{ left: `${((i + 1) / weeks.length) * 100}%` }}
+                          />
+                        ))}
+                        {viewMode === 'months' && months.map((_, i) => (
+                          <div
+                            key={i}
+                            className="absolute top-0 bottom-0 border-r border-border/50"
+                            style={{ left: `${((i + 1) / months.length) * 100}%` }}
                           />
                         ))}
                         {viewMode === 'quarters' && quarters.map((_, i) => (
