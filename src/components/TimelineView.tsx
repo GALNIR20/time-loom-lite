@@ -69,6 +69,62 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
     onDaysChange: handleDaysUpdate,
   });
 
+  // Generate shareable summary text - must be before early return
+  const generateSummaryText = useCallback(() => {
+    if (milestones.length === 0) return '';
+    
+    const projectName = featureName || 'Project';
+    const presetName = preset || 'Custom';
+    const projectStart = milestones[0] ? formatDateDisplay(milestones[0].start) : '';
+    const projectEnd = milestones[milestones.length - 1] ? formatDateDisplay(milestones[milestones.length - 1].end) : '';
+    const totalWeeksVal = Math.ceil(totalDays / 7);
+    
+    // Group milestones by phase
+    const phases: Record<string, MilestoneState[]> = {};
+    milestones.forEach(m => {
+      if (!phases[m.phase]) phases[m.phase] = [];
+      phases[m.phase].push(m);
+    });
+    
+    // Build phase summaries
+    const phaseSummaries = Object.entries(phases).map(([phase, items]) => {
+      const phaseDays = items.reduce((sum, m) => sum + m.durationDays, 0);
+      const phaseWeeks = Math.ceil(phaseDays / 7);
+      const milestoneList = items.map(m => `  • ${m.name}: ${m.durationDays}d (${formatDateDisplay(m.start)} → ${formatDateDisplay(m.end)})`).join('\n');
+      return `📌 ${phase} (${phaseDays} days / ~${phaseWeeks} weeks)\n${milestoneList}`;
+    }).join('\n\n');
+    
+    // Count sprints
+    const sprintCount = milestones.filter(m => m.id.startsWith('sprint-')).length;
+    const sprintInfo = sprintCount > 0 ? `\n🏃 Development Sprints: ${sprintCount} sprints (14 days each)` : '';
+    
+    const summary = `📊 *${projectName}* — Timeline Summary
+
+🗓️ *PLC Type:* ${presetName}
+📅 *Duration:* ${projectStart} → ${projectEnd}
+⏱️ *Total:* ${totalDays} days (~${totalWeeksVal} weeks)${sprintInfo}
+
+${phaseSummaries}
+
+---
+Generated with PREDICTOR`;
+    
+    return summary;
+  }, [milestones, featureName, preset, totalDays]);
+
+  const handleCopySummary = useCallback(async () => {
+    const summary = generateSummaryText();
+    try {
+      await navigator.clipboard.writeText(summary);
+      setCopied(true);
+      toast.success('Summary copied to clipboard!');
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast.error('Failed to copy summary');
+    }
+  }, [generateSummaryText]);
+
+  // Early return after all hooks
   if (!isOpen) return null;
 
   const handleDaysInput = (id: string, value: string) => {
@@ -111,61 +167,6 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
     const widthPercent = totalDays > 0 ? (milestone.durationDays / totalDays) * 100 : 0;
     return { offsetPercent, widthPercent };
   };
-
-  // Generate shareable summary text
-  const generateSummaryText = useCallback(() => {
-    if (milestones.length === 0) return '';
-    
-    const projectName = featureName || 'Project';
-    const presetName = preset || 'Custom';
-    const projectStart = formatDateDisplay(milestones[0].start);
-    const projectEnd = formatDateDisplay(milestones[milestones.length - 1].end);
-    const totalWeeks = Math.ceil(totalDays / 7);
-    
-    // Group milestones by phase
-    const phases: Record<string, MilestoneState[]> = {};
-    milestones.forEach(m => {
-      if (!phases[m.phase]) phases[m.phase] = [];
-      phases[m.phase].push(m);
-    });
-    
-    // Build phase summaries
-    const phaseSummaries = Object.entries(phases).map(([phase, items]) => {
-      const phaseDays = items.reduce((sum, m) => sum + m.durationDays, 0);
-      const phaseWeeks = Math.ceil(phaseDays / 7);
-      const milestoneList = items.map(m => `  • ${m.name}: ${m.durationDays}d (${formatDateDisplay(m.start)} → ${formatDateDisplay(m.end)})`).join('\n');
-      return `📌 ${phase} (${phaseDays} days / ~${phaseWeeks} weeks)\n${milestoneList}`;
-    }).join('\n\n');
-    
-    // Count sprints
-    const sprintCount = milestones.filter(m => m.id.startsWith('sprint-')).length;
-    const sprintInfo = sprintCount > 0 ? `\n🏃 Development Sprints: ${sprintCount} sprints (14 days each)` : '';
-    
-    const summary = `📊 *${projectName}* — Timeline Summary
-
-🗓️ *PLC Type:* ${presetName}
-📅 *Duration:* ${projectStart} → ${projectEnd}
-⏱️ *Total:* ${totalDays} days (~${totalWeeks} weeks)${sprintInfo}
-
-${phaseSummaries}
-
----
-Generated with PREDICTOR`;
-    
-    return summary;
-  }, [milestones, featureName, preset, totalDays]);
-
-  const handleCopySummary = useCallback(async () => {
-    const summary = generateSummaryText();
-    try {
-      await navigator.clipboard.writeText(summary);
-      setCopied(true);
-      toast.success('Summary copied to clipboard!');
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      toast.error('Failed to copy summary');
-    }
-  }, [generateSummaryText]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
