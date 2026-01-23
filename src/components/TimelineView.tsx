@@ -147,7 +147,7 @@ ${milestoneLines}`;
     }
   }, [generateSummaryText]);
 
-  // Copy both text and screenshot - copies screenshot first, then shows text for manual copy
+  // Copy both text and screenshot
   const handleCopyBoth = useCallback(async () => {
     if (!milestonesRef.current) {
       toast.error('Unable to capture screenshot');
@@ -156,7 +156,7 @@ ${milestoneLines}`;
 
     setIsCapturing(true);
     try {
-      // Capture screenshot first
+      // Capture screenshot
       const canvas = await html2canvas(milestonesRef.current, {
         backgroundColor: '#ffffff',
         scale: 2,
@@ -164,37 +164,56 @@ ${milestoneLines}`;
         logging: false,
       });
 
-      // Convert to blob and copy image
+      // Convert to blob
       const blob = await new Promise<Blob | null>((resolve) => {
         canvas.toBlob((b) => resolve(b), 'image/png');
       });
 
-      if (blob) {
-        // Copy screenshot to clipboard
+      if (!blob) {
+        throw new Error('Failed to create image');
+      }
+
+      // Try to copy image to clipboard
+      try {
         await navigator.clipboard.write([
           new ClipboardItem({ 'image/png': blob })
         ]);
         
-        // Copy text after a short delay (user can paste image first, then we copy text)
+        // After short delay, copy text
         const summary = generateSummaryText();
-        setTimeout(async () => {
-          try {
-            await navigator.clipboard.writeText(summary);
-          } catch (e) {
-            // Text copy failed silently
-          }
-        }, 100);
+        await new Promise(resolve => setTimeout(resolve, 50));
+        await navigator.clipboard.writeText(summary);
         
         setBothCopied(true);
-        toast.success('Screenshot copied! Text copied after. Paste image first, then paste text.');
+        toast.success('Text & screenshot ready! Paste twice: first for image, then for text.');
+        setTimeout(() => setBothCopied(false), 3000);
+      } catch (clipboardErr) {
+        console.error('Clipboard write failed:', clipboardErr);
+        // Fallback: Download image and copy text
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${featureName || 'timeline'}-plc.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        // Copy text
+        const summary = generateSummaryText();
+        await navigator.clipboard.writeText(summary);
+        
+        setBothCopied(true);
+        toast.success('Image downloaded & text copied to clipboard!');
         setTimeout(() => setBothCopied(false), 3000);
       }
     } catch (err) {
-      toast.error('Failed to copy - try copying separately');
+      console.error('Screenshot capture failed:', err);
+      toast.error('Failed to capture screenshot');
     } finally {
       setIsCapturing(false);
     }
-  }, [generateSummaryText]);
+  }, [generateSummaryText, featureName]);
 
   // Early return after all hooks
   if (!isOpen) return null;
