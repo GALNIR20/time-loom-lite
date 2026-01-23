@@ -3,6 +3,16 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Plus, FolderOpen, Trash2, ChevronDown, Calendar, Settings } from 'lucide-react';
 import { PresetType } from '@/types/timeline';
 import { PredictorLogo } from '@/components/PredictorLogo';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export interface SavedProject {
   id: string;
@@ -37,6 +47,7 @@ export function ProjectSidebar({
   onDeleteProject,
 }: ProjectSidebarProps) {
   const [isProjectsExpanded, setIsProjectsExpanded] = useState(true);
+  const [projectToDelete, setProjectToDelete] = useState<SavedProject | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -152,7 +163,7 @@ export function ProjectSidebar({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          onDeleteProject(project.id);
+                          setProjectToDelete(project);
                         }}
                         className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
                         aria-label={`Delete ${project.featureName || 'project'}`}
@@ -204,6 +215,33 @@ export function ProjectSidebar({
           <span>Collapse</span>
         </button>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!projectToDelete} onOpenChange={(open) => !open && setProjectToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Project</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{projectToDelete?.featureName || 'Untitled Project'}"? 
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (projectToDelete) {
+                  onDeleteProject(projectToDelete.id);
+                  setProjectToDelete(null);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
