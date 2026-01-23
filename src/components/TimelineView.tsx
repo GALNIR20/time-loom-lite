@@ -410,11 +410,11 @@ ${milestoneLines}`;
                   </div>
                 )}
                 {/* Calendar columns */}
-                <div className="flex-1 flex">
+                <div className="flex">
                   {viewMode === 'weeks' && weeks.map((week, i) => (
                     <div 
                       key={i} 
-                      className="min-w-[80px] w-[80px] p-2 text-center border-r border-border last:border-r-0 bg-muted/20"
+                      className="w-[80px] flex-shrink-0 p-2 text-center border-r border-border last:border-r-0 bg-muted/20"
                     >
                       <span className="text-[10px] font-medium text-muted-foreground block">
                         W{format(week, 'w')}
@@ -427,7 +427,7 @@ ${milestoneLines}`;
                   {viewMode === 'months' && months.map((month, i) => (
                     <div 
                       key={i} 
-                      className="min-w-[120px] w-[120px] p-2 text-center border-r border-border last:border-r-0 bg-muted/20"
+                      className="w-[120px] flex-shrink-0 p-2 text-center border-r border-border last:border-r-0 bg-muted/20"
                     >
                       <span className="text-xs font-medium text-muted-foreground">
                         {format(month, 'MMM yyyy')}
@@ -437,7 +437,7 @@ ${milestoneLines}`;
                   {viewMode === 'quarters' && quarters.map((q, i) => (
                     <div 
                       key={i} 
-                      className="min-w-[150px] w-[150px] p-2 text-center border-r border-border last:border-r-0 bg-muted/20"
+                      className="w-[150px] flex-shrink-0 p-2 text-center border-r border-border last:border-r-0 bg-muted/20"
                     >
                       <span className="text-xs font-medium text-muted-foreground">
                         Q{Math.ceil((parseISO(format(q, 'yyyy-MM-dd')).getMonth() + 1) / 3)} {format(q, 'yyyy')}
@@ -546,7 +546,19 @@ ${milestoneLines}`;
                     )}
 
                     {/* Gantt bar */}
-                    <div className="flex-1 p-2 relative overflow-visible">
+                    <div 
+                      className="p-2 relative overflow-visible"
+                      style={{
+                        width: viewMode === 'weeks' ? `${weeks.length * 80}px` :
+                               viewMode === 'months' ? `${months.length * 120}px` :
+                               viewMode === 'quarters' ? `${quarters.length * 150}px` :
+                               '100%',
+                        minWidth: viewMode === 'weeks' ? `${weeks.length * 80}px` :
+                                  viewMode === 'months' ? `${months.length * 120}px` :
+                                  viewMode === 'quarters' ? `${quarters.length * 150}px` :
+                                  undefined
+                      }}
+                    >
                       <div className="h-8 w-full relative">
                         {/* Grid lines for weeks/months/quarters */}
                         {viewMode === 'weeks' && weeks.map((_, i) => (
