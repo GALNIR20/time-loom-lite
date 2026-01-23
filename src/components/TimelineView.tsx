@@ -315,7 +315,7 @@ ${milestoneLines}`;
         <div className="flex-1 overflow-auto" ref={milestonesRef}>
           {viewMode === 'milestones' ? (
             /* Visual Milestones View */
-            <div className="p-6 overflow-x-auto bg-card relative pb-16">
+            <div className="p-6 overflow-x-auto bg-card">
               <div className="relative min-w-[800px] pr-8">
                 {/* Milestone nodes with connectors */}
                 <div className="flex items-start relative">
@@ -368,48 +368,6 @@ ${milestoneLines}`;
                     </div>
                   ))}
                 </div>
-              </div>
-              
-              {/* Generate Summary Button - Bottom Right */}
-              <div className="absolute bottom-4 right-4">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button
-                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg whitespace-nowrap"
-                    >
-                      <Sparkles className="w-4 h-4" />
-                      Generate Summary
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-96 p-0" align="end">
-                    <div className="p-3 border-b border-border">
-                      <h3 className="font-medium text-sm text-foreground">Share Timeline</h3>
-                      <p className="text-xs text-muted-foreground mt-1">Copy summary text or download screenshot</p>
-                    </div>
-                    <div className="p-3">
-                      <pre className="text-xs bg-muted/50 p-3 rounded-lg overflow-auto max-h-48 whitespace-pre-wrap text-foreground font-mono">
-                        {generateSummaryText()}
-                      </pre>
-                    </div>
-                    <div className="p-3 border-t border-border flex gap-2">
-                      <button
-                        onClick={handleCopySummary}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors"
-                      >
-                        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                        {copied ? 'Copied!' : 'Copy Message'}
-                      </button>
-                      <button
-                        onClick={handleCaptureScreenshot}
-                        disabled={isCapturing}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-                      >
-                        {screenshotCopied ? <Check className="w-4 h-4" /> : <Camera className="w-4 h-4" />}
-                        {isCapturing ? 'Capturing...' : screenshotCopied ? 'Downloaded!' : 'Screenshot'}
-                      </button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
               </div>
             </div>
           ) : (
@@ -616,7 +574,7 @@ ${milestoneLines}`;
         </div>
 
         {/* Summary Footer */}
-        <div className="p-4 border-t border-border bg-muted/30 flex flex-wrap gap-6">
+        <div className="p-4 border-t border-border bg-muted/30 flex flex-wrap items-center gap-6">
           <div>
             <span className="text-xs text-muted-foreground block">Project Start</span>
             <span className="text-sm font-medium text-foreground">
@@ -636,6 +594,48 @@ ${milestoneLines}`;
           <div>
             <span className="text-xs text-muted-foreground block">Total Weeks</span>
             <span className="text-sm font-medium text-foreground">{Math.ceil(totalDays / 7)} weeks</span>
+          </div>
+          
+          {/* Generate Summary Button - Right aligned */}
+          <div className="ml-auto">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg whitespace-nowrap"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Generate Summary
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 p-0" align="end" side="top">
+                <div className="p-3 border-b border-border">
+                  <h3 className="font-medium text-sm text-foreground">Share Timeline</h3>
+                  <p className="text-xs text-muted-foreground mt-1">Copy summary text or download screenshot</p>
+                </div>
+                <div className="p-3">
+                  <pre className="text-xs bg-muted/50 p-3 rounded-lg overflow-auto max-h-48 whitespace-pre-wrap text-foreground font-mono">
+                    {generateSummaryText()}
+                  </pre>
+                </div>
+                <div className="p-3 border-t border-border flex gap-2">
+                  <button
+                    onClick={handleCopySummary}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors"
+                  >
+                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    {copied ? 'Copied!' : 'Copy Message'}
+                  </button>
+                  <button
+                    onClick={handleCaptureScreenshot}
+                    disabled={isCapturing}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                  >
+                    {screenshotCopied ? <Check className="w-4 h-4" /> : <Camera className="w-4 h-4" />}
+                    {isCapturing ? 'Capturing...' : screenshotCopied ? 'Downloaded!' : 'Screenshot'}
+                  </button>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
       </div>
