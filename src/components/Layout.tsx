@@ -43,7 +43,10 @@ export function Layout({ children }: LayoutProps) {
     await deleteProject(id);
     if (currentProjectId === id) {
       setCurrentProjectId(null);
+      window.dispatchEvent(new CustomEvent('createNewProject'));
     }
+    // Notify all components to refetch projects
+    window.dispatchEvent(new CustomEvent('refetchProjects'));
   }, [currentProjectId, deleteProject]);
 
   // Listen for project updates from Index page
