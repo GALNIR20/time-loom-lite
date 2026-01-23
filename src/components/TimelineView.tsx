@@ -81,9 +81,9 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
     const projectName = featureName || 'Untitled Project';
     const presetName = preset || 'Custom';
     
-    // Build milestone list with start date only
+    // Build milestone list with start date only - milestone names in bold
     const milestoneLines = milestones.map(m => 
-      `  • ${m.name}: ${formatDateDisplay(m.start)}`
+      `  • *${m.name}*: ${formatDateDisplay(m.start)}`
     ).join('\n');
     
     const summary = `Hey all, sharing with you the PLC dates for:
@@ -147,7 +147,7 @@ ${milestoneLines}`;
     }
   }, [generateSummaryText]);
 
-  // Copy both text and screenshot
+  // Copy both text and screenshot - copies screenshot first, then shows text for manual copy
   const handleCopyBoth = useCallback(async () => {
     if (!milestonesRef.current) {
       toast.error('Unable to capture screenshot');
@@ -156,11 +156,7 @@ ${milestoneLines}`;
 
     setIsCapturing(true);
     try {
-      // First copy text to clipboard
-      const summary = generateSummaryText();
-      await navigator.clipboard.writeText(summary);
-      
-      // Then capture screenshot
+      // Capture screenshot first
       const canvas = await html2canvas(milestonesRef.current, {
         backgroundColor: '#ffffff',
         scale: 2,
@@ -168,26 +164,33 @@ ${milestoneLines}`;
         logging: false,
       });
 
-      canvas.toBlob(async (blob) => {
-        if (blob) {
+      // Convert to blob and copy image
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((b) => resolve(b), 'image/png');
+      });
+
+      if (blob) {
+        // Copy screenshot to clipboard
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+        
+        // Copy text after a short delay (user can paste image first, then we copy text)
+        const summary = generateSummaryText();
+        setTimeout(async () => {
           try {
-            await navigator.clipboard.write([
-              new ClipboardItem({ 
-                'text/plain': new Blob([summary], { type: 'text/plain' }),
-                'image/png': blob 
-              })
-            ]);
-            setBothCopied(true);
-            toast.success('Text & screenshot copied to clipboard!');
-            setTimeout(() => setBothCopied(false), 2000);
-          } catch (err) {
-            // Fallback: at least text was copied
-            toast.success('Text copied! Screenshot requires manual paste.');
+            await navigator.clipboard.writeText(summary);
+          } catch (e) {
+            // Text copy failed silently
           }
-        }
-      }, 'image/png');
+        }, 100);
+        
+        setBothCopied(true);
+        toast.success('Screenshot copied! Text copied after. Paste image first, then paste text.');
+        setTimeout(() => setBothCopied(false), 3000);
+      }
     } catch (err) {
-      toast.error('Failed to copy');
+      toast.error('Failed to copy - try copying separately');
     } finally {
       setIsCapturing(false);
     }
