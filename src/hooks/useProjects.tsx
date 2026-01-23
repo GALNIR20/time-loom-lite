@@ -6,7 +6,6 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 
 export interface DbProject {
   id: string;
-  owner_id: string | null;
   feature_name: string;
   project_start: string;
   preset: string;
@@ -119,7 +118,6 @@ export function useProjects() {
       const { data: project, error } = await supabase
         .from('projects')
         .insert({
-          owner_id: null,
           feature_name: data.feature_name,
           project_start: data.project_start,
           preset: data.preset,

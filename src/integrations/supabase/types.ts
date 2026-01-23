@@ -14,59 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      profiles: {
-        Row: {
-          created_at: string
-          email: string
-          id: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          id: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          id?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      project_memberships: {
-        Row: {
-          created_at: string
-          id: string
-          project_id: string
-          role: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          project_id: string
-          role?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          project_id?: string
-          role?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_memberships_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       projects: {
         Row: {
           created_at: string
@@ -75,7 +22,6 @@ export type Database = {
           id: string
           locked_dev_start: string | null
           overrides: Json
-          owner_id: string | null
           preset: string
           project_start: string
           show_detailed: boolean
@@ -88,7 +34,6 @@ export type Database = {
           id?: string
           locked_dev_start?: string | null
           overrides?: Json
-          owner_id?: string | null
           preset?: string
           project_start?: string
           show_detailed?: boolean
@@ -101,7 +46,6 @@ export type Database = {
           id?: string
           locked_dev_start?: string | null
           overrides?: Json
-          owner_id?: string | null
           preset?: string
           project_start?: string
           show_detailed?: boolean
@@ -114,18 +58,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      can_access_project: {
-        Args: { project_uuid: string; user_uuid: string }
-        Returns: boolean
-      }
-      is_project_owner: {
-        Args: { project_uuid: string; user_uuid: string }
-        Returns: boolean
-      }
-      is_shared_member: {
-        Args: { project_uuid: string; user_uuid: string }
-        Returns: boolean
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
