@@ -1,12 +1,11 @@
 import { MilestoneState } from '@/types/timeline';
 import { formatDateDisplay } from '@/lib/timeline';
-import { X, Pencil, Trash2, Share2, Copy, Check, Camera } from 'lucide-react';
+import { X, Pencil, Trash2, Check, Sparkles } from 'lucide-react';
 import { useMemo, useState, useCallback, useRef } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { GanttBar } from '@/components/GanttBar';
 import { useGanttDrag } from '@/hooks/useGanttDrag';
 import { parseISO, differenceInDays, addDays, startOfWeek, format, differenceInWeeks, addWeeks, startOfQuarter, differenceInQuarters, addQuarters, startOfMonth, differenceInMonths, addMonths } from 'date-fns';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
 
@@ -25,8 +24,6 @@ type ViewMode = 'days' | 'weeks' | 'months' | 'quarters' | 'milestones';
 export function TimelineView({ milestones, featureName, preset, isOpen, onClose, onDaysChange, onRemoveMilestone }: TimelineViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('milestones');
   const [editMode, setEditMode] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [screenshotCopied, setScreenshotCopied] = useState(false);
   const [bothCopied, setBothCopied] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const milestonesRef = useRef<HTMLDivElement>(null);
@@ -98,8 +95,8 @@ ${milestoneLines}`;
     return summary;
   }, [milestones, featureName, preset]);
 
-  // Capture screenshot and copy to clipboard
-  const handleCaptureScreenshot = useCallback(async () => {
+  // Generate summary - downloads screenshot and copies text
+  const handleGenerateSummary = useCallback(async () => {
     if (!milestonesRef.current) {
       toast.error('Unable to capture screenshot');
       return;
@@ -107,64 +104,19 @@ ${milestoneLines}`;
 
     setIsCapturing(true);
     try {
+      // Capture screenshot with extra padding to prevent text cutoff
       const canvas = await html2canvas(milestonesRef.current, {
         backgroundColor: '#ffffff',
         scale: 2,
         useCORS: true,
         logging: false,
+        width: milestonesRef.current.scrollWidth + 40,
+        height: milestonesRef.current.scrollHeight + 20,
+        x: -20,
+        y: -10,
       });
 
-      canvas.toBlob(async (blob) => {
-        if (blob) {
-          try {
-            await navigator.clipboard.write([
-              new ClipboardItem({ 'image/png': blob })
-            ]);
-            setScreenshotCopied(true);
-            toast.success('Screenshot copied to clipboard!');
-            setTimeout(() => setScreenshotCopied(false), 2000);
-          } catch (err) {
-            toast.error('Failed to copy screenshot - try downloading instead');
-          }
-        }
-      }, 'image/png');
-    } catch (err) {
-      toast.error('Failed to capture screenshot');
-    } finally {
-      setIsCapturing(false);
-    }
-  }, []);
-
-  const handleCopySummary = useCallback(async () => {
-    const summary = generateSummaryText();
-    try {
-      await navigator.clipboard.writeText(summary);
-      setCopied(true);
-      toast.success('Summary copied to clipboard!');
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      toast.error('Failed to copy summary');
-    }
-  }, [generateSummaryText]);
-
-  // Copy both text and screenshot
-  const handleCopyBoth = useCallback(async () => {
-    if (!milestonesRef.current) {
-      toast.error('Unable to capture screenshot');
-      return;
-    }
-
-    setIsCapturing(true);
-    try {
-      // Capture screenshot
-      const canvas = await html2canvas(milestonesRef.current, {
-        backgroundColor: '#ffffff',
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      });
-
-      // Convert to blob
+      // Convert to blob and download
       const blob = await new Promise<Blob | null>((resolve) => {
         canvas.toBlob((b) => resolve(b), 'image/png');
       });
@@ -173,43 +125,26 @@ ${milestoneLines}`;
         throw new Error('Failed to create image');
       }
 
-      // Try to copy image to clipboard
-      try {
-        await navigator.clipboard.write([
-          new ClipboardItem({ 'image/png': blob })
-        ]);
-        
-        // After short delay, copy text
-        const summary = generateSummaryText();
-        await new Promise(resolve => setTimeout(resolve, 50));
-        await navigator.clipboard.writeText(summary);
-        
-        setBothCopied(true);
-        toast.success('Text & screenshot ready! Paste twice: first for image, then for text.');
-        setTimeout(() => setBothCopied(false), 3000);
-      } catch (clipboardErr) {
-        console.error('Clipboard write failed:', clipboardErr);
-        // Fallback: Download image and copy text
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${featureName || 'timeline'}-plc.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
-        // Copy text
-        const summary = generateSummaryText();
-        await navigator.clipboard.writeText(summary);
-        
-        setBothCopied(true);
-        toast.success('Image downloaded & text copied to clipboard!');
-        setTimeout(() => setBothCopied(false), 3000);
-      }
+      // Download the image
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${featureName || 'timeline'}-plc.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      // Copy text to clipboard
+      const summary = generateSummaryText();
+      await navigator.clipboard.writeText(summary);
+      
+      setBothCopied(true);
+      toast.success('Screenshot downloaded & text copied to clipboard!');
+      setTimeout(() => setBothCopied(false), 3000);
     } catch (err) {
       console.error('Screenshot capture failed:', err);
-      toast.error('Failed to capture screenshot');
+      toast.error('Failed to generate summary');
     } finally {
       setIsCapturing(false);
     }
@@ -339,57 +274,6 @@ ${milestoneLines}`;
               </button>
             </div>
             
-            {/* Share Button */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors"
-                  aria-label="Share timeline summary"
-                >
-                  <Share2 className="w-3.5 h-3.5" />
-                  Share
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-96 p-0" align="end">
-                <div className="p-3 border-b border-border">
-                  <h3 className="font-medium text-sm text-foreground">Share Timeline</h3>
-                  <p className="text-xs text-muted-foreground mt-1">Copy summary text or screenshot for sharing</p>
-                </div>
-                <div className="p-3">
-                  <pre className="text-xs bg-muted/50 p-3 rounded-lg overflow-auto max-h-48 whitespace-pre-wrap text-foreground font-mono">
-                    {generateSummaryText()}
-                  </pre>
-                </div>
-                <div className="p-3 border-t border-border flex flex-col gap-2">
-                  <button
-                    onClick={handleCopyBoth}
-                    disabled={isCapturing}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-                  >
-                    {bothCopied ? <Check className="w-4 h-4" /> : <><Copy className="w-4 h-4" /><Camera className="w-4 h-4" /></>}
-                    {isCapturing ? 'Copying...' : bothCopied ? 'Copied!' : 'Copy Text & Screenshot'}
-                  </button>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleCopySummary}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors"
-                    >
-                      {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                      {copied ? 'Copied!' : 'Text Only'}
-                    </button>
-                    <button
-                      onClick={handleCaptureScreenshot}
-                      disabled={isCapturing}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-                    >
-                      {screenshotCopied ? <Check className="w-3 h-3" /> : <Camera className="w-3 h-3" />}
-                      {screenshotCopied ? 'Copied!' : 'Screenshot Only'}
-                    </button>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-            
             <button
               onClick={onClose}
               className="p-2 rounded-md hover:bg-accent transition-colors"
@@ -420,8 +304,8 @@ ${milestoneLines}`;
         <div className="flex-1 overflow-auto" ref={milestonesRef}>
           {viewMode === 'milestones' ? (
             /* Visual Milestones View */
-            <div className="p-6 overflow-x-auto bg-card">
-              <div className="relative min-w-[800px]">
+            <div className="p-6 overflow-x-auto bg-card relative">
+              <div className="relative min-w-[800px] pr-8 pb-16">
                 {/* Milestone nodes with connectors */}
                 <div className="flex items-start relative">
                   {milestones.map((milestone, index) => (
@@ -436,8 +320,8 @@ ${milestoneLines}`;
                         </div>
                         
                         {/* Milestone info */}
-                        <div className="mt-3 text-center max-w-[100px]">
-                          <span className="text-sm font-semibold text-foreground block truncate">
+                        <div className="mt-3 text-center min-w-[100px]">
+                          <span className="text-sm font-semibold text-foreground block">
                             {milestone.name}
                           </span>
                           <span className="text-xs text-muted-foreground block mt-1">
@@ -474,6 +358,20 @@ ${milestoneLines}`;
                   ))}
                 </div>
               </div>
+              
+              {/* Generate Summary Button - Bottom Right */}
+              <button
+                onClick={handleGenerateSummary}
+                disabled={isCapturing}
+                className="absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg disabled:opacity-50"
+              >
+                {bothCopied ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  <Sparkles className="w-4 h-4" />
+                )}
+                {isCapturing ? 'Generating...' : bothCopied ? 'Done!' : 'Generate Summary'}
+              </button>
             </div>
           ) : (
             /* Gantt Chart View */
