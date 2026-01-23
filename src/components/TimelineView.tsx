@@ -67,7 +67,53 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
     };
   }, [milestones]);
 
-  // Initialize drag hook
+  // Calculate today's position percentage for each view mode
+  const todayPosition = useMemo(() => {
+    const today = new Date();
+    
+    if (milestones.length === 0) return { days: null, weeks: null, months: null, quarters: null };
+    
+    // Days view
+    const daysOffset = differenceInDays(today, startDate);
+    const daysPercent = totalDays > 0 ? (daysOffset / totalDays) * 100 : null;
+    
+    // Weeks view
+    let weeksPercent = null;
+    if (weeks.length > 0) {
+      const firstWeek = weeks[0];
+      const lastWeek = weeks[weeks.length - 1];
+      const totalWeekDays = differenceInDays(addDays(lastWeek, 7), firstWeek);
+      const weeksOffset = differenceInDays(today, firstWeek);
+      weeksPercent = totalWeekDays > 0 ? (weeksOffset / totalWeekDays) * 100 : null;
+    }
+    
+    // Months view
+    let monthsPercent = null;
+    if (months.length > 0) {
+      const firstMonth = months[0];
+      const lastMonth = months[months.length - 1];
+      const totalMonthDays = differenceInDays(addMonths(lastMonth, 1), firstMonth);
+      const monthsOffset = differenceInDays(today, firstMonth);
+      monthsPercent = totalMonthDays > 0 ? (monthsOffset / totalMonthDays) * 100 : null;
+    }
+    
+    // Quarters view
+    let quartersPercent = null;
+    if (quarters.length > 0) {
+      const firstQuarter = quarters[0];
+      const lastQuarter = quarters[quarters.length - 1];
+      const totalQuarterDays = differenceInDays(addQuarters(lastQuarter, 1), firstQuarter);
+      const quartersOffset = differenceInDays(today, firstQuarter);
+      quartersPercent = totalQuarterDays > 0 ? (quartersOffset / totalQuarterDays) * 100 : null;
+    }
+    
+    return {
+      days: daysPercent !== null && daysPercent >= 0 && daysPercent <= 100 ? daysPercent : null,
+      weeks: weeksPercent !== null && weeksPercent >= 0 && weeksPercent <= 100 ? weeksPercent : null,
+      months: monthsPercent !== null && monthsPercent >= 0 && monthsPercent <= 100 ? monthsPercent : null,
+      quarters: quartersPercent !== null && quartersPercent >= 0 && quartersPercent <= 100 ? quartersPercent : null,
+    };
+  }, [milestones, startDate, totalDays, weeks, months, quarters]);
   const { handleDragStart, getPreviewDays, isDraggingMilestone, isDragging } = useGanttDrag({
     totalDays,
     onDaysChange: handleDaysUpdate,
@@ -582,6 +628,23 @@ ${milestoneLines}`;
                             style={{ left: `${((i + 1) / quarters.length) * 100}%` }}
                           />
                         ))}
+                        
+                        {/* Today indicator line */}
+                        {(() => {
+                          const pos = viewMode === 'days' ? todayPosition.days :
+                                      viewMode === 'weeks' ? todayPosition.weeks :
+                                      viewMode === 'months' ? todayPosition.months :
+                                      viewMode === 'quarters' ? todayPosition.quarters : null;
+                          return pos !== null ? (
+                            <div
+                              className="absolute top-0 bottom-0 w-0.5 bg-destructive z-20"
+                              style={{ left: `${pos}%` }}
+                              title="Today"
+                            >
+                              <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-destructive" />
+                            </div>
+                          ) : null;
+                        })()}
                         
                         {/* Bar with drag support */}
                         <GanttBar
