@@ -1,8 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { ProjectSidebar, SavedProject } from './ProjectSidebar';
-import { ShareProjectModal } from './ShareProjectModal';
-import { DbProject, useProjects } from '@/hooks/useProjects';
-import { useAuth } from '@/hooks/useAuth';
+import { useProjects } from '@/hooks/useProjects';
 import { useNavigate } from 'react-router-dom';
 
 interface LayoutProps {
@@ -11,11 +9,9 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { projects, loading, createProject, updateProject, deleteProject } = useProjects();
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [shareModalProject, setShareModalProject] = useState<DbProject | null>(null);
 
   // Convert DbProject to SavedProject format for sidebar compatibility
   const savedProjects: SavedProject[] = projects.map(p => ({
@@ -50,13 +46,6 @@ export function Layout({ children }: LayoutProps) {
     }
   }, [currentProjectId, deleteProject]);
 
-  const handleShareProject = useCallback((id: string) => {
-    const project = projects.find(p => p.id === id);
-    if (project) {
-      setShareModalProject(project);
-    }
-  }, [projects]);
-
   // Listen for project updates from Index page
   useEffect(() => {
     const handleCurrentProjectUpdate = (e: CustomEvent<string | null>) => {
@@ -80,15 +69,8 @@ export function Layout({ children }: LayoutProps) {
         onSelectProject={handleSelectProject}
         onCreateNew={handleCreateNewProject}
         onDeleteProject={handleDeleteProject}
-        onShareProject={handleShareProject}
       />
       {children}
-      
-      <ShareProjectModal
-        project={shareModalProject}
-        isOpen={!!shareModalProject}
-        onClose={() => setShareModalProject(null)}
-      />
     </div>
   );
 }
