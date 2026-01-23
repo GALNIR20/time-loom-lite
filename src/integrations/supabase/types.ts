@@ -75,7 +75,7 @@ export type Database = {
           id: string
           locked_dev_start: string | null
           overrides: Json
-          owner_id: string
+          owner_id: string | null
           preset: string
           project_start: string
           show_detailed: boolean
@@ -88,7 +88,7 @@ export type Database = {
           id?: string
           locked_dev_start?: string | null
           overrides?: Json
-          owner_id: string
+          owner_id?: string | null
           preset?: string
           project_start?: string
           show_detailed?: boolean
@@ -101,7 +101,7 @@ export type Database = {
           id?: string
           locked_dev_start?: string | null
           overrides?: Json
-          owner_id?: string
+          owner_id?: string | null
           preset?: string
           project_start?: string
           show_detailed?: boolean

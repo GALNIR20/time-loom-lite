@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Plus, FolderOpen, Trash2, ChevronDown, Calendar, Settings, LogOut, Share2 } from 'lucide-react';
+import { Plus, FolderOpen, Trash2, ChevronDown, Calendar, Settings } from 'lucide-react';
 import { PresetType } from '@/types/timeline';
 import { PredictorLogo } from '@/components/PredictorLogo';
-import { useAuth } from '@/hooks/useAuth';
 
 export interface SavedProject {
   id: string;
@@ -26,7 +25,6 @@ interface ProjectSidebarProps {
   onSelectProject: (project: SavedProject) => void;
   onCreateNew: () => void;
   onDeleteProject: (id: string) => void;
-  onShareProject?: (id: string) => void;
 }
 
 export function ProjectSidebar({
@@ -37,19 +35,15 @@ export function ProjectSidebar({
   onSelectProject,
   onCreateNew,
   onDeleteProject,
-  onShareProject,
 }: ProjectSidebarProps) {
   const [isProjectsExpanded, setIsProjectsExpanded] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
-  const { signOut } = useAuth();
 
   const navItems = [
     { path: '/calendar', icon: Calendar, label: 'Calendar' },
     { path: '/settings', icon: Settings, label: 'Settings' },
   ];
-
-  const isOnDashboard = location.pathname === '/';
 
   if (isCollapsed) {
     return (
@@ -155,30 +149,16 @@ export function ProjectSidebar({
                       >
                         {project.featureName || 'Untitled Project'}
                       </button>
-                      <div className="flex items-center gap-0.5">
-                        {onShareProject && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onShareProject(project.id);
-                            }}
-                            className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all"
-                            aria-label={`Share ${project.featureName || 'project'}`}
-                          >
-                            <Share2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteProject(project.id);
-                          }}
-                          className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
-                          aria-label={`Delete ${project.featureName || 'project'}`}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteProject(project.id);
+                        }}
+                        className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
+                        aria-label={`Delete ${project.featureName || 'project'}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   );
                 })
@@ -215,20 +195,13 @@ export function ProjectSidebar({
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-border/50 p-4 space-y-1">
+      <div className="border-t border-border/50 p-4">
         <button
           onClick={onToggleCollapse}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           <ChevronDown className="w-5 h-5 -rotate-90" />
           <span>Collapse</span>
-        </button>
-        <button
-          onClick={() => signOut()}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-        >
-          <LogOut className="w-5 h-5" />
-          <span>Sign Out</span>
         </button>
       </div>
     </div>
