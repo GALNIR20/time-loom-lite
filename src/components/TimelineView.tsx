@@ -384,10 +384,17 @@ ${milestoneLines}`;
           ) : (
             /* Gantt Chart View */
             <div className="min-w-[900px]">
+              {/* Project Name Header - for screenshot */}
+              {featureName && (
+                <div className="p-4 bg-card border-b border-border">
+                  <h3 className="text-lg font-semibold text-foreground">{featureName}</h3>
+                  {preset && <span className="text-sm text-muted-foreground">{preset} PLC</span>}
+                </div>
+              )}
               {/* Calendar Header */}
               <div className="flex border-b border-border sticky top-0 bg-card z-10">
                 {/* Milestone column header */}
-                <div className="w-32 flex-shrink-0 p-2 border-r border-border">
+                <div className="w-40 flex-shrink-0 p-2 border-r border-border">
                   <span className="text-xs font-medium text-muted-foreground">Milestone</span>
                 </div>
                 {/* Days column header - only show in edit mode */}
@@ -488,8 +495,8 @@ ${milestoneLines}`;
                 return (
                   <div key={milestone.id} className="flex border-b border-border hover:bg-muted/10 transition-colors">
                     {/* Milestone name */}
-                    <div className="w-32 flex-shrink-0 p-3 border-r border-border">
-                      <span className="text-sm font-medium text-foreground block truncate">
+                    <div className="w-40 flex-shrink-0 p-3 border-r border-border">
+                      <span className="text-sm font-medium text-foreground block">
                         {milestone.name}
                       </span>
                       <span className="text-xs text-muted-foreground">
