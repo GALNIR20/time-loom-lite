@@ -27,6 +27,7 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
   const [editMode, setEditMode] = useState(false);
   const [copied, setCopied] = useState(false);
   const [screenshotCopied, setScreenshotCopied] = useState(false);
+  const [bothCopied, setBothCopied] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const milestonesRef = useRef<HTMLDivElement>(null);
 
@@ -80,20 +81,19 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
     const projectName = featureName || 'Untitled Project';
     const presetName = preset || 'Custom';
     
-    // Build milestone list with dates
+    // Build milestone list with start date only
     const milestoneLines = milestones.map(m => 
-      `  • ${m.name}: ${formatDateDisplay(m.start)} → ${formatDateDisplay(m.end)}`
+      `  • ${m.name}: ${formatDateDisplay(m.start)}`
     ).join('\n');
     
-    const summary = `📊 *${projectName}*
+    const summary = `Hey all, sharing with you the PLC dates for:
+
+📊 *${projectName}*
 
 🏷️ *PLC Size:* ${presetName}
 
 📅 *PLC Milestones:*
-${milestoneLines}
-
----
-Generated with PREDICTOR`;
+${milestoneLines}`;
     
     return summary;
   }, [milestones, featureName, preset]);
@@ -144,6 +144,52 @@ Generated with PREDICTOR`;
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       toast.error('Failed to copy summary');
+    }
+  }, [generateSummaryText]);
+
+  // Copy both text and screenshot
+  const handleCopyBoth = useCallback(async () => {
+    if (!milestonesRef.current) {
+      toast.error('Unable to capture screenshot');
+      return;
+    }
+
+    setIsCapturing(true);
+    try {
+      // First copy text to clipboard
+      const summary = generateSummaryText();
+      await navigator.clipboard.writeText(summary);
+      
+      // Then capture screenshot
+      const canvas = await html2canvas(milestonesRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+
+      canvas.toBlob(async (blob) => {
+        if (blob) {
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({ 
+                'text/plain': new Blob([summary], { type: 'text/plain' }),
+                'image/png': blob 
+              })
+            ]);
+            setBothCopied(true);
+            toast.success('Text & screenshot copied to clipboard!');
+            setTimeout(() => setBothCopied(false), 2000);
+          } catch (err) {
+            // Fallback: at least text was copied
+            toast.success('Text copied! Screenshot requires manual paste.');
+          }
+        }
+      }, 'image/png');
+    } catch (err) {
+      toast.error('Failed to copy');
+    } finally {
+      setIsCapturing(false);
     }
   }, [generateSummaryText]);
 
@@ -294,20 +340,30 @@ Generated with PREDICTOR`;
                 </div>
                 <div className="p-3 border-t border-border flex flex-col gap-2">
                   <button
-                    onClick={handleCopySummary}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                  >
-                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    {copied ? 'Text Copied!' : 'Copy Text'}
-                  </button>
-                  <button
-                    onClick={handleCaptureScreenshot}
+                    onClick={handleCopyBoth}
                     disabled={isCapturing}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
                   >
-                    {screenshotCopied ? <Check className="w-4 h-4" /> : <Camera className="w-4 h-4" />}
-                    {isCapturing ? 'Capturing...' : screenshotCopied ? 'Screenshot Copied!' : 'Copy Screenshot'}
+                    {bothCopied ? <Check className="w-4 h-4" /> : <><Copy className="w-4 h-4" /><Camera className="w-4 h-4" /></>}
+                    {isCapturing ? 'Copying...' : bothCopied ? 'Copied!' : 'Copy Text & Screenshot'}
                   </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleCopySummary}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors"
+                    >
+                      {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                      {copied ? 'Copied!' : 'Text Only'}
+                    </button>
+                    <button
+                      onClick={handleCaptureScreenshot}
+                      disabled={isCapturing}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                    >
+                      {screenshotCopied ? <Check className="w-3 h-3" /> : <Camera className="w-3 h-3" />}
+                      {screenshotCopied ? 'Copied!' : 'Screenshot Only'}
+                    </button>
+                  </div>
                 </div>
               </PopoverContent>
             </Popover>
@@ -354,7 +410,7 @@ Generated with PREDICTOR`;
                         <div 
                           className={`w-12 h-12 rounded-full ${getMilestoneColor(milestone.id)} flex items-center justify-center shadow-lg z-10 border-4 border-card`}
                         >
-                          <span className="text-xs font-bold text-white">{index + 1}</span>
+                          <span className="text-sm font-bold text-white leading-none">{index + 1}</span>
                         </div>
                         
                         {/* Milestone info */}
