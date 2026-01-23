@@ -226,25 +226,32 @@ export function useProjects() {
     if (!user) return [];
 
     try {
-      const { data, error } = await supabase
+      // First get memberships
+      const { data: memberships, error: memberError } = await supabase
         .from('project_memberships')
-        .select(`
-          id,
-          project_id,
-          user_id,
-          role,
-          profiles!inner(email)
-        `)
+        .select('id, project_id, user_id, role')
         .eq('project_id', projectId);
 
-      if (error) throw error;
+      if (memberError) throw memberError;
+      if (!memberships || memberships.length === 0) return [];
 
-      return (data || []).map(m => ({
+      // Then get profile emails for those users
+      const userIds = memberships.map(m => m.user_id);
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .in('id', userIds);
+
+      if (profileError) throw profileError;
+
+      const emailMap = new Map((profiles || []).map(p => [p.id, p.email]));
+
+      return memberships.map(m => ({
         id: m.id,
         project_id: m.project_id,
         user_id: m.user_id,
         role: m.role,
-        email: (m.profiles as { email: string })?.email
+        email: emailMap.get(m.user_id)
       }));
     } catch (error) {
       console.error('Failed to get members:', error);
