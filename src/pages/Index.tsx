@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { parseISO, subDays, format, addDays } from 'date-fns';
 import { ControlsPanel } from '@/components/ControlsPanel';
@@ -12,6 +12,7 @@ import { SprintManager } from '@/components/SprintManager';
 import { DEFAULT_MILESTONES, calculateTimeline, getPresetDuration, PRESET_CONFIGS, getTodayISO, createSprintMilestone, SPRINT_DURATION_DAYS } from '@/lib/timeline';
 import { TimelineExport, PresetType, MilestoneConfig } from '@/types/timeline';
 import { PredictorLogo } from '@/components/PredictorLogo';
+import { useProjects } from '@/hooks/useProjects';
 
 // Calculate days before I-Phase for a given preset and overrides
 function calculateDaysBeforeIPhase(presetType: PresetType, overrides: Record<string, number | null>, milestoneConfigs: MilestoneConfig[]): number {
@@ -23,11 +24,10 @@ function calculateDaysBeforeIPhase(presetType: PresetType, overrides: Record<str
     return sum + duration;
   }, 0);
 }
-const PROJECTS_STORAGE_KEY = 'timeline-predictor-projects';
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2);
-}
+
 const Index = () => {
+  const { projects, createProject, updateProject } = useProjects();
+  
   const [featureName, setFeatureName] = useState('');
   const [isFeatureNameSet, setIsFeatureNameSet] = useState(false);
   const [projectStart, setProjectStart] = useState(getTodayISO);
@@ -48,69 +48,53 @@ const Index = () => {
   const [lockedDevStart, setLockedDevStart] = useState<string | null>(null);
 
   // Multi-project management
-  const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  
+  // Track if we're currently saving to avoid loops
+  const isSaving = useRef(false);
 
-  // Load saved projects on mount
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(PROJECTS_STORAGE_KEY);
-      if (saved) {
-        const projects: SavedProject[] = JSON.parse(saved);
-        setSavedProjects(projects);
-      }
-    } catch (e) {
-      console.error('Failed to load saved projects:', e);
-    }
-  }, []);
-
-  // Auto-save project whenever state changes (debounced)
+  // Auto-save project to database whenever state changes (debounced)
   useEffect(() => {
     // Only auto-save if we have a feature name set (user has started working)
-    if (!isFeatureNameSet) return;
+    if (!isFeatureNameSet || isSaving.current) return;
 
-    const timeoutId = setTimeout(() => {
-      const now = new Date().toISOString();
-      const projectId = currentProjectId || generateId();
-      const project: SavedProject = {
-        id: projectId,
-        featureName,
-        isFeatureNameSet,
-        projectStart,
-        preset,
-        showDetailed,
-        overrides,
-        hiddenMilestones: Array.from(hiddenMilestones),
-        lockedDevStart,
-        savedAt: now
-      };
+    const timeoutId = setTimeout(async () => {
+      isSaving.current = true;
       
-      setSavedProjects(prev => {
-        const existingIndex = prev.findIndex(p => p.id === projectId);
-        let updated: SavedProject[];
-        if (existingIndex >= 0) {
-          updated = [...prev];
-          updated[existingIndex] = project;
-        } else {
-          updated = [project, ...prev];
+      if (currentProjectId) {
+        // Update existing project
+        await updateProject(currentProjectId, {
+          feature_name: featureName,
+          project_start: projectStart,
+          preset,
+          show_detailed: showDetailed,
+          overrides,
+          hidden_milestones: Array.from(hiddenMilestones),
+          locked_dev_start: lockedDevStart
+        });
+      } else {
+        // Create new project
+        const newProject = await createProject({
+          feature_name: featureName || 'Untitled Project',
+          project_start: projectStart,
+          preset,
+          show_detailed: showDetailed,
+          overrides,
+          hidden_milestones: Array.from(hiddenMilestones),
+          locked_dev_start: lockedDevStart
+        });
+        if (newProject) {
+          setCurrentProjectId(newProject.id);
         }
-        localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updated));
-        return updated;
-      });
-      
-      if (!currentProjectId) {
-        setCurrentProjectId(projectId);
       }
-    }, 500); // 500ms debounce
+      
+      isSaving.current = false;
+    }, 1000); // 1s debounce for database saves
 
     return () => clearTimeout(timeoutId);
-  }, [featureName, isFeatureNameSet, projectStart, preset, showDetailed, overrides, hiddenMilestones, lockedDevStart, currentProjectId]);
+  }, [featureName, isFeatureNameSet, projectStart, preset, showDetailed, overrides, hiddenMilestones, lockedDevStart, currentProjectId, createProject, updateProject]);
 
-  // Sync with Layout component
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent('projectsUpdated', { detail: savedProjects }));
-  }, [savedProjects]);
-
+  // Sync currentProjectId with Layout
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('currentProjectUpdated', { detail: currentProjectId }));
   }, [currentProjectId]);
@@ -151,46 +135,60 @@ const Index = () => {
     };
   }, []);
 
-  // Get the current project from saved projects
+  // Get the current project from database projects
   const currentSavedProject = useMemo(() => {
-    return savedProjects.find(p => p.id === currentProjectId) || null;
-  }, [savedProjects, currentProjectId]);
+    if (!currentProjectId) return null;
+    const dbProject = projects.find(p => p.id === currentProjectId);
+    if (!dbProject) return null;
+    // Convert to SavedProject format
+    return {
+      id: dbProject.id,
+      featureName: dbProject.feature_name,
+      isFeatureNameSet: true,
+      projectStart: dbProject.project_start,
+      preset: dbProject.preset as PresetType,
+      showDetailed: dbProject.show_detailed,
+      overrides: dbProject.overrides,
+      hiddenMilestones: dbProject.hidden_milestones,
+      lockedDevStart: dbProject.locked_dev_start,
+      savedAt: dbProject.updated_at
+    } as SavedProject;
+  }, [projects, currentProjectId]);
 
   // Check if current state differs from saved project
   const hasUnsavedChanges = useMemo(() => {
     if (!currentSavedProject) return false;
-    return featureName !== currentSavedProject.featureName || isFeatureNameSet !== currentSavedProject.isFeatureNameSet || projectStart !== currentSavedProject.projectStart || preset !== currentSavedProject.preset || showDetailed !== currentSavedProject.showDetailed || JSON.stringify(overrides) !== JSON.stringify(currentSavedProject.overrides) || JSON.stringify(Array.from(hiddenMilestones).sort()) !== JSON.stringify([...currentSavedProject.hiddenMilestones].sort()) || lockedDevStart !== currentSavedProject.lockedDevStart;
-  }, [currentSavedProject, featureName, isFeatureNameSet, projectStart, preset, showDetailed, overrides, hiddenMilestones, lockedDevStart]);
-  const handleSave = useCallback(() => {
-    const now = new Date().toISOString();
-    const projectId = currentProjectId || generateId();
-    const project: SavedProject = {
-      id: projectId,
-      featureName,
-      isFeatureNameSet,
-      projectStart,
-      preset,
-      showDetailed,
-      overrides,
-      hiddenMilestones: Array.from(hiddenMilestones),
-      lockedDevStart,
-      savedAt: now
-    };
-    setSavedProjects(prev => {
-      const existingIndex = prev.findIndex(p => p.id === projectId);
-      let updated: SavedProject[];
-      if (existingIndex >= 0) {
-        updated = [...prev];
-        updated[existingIndex] = project;
-      } else {
-        updated = [project, ...prev];
+    return featureName !== currentSavedProject.featureName || projectStart !== currentSavedProject.projectStart || preset !== currentSavedProject.preset || showDetailed !== currentSavedProject.showDetailed || JSON.stringify(overrides) !== JSON.stringify(currentSavedProject.overrides) || JSON.stringify(Array.from(hiddenMilestones).sort()) !== JSON.stringify([...currentSavedProject.hiddenMilestones].sort()) || lockedDevStart !== currentSavedProject.lockedDevStart;
+  }, [currentSavedProject, featureName, projectStart, preset, showDetailed, overrides, hiddenMilestones, lockedDevStart]);
+  
+  const handleSave = useCallback(async () => {
+    if (currentProjectId) {
+      await updateProject(currentProjectId, {
+        feature_name: featureName,
+        project_start: projectStart,
+        preset,
+        show_detailed: showDetailed,
+        overrides,
+        hidden_milestones: Array.from(hiddenMilestones),
+        locked_dev_start: lockedDevStart
+      });
+      toast.success('Project saved!');
+    } else {
+      const newProject = await createProject({
+        feature_name: featureName || 'Untitled Project',
+        project_start: projectStart,
+        preset,
+        show_detailed: showDetailed,
+        overrides,
+        hidden_milestones: Array.from(hiddenMilestones),
+        locked_dev_start: lockedDevStart
+      });
+      if (newProject) {
+        setCurrentProjectId(newProject.id);
+        toast.success('Project created!');
       }
-      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updated));
-      return updated;
-    });
-    setCurrentProjectId(projectId);
-    toast.success('Project saved!');
-  }, [currentProjectId, featureName, isFeatureNameSet, projectStart, preset, showDetailed, overrides, hiddenMilestones, lockedDevStart]);
+    }
+  }, [currentProjectId, featureName, projectStart, preset, showDetailed, overrides, hiddenMilestones, lockedDevStart, createProject, updateProject]);
   const handleRestore = useCallback(() => {
     if (!currentSavedProject) return;
     setFeatureName(currentSavedProject.featureName || '');
@@ -226,17 +224,7 @@ const Index = () => {
     setHiddenMilestones(new Set());
     setLockedDevStart(null);
   }, []);
-  const handleDeleteProject = useCallback((id: string) => {
-    setSavedProjects(prev => {
-      const updated = prev.filter(p => p.id !== id);
-      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updated));
-      return updated;
-    });
-    if (currentProjectId === id) {
-      setCurrentProjectId(null);
-    }
-    toast.success('Project deleted');
-  }, [currentProjectId]);
+  // handleDeleteProject is now handled by Layout via useProjects hook
 
   // Filter out hidden milestones from the config before calculating
   const activeMilestoneConfigs = useMemo(() => customMilestones.filter(m => !hiddenMilestones.has(m.id)), [customMilestones, hiddenMilestones]);
@@ -543,7 +531,18 @@ const Index = () => {
       />
 
       {/* Project Compare View Modal */}
-      <ProjectCompareView isOpen={isCompareViewOpen} onClose={() => setIsCompareViewOpen(false)} projects={savedProjects} />
+      <ProjectCompareView isOpen={isCompareViewOpen} onClose={() => setIsCompareViewOpen(false)} projects={projects.map(p => ({
+        id: p.id,
+        featureName: p.feature_name,
+        isFeatureNameSet: true,
+        projectStart: p.project_start,
+        preset: p.preset as PresetType,
+        showDetailed: p.show_detailed,
+        overrides: p.overrides,
+        hiddenMilestones: p.hidden_milestones,
+        lockedDevStart: p.locked_dev_start,
+        savedAt: p.updated_at
+      }))} />
     </div>
   );
 };
