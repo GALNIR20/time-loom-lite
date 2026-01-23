@@ -470,24 +470,27 @@ ${milestoneLines}`;
                   offsetPercent = totalDays > 0 ? (offsetDays / totalDays) * 100 : 0;
                   widthPercent = totalDays > 0 ? (previewDays / totalDays) * 100 : 0;
                 } else if (viewMode === 'weeks') {
-                  // Weeks view: each week column is 80px fixed
-                  const weekStart = startOfWeek(startDate, { weekStartsOn: 1 });
-                  const offsetDays = differenceInDays(milestoneStart, weekStart);
-                  const totalWeekDays = weeks.length * 7;
+                  // Weeks view: position relative to the first week in the weeks array
+                  const firstWeek = weeks[0];
+                  const lastWeek = weeks[weeks.length - 1];
+                  const totalWeekDays = differenceInDays(addDays(lastWeek, 7), firstWeek);
+                  const offsetDays = differenceInDays(milestoneStart, firstWeek);
                   offsetPercent = totalWeekDays > 0 ? (offsetDays / totalWeekDays) * 100 : 0;
                   widthPercent = totalWeekDays > 0 ? (previewDays / totalWeekDays) * 100 : 0;
                 } else if (viewMode === 'months') {
-                  // Months view: position relative to month boundaries
-                  const monthStart = startOfMonth(startDate);
-                  const offsetDays = differenceInDays(milestoneStart, monthStart);
-                  const totalMonthDays = months.length * 30; // Approximate
+                  // Months view: position relative to month boundaries using actual days
+                  const firstMonth = months[0];
+                  const lastMonth = months[months.length - 1];
+                  const totalMonthDays = differenceInDays(addMonths(lastMonth, 1), firstMonth);
+                  const offsetDays = differenceInDays(milestoneStart, firstMonth);
                   offsetPercent = totalMonthDays > 0 ? (offsetDays / totalMonthDays) * 100 : 0;
                   widthPercent = totalMonthDays > 0 ? (previewDays / totalMonthDays) * 100 : 0;
                 } else if (viewMode === 'quarters') {
-                  // Quarters view: position relative to quarter boundaries
-                  const qStart = startOfQuarter(startDate);
-                  const offsetDays = differenceInDays(milestoneStart, qStart);
-                  const totalQuarterDays = quarters.length * 91; // ~3 months per quarter
+                  // Quarters view: position relative to quarter boundaries using actual days
+                  const firstQuarter = quarters[0];
+                  const lastQuarter = quarters[quarters.length - 1];
+                  const totalQuarterDays = differenceInDays(addQuarters(lastQuarter, 1), firstQuarter);
+                  const offsetDays = differenceInDays(milestoneStart, firstQuarter);
                   offsetPercent = totalQuarterDays > 0 ? (offsetDays / totalQuarterDays) * 100 : 0;
                   widthPercent = totalQuarterDays > 0 ? (previewDays / totalQuarterDays) * 100 : 0;
                 }
