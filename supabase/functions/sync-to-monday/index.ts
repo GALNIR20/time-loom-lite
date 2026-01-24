@@ -184,6 +184,7 @@ serve(async (req) => {
               ${groupId ? `group_id: "${groupId}"` : ''}
               item_name: "${itemName.replace(/"/g, '\\"')}"
               column_values: ${JSON.stringify(JSON.stringify(columnValues))}
+              create_labels_if_missing: true
             ) {
               id
               name
