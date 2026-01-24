@@ -137,9 +137,9 @@ serve(async (req) => {
         // Build column values using the actual column IDs from the board
         const columnValues: Record<string, unknown> = {};
         
-        // Date column - use the Brief/project date
+        // Date column - use each milestone's own start date
         if (dateColumn?.id) {
-          columnValues[dateColumn.id] = { date: projectDate };
+          columnValues[dateColumn.id] = { date: milestone.startDate };
         }
         
         // Timeline column - shows start to end for each milestone
