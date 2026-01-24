@@ -257,6 +257,14 @@ export function MondayExportModal({ isOpen, onClose, milestones, featureName }: 
           <button onClick={onClose} className="btn-secondary">
             {syncResult ? 'Done' : 'Cancel'}
           </button>
+          {syncResult && (
+            <button 
+              onClick={() => setSyncResult(null)} 
+              className="btn-primary"
+            >
+              Sync Again
+            </button>
+          )}
           {!syncResult && (
             <button 
               onClick={handleSync} 
