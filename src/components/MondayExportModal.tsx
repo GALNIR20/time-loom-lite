@@ -69,6 +69,7 @@ export function MondayExportModal({ isOpen, onClose, milestones, featureName }: 
       const milestonesData = milestones.map(m => ({
         id: m.id,
         name: m.name,
+        phase: m.phase,
         startDate: m.start,
         endDate: m.end,
         durationDays: m.durationDays

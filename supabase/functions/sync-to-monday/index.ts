@@ -8,6 +8,7 @@ const corsHeaders = {
 interface MilestoneData {
   id: string;
   name: string;
+  phase: string;
   startDate: string;
   endDate: string;
   durationDays: number;
@@ -82,8 +83,12 @@ serve(async (req) => {
     const timelineColumn = columns.find((c: { type: string }) => c.type === 'timeline');
     const numbersColumn = columns.find((c: { type: string }) => c.type === 'numbers' || c.type === 'numeric');
     const textColumn = columns.find((c: { type: string }) => c.type === 'text');
+    // Find status columns - first one for milestone, second one for phase
+    const statusColumns = columns.filter((c: { type: string }) => c.type === 'status');
+    const milestoneStatusColumn = statusColumns[0];
+    const phaseStatusColumn = statusColumns[1];
 
-    console.log('Found columns - date:', dateColumn?.id, 'timeline:', timelineColumn?.id, 'numbers:', numbersColumn?.id, 'text:', textColumn?.id);
+    console.log('Found columns - date:', dateColumn?.id, 'timeline:', timelineColumn?.id, 'numbers:', numbersColumn?.id, 'text:', textColumn?.id, 'status columns:', statusColumns.map((c: { id: string }) => c.id));
 
     // Find the Brief milestone to get the project start date
     const briefMilestone = milestones.find(m => m.name.toLowerCase() === 'brief');
@@ -158,6 +163,16 @@ serve(async (req) => {
         // Text column for milestone name
         if (textColumn?.id) {
           columnValues[textColumn.id] = milestone.name;
+        }
+
+        // Status column for milestone name
+        if (milestoneStatusColumn?.id) {
+          columnValues[milestoneStatusColumn.id] = { label: milestone.name };
+        }
+
+        // Status column for phase name
+        if (phaseStatusColumn?.id && milestone.phase) {
+          columnValues[phaseStatusColumn.id] = { label: milestone.phase };
         }
 
         console.log(`Column values for ${itemName}:`, JSON.stringify(columnValues));
