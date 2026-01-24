@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Download, Upload, FileJson, Check, AlertCircle } from 'lucide-react';
+import { Download, Upload, FileJson, Check, AlertCircle, Sun, Moon, Monitor } from 'lucide-react';
 import { useProjects, DbProject } from '@/hooks/useProjects';
 import { PresetType } from '@/types/timeline';
 import { toast } from 'sonner';
-
+import { useTheme } from '@/components/ThemeProvider';
 interface ExportedProject {
   feature_name: string;
   project_start: string;
@@ -30,6 +30,7 @@ interface ExportData {
 
 export default function SettingsPage() {
   const { projects, createProject } = useProjects();
+  const { theme, setTheme } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [importMessage, setImportMessage] = useState('');
@@ -167,17 +168,17 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="flex-1 p-8 bg-muted/30 overflow-auto">
+    <div className="flex-1 p-4 md:p-8 bg-muted/30 overflow-auto">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Settings</h1>
-        <p className="text-muted-foreground mb-8">Manage your account and preferences</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">Settings</h1>
+        <p className="text-sm md:text-base text-muted-foreground mb-6 md:mb-8">Manage your account and preferences</p>
 
-        <Tabs defaultValue="data" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="data">Data</TabsTrigger>
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="appearance">Appearance</TabsTrigger>
+        <Tabs defaultValue="data" className="space-y-4 md:space-y-6">
+          <TabsList className="w-full flex overflow-x-auto">
+            <TabsTrigger value="data" className="flex-1 text-xs md:text-sm">Data</TabsTrigger>
+            <TabsTrigger value="general" className="flex-1 text-xs md:text-sm">General</TabsTrigger>
+            <TabsTrigger value="notifications" className="flex-1 text-xs md:text-sm">Notifications</TabsTrigger>
+            <TabsTrigger value="appearance" className="flex-1 text-xs md:text-sm">Appearance</TabsTrigger>
           </TabsList>
 
           <TabsContent value="data">
@@ -279,7 +280,7 @@ export default function SettingsPage() {
                 <CardDescription>Update your personal information</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="firstName">First Name</Label>
                     <Input id="firstName" placeholder="John" />
@@ -355,12 +356,49 @@ export default function SettingsPage() {
                 <CardDescription>Customize the look and feel</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Dark Mode</Label>
-                    <p className="text-sm text-muted-foreground">Use dark theme</p>
+                {/* Theme Selection */}
+                <div className="space-y-3">
+                  <Label>Theme</Label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <button
+                      onClick={() => setTheme("light")}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                        theme === "light"
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/50"
+                      }`}
+                    >
+                      <Sun className="w-6 h-6" />
+                      <span className="text-sm font-medium">Light</span>
+                    </button>
+                    <button
+                      onClick={() => setTheme("dark")}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                        theme === "dark"
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/50"
+                      }`}
+                    >
+                      <Moon className="w-6 h-6" />
+                      <span className="text-sm font-medium">Dark</span>
+                    </button>
+                    <button
+                      onClick={() => setTheme("system")}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                        theme === "system"
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/50"
+                      }`}
+                    >
+                      <Monitor className="w-6 h-6" />
+                      <span className="text-sm font-medium">System</span>
+                    </button>
                   </div>
-                  <Switch />
+                  <p className="text-xs text-muted-foreground">
+                    {theme === "system" 
+                      ? "Automatically matches your device settings" 
+                      : `Using ${theme} mode`}
+                  </p>
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">

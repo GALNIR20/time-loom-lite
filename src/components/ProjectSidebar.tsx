@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Plus, FolderOpen, Trash2, ChevronDown, Calendar, Settings } from 'lucide-react';
 import { PresetType } from '@/types/timeline';
 import { PredictorLogo } from '@/components/PredictorLogo';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -96,6 +97,10 @@ export function ProjectSidebar({
             </button>
           ))}
         </nav>
+        {/* Theme toggle in collapsed mode */}
+        <div className="mt-auto pt-4 border-t border-border/50">
+          <ThemeToggle />
+        </div>
       </div>
     );
   }
@@ -206,14 +211,15 @@ export function ProjectSidebar({
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-border/50 p-4">
+      <div className="border-t border-border/50 p-4 flex items-center justify-between">
         <button
           onClick={onToggleCollapse}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           <ChevronDown className="w-5 h-5 -rotate-90" />
           <span>Collapse</span>
         </button>
+        <ThemeToggle />
       </div>
 
       {/* Delete Confirmation Dialog */}
