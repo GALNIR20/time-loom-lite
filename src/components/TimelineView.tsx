@@ -28,7 +28,10 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
   const [copied, setCopied] = useState(false);
   const [screenshotCopied, setScreenshotCopied] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [missedAllocations, setMissedAllocations] = useState<string[]>([]);
   const milestonesRef = useRef<HTMLDivElement>(null);
+
+  const ALLOCATION_OPTIONS = ['UX', 'Economy', 'BA', 'CX/S', 'MM'] as const;
 
   const handleDaysUpdate = useCallback((id: string, days: number) => {
     onDaysChange(id, days);
@@ -119,6 +122,15 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
     onDaysChange: handleDaysUpdate,
   });
 
+  // Toggle missed allocation
+  const toggleMissedAllocation = useCallback((allocation: string) => {
+    setMissedAllocations(prev => 
+      prev.includes(allocation) 
+        ? prev.filter(a => a !== allocation)
+        : [...prev, allocation]
+    );
+  }, []);
+
   // Generate shareable summary text - must be before early return
   const generateSummaryText = useCallback(() => {
     if (milestones.length === 0) return '';
@@ -131,6 +143,11 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
       `  • *${m.name}*: ${formatDateDisplay(m.start)}`
     ).join('\n');
     
+    // Build missed allocation line if any are selected
+    const missedAllocationLine = missedAllocations.length > 0 
+      ? `\n\n⚠️ *Missed Allocation:* ${missedAllocations.join(', ')}`
+      : '';
+    
     const summary = `Hey all, sharing with you the PLC dates for:
 
 📊 *${projectName}*
@@ -138,10 +155,10 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
 🏷️ *PLC Size:* ${presetName}
 
 📅 *PLC Milestones:*
-${milestoneLines}`;
+${milestoneLines}${missedAllocationLine}`;
     
     return summary;
-  }, [milestones, featureName, preset]);
+  }, [milestones, featureName, preset, missedAllocations]);
 
   // Copy text summary to clipboard
   const handleCopySummary = useCallback(async () => {
@@ -708,6 +725,23 @@ ${milestoneLines}`;
                   <h3 className="font-medium text-sm text-foreground">Share Timeline</h3>
                   <p className="text-xs text-muted-foreground mt-1">Copy summary text or download screenshot</p>
                 </div>
+                
+                {/* Missed Allocation Checkboxes */}
+                <div className="p-3 border-b border-border">
+                  <span className="text-xs font-medium text-foreground block mb-2">Missed Allocation</span>
+                  <div className="flex flex-wrap gap-3">
+                    {ALLOCATION_OPTIONS.map((allocation) => (
+                      <label key={allocation} className="flex items-center gap-1.5 cursor-pointer">
+                        <Checkbox 
+                          checked={missedAllocations.includes(allocation)}
+                          onCheckedChange={() => toggleMissedAllocation(allocation)}
+                        />
+                        <span className="text-xs text-muted-foreground">{allocation}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                
                 <div className="p-3">
                   <pre className="text-xs bg-muted/50 p-3 rounded-lg overflow-auto max-h-48 whitespace-pre-wrap text-foreground font-mono">
                     {generateSummaryText()}
