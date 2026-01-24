@@ -7,6 +7,7 @@ import { MilestoneTable } from '@/components/MilestoneTable';
 import { JsonExportModal } from '@/components/JsonExportModal';
 import { TimelineView } from '@/components/TimelineView';
 import { ProjectCompareView } from '@/components/ProjectCompareView';
+import { MondayExportModal } from '@/components/MondayExportModal';
 import { SavedProject } from '@/components/ProjectSidebar';
 import { SprintManager } from '@/components/SprintManager';
 import { DEFAULT_MILESTONES, calculateTimeline, getPresetDuration, PRESET_CONFIGS, getTodayISO, createSprintMilestone, SPRINT_DURATION_DAYS } from '@/lib/timeline';
@@ -43,6 +44,7 @@ const Index = () => {
   const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
   const [isTimelineViewOpen, setIsTimelineViewOpen] = useState(false);
   const [isCompareViewOpen, setIsCompareViewOpen] = useState(false);
+  const [isMondayModalOpen, setIsMondayModalOpen] = useState(false);
 
   // Track the user's intended dev start date (null = not manually set)
   const [lockedDevStart, setLockedDevStart] = useState<string | null>(null);
@@ -465,6 +467,7 @@ const Index = () => {
           onReset={handleReset}
           onShowTimeline={() => setIsTimelineViewOpen(true)}
           onShowCompare={() => setIsCompareViewOpen(true)}
+          onExportMonday={() => setIsMondayModalOpen(true)}
         />
 
         {isFeatureNameSet && (
@@ -547,6 +550,14 @@ const Index = () => {
         lockedDevStart: p.locked_dev_start,
         savedAt: p.updated_at
       }))} />
+
+      {/* Monday Export Modal */}
+      <MondayExportModal
+        isOpen={isMondayModalOpen}
+        onClose={() => setIsMondayModalOpen(false)}
+        milestones={milestones}
+        featureName={featureName || 'Project'}
+      />
     </div>
   );
 };

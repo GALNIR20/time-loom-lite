@@ -1,4 +1,4 @@
-import { Calendar, RefreshCw, BarChart3, Save, Undo2, GitCompare } from 'lucide-react';
+import { Calendar, RefreshCw, BarChart3, Save, Undo2, GitCompare, Upload } from 'lucide-react';
 import { PresetType } from '@/types/timeline';
 
 interface ControlsPanelProps {
@@ -24,6 +24,7 @@ interface ControlsPanelProps {
   onReset: () => void;
   onShowTimeline: () => void;
   onShowCompare: () => void;
+  onExportMonday: () => void;
 }
 
 const PRESET_OPTIONS: { value: PresetType; label: string; description: string }[] = [
@@ -55,6 +56,7 @@ export function ControlsPanel({
   onReset,
   onShowTimeline,
   onShowCompare,
+  onExportMonday,
 }: ControlsPanelProps) {
   return (
     <div className="card-elevated p-3 sm:p-5 overflow-hidden">
@@ -196,6 +198,10 @@ export function ControlsPanel({
               <button onClick={onShowTimeline} className="btn-primary text-xs sm:text-sm py-2 px-2 sm:px-3">
                 <BarChart3 className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
                 <span className="hidden xs:inline sm:inline">Timeline</span>
+              </button>
+              <button onClick={onExportMonday} className="btn-secondary text-xs sm:text-sm py-2 px-2 sm:px-3">
+                <Upload className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                <span className="hidden xs:inline sm:inline">Monday</span>
               </button>
               <button onClick={onSave} className="btn-primary text-xs sm:text-sm py-2 px-2 sm:px-3">
                 <Save className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
