@@ -152,7 +152,6 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
 
 מצורפים כאן תאריכי הPLC:
 
-📅 *תאריכי הPLC:*
 ${milestoneLines}${missedAllocationLine}`;
     
     return summary;
