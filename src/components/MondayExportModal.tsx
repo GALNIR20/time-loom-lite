@@ -225,7 +225,10 @@ export function MondayExportModal({ isOpen, onClose, milestones, featureName }: 
                     {milestones.map(m => (
                       <li key={m.id} className="flex items-center justify-between text-muted-foreground">
                         <span>{m.name}</span>
-                        <span className="text-xs">{m.durationDays} days</span>
+                        <div className="flex items-center gap-3 text-xs">
+                          <span>{m.start}</span>
+                          <span>{m.durationDays} days</span>
+                        </div>
                       </li>
                     ))}
                   </ul>
