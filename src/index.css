@@ -74,33 +74,57 @@
   }
 
   .dark {
-    --background: 222 47% 11%;
+    /* Layered background hierarchy: deepest → surface → elevated */
+    --background: 222 47% 8%;
     --foreground: 210 40% 98%;
 
-    --card: 222 47% 13%;
+    /* Card sits above background */
+    --card: 222 47% 11%;
     --card-foreground: 210 40% 98%;
 
+    /* Popover/dropdown slightly elevated above card */
     --popover: 222 47% 13%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 11%;
+    --primary-foreground: 222 47% 8%;
 
-    --secondary: 217 33% 17%;
+    /* Secondary for subtle backgrounds */
+    --secondary: 217 33% 15%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
+    /* Muted for recessed areas */
+    --muted: 217 33% 12%;
+    --muted-foreground: 215 20% 55%;
 
-    --accent: 217 33% 17%;
+    /* Accent for hover states */
+    --accent: 217 33% 18%;
     --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 63% 31%;
+    --destructive: 0 63% 40%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 212 27% 84%;
+    /* Borders with subtle visibility */
+    --border: 217 33% 20%;
+    --input: 217 33% 18%;
+    --ring: 217 91% 60%;
+
+    /* Success/Warning adjusted for dark mode */
+    --success: 142 71% 45%;
+    --success-foreground: 222 47% 8%;
+    
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 8%;
+
+    /* Table hierarchy */
+    --table-header: 217 33% 15%;
+    --table-row-hover: 217 33% 14%;
+    --table-border: 217 33% 20%;
+
+    /* Enhanced shadows for dark mode */
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.3);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.4), 0 2px 4px -2px hsl(0 0% 0% / 0.3);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.5), 0 4px 6px -4px hsl(0 0% 0% / 0.4);
   }
 }
 
@@ -121,9 +145,18 @@
     box-shadow: var(--shadow-md);
   }
 
+  .card-surface {
+    @apply bg-card/80 rounded-lg border border-border/50;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .card-inset {
+    @apply bg-muted/50 rounded-lg border border-border/30;
+  }
+
   .input-field {
-    @apply h-9 px-3 py-2 bg-background border border-input rounded-md text-sm
-           focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1
+    @apply h-9 px-3 py-2 bg-input border border-border rounded-md text-sm text-foreground
+           focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 focus:ring-offset-background
            transition-all duration-200 min-w-0 max-w-full box-border;
   }
 
@@ -199,7 +232,12 @@
   }
 
   .summary-card {
-    @apply card-elevated p-4 flex flex-col gap-1;
+    @apply rounded-xl p-4 flex flex-col gap-1 bg-card border border-border;
+    box-shadow: var(--shadow-md);
+  }
+
+  .dark .summary-card {
+    @apply bg-secondary border-border/50;
   }
 
   .summary-label {
