@@ -37,7 +37,7 @@ serve(async (req) => {
       );
     }
 
-    const { boardId, groupId, featureName, milestones }: SyncRequest = await req.json();
+    const { boardId, featureName, milestones }: SyncRequest = await req.json();
     
     console.log(`Syncing ${milestones.length} milestones to Monday.com board ${boardId}`);
 
@@ -46,6 +46,48 @@ serve(async (req) => {
         JSON.stringify({ error: 'Missing required fields: boardId and milestones' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Find the Brief milestone to get the project start date
+    const briefMilestone = milestones.find(m => m.name.toLowerCase() === 'brief');
+    const projectDate = briefMilestone?.startDate || milestones[0]?.startDate;
+
+    // Create a new group with the feature/project name
+    let groupId: string | undefined;
+    try {
+      const createGroupMutation = `
+        mutation {
+          create_group (
+            board_id: ${boardId}
+            group_name: "${featureName.replace(/"/g, '\\"')}"
+          ) {
+            id
+          }
+        }
+      `;
+
+      console.log(`Creating group: ${featureName}`);
+
+      const groupResponse = await fetch('https://api.monday.com/v2', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': MONDAY_API_KEY,
+          'API-Version': '2024-01'
+        },
+        body: JSON.stringify({ query: createGroupMutation })
+      });
+
+      const groupData = await groupResponse.json();
+      
+      if (groupData.data?.create_group?.id) {
+        groupId = groupData.data.create_group.id;
+        console.log(`Successfully created group: ${featureName} with id: ${groupId}`);
+      } else if (groupData.errors) {
+        console.error('Error creating group:', groupData.errors);
+      }
+    } catch (groupError) {
+      console.error('Error creating group:', groupError);
     }
 
     const results = [];
@@ -57,9 +99,10 @@ serve(async (req) => {
         const itemName = `${featureName} - ${milestone.name}`;
         
         // Build column values - Monday.com expects specific format
+        // Use the Brief date as the "date" column for all items
         const columnValues: Record<string, unknown> = {
-          // Date column - use the start date
-          date: { date: milestone.startDate },
+          // Date column - use the Brief/project date
+          date: { date: projectDate },
           // Timeline column if it exists - shows start to end
           timeline: { 
             from: milestone.startDate, 
