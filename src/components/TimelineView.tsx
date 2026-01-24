@@ -136,7 +136,6 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
     if (milestones.length === 0) return '';
     
     const projectName = featureName || 'Untitled Project';
-    const presetName = preset || 'Custom';
     
     // Build milestone list with start date only - milestone names in bold
     const milestoneLines = milestones.map(m => 
@@ -151,9 +150,9 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
     const summary = `היי כולם 👋
 אנחנו רוצים לצאת לדרך עם הפרויקט *${projectName}*
 
-מצורפים כאן התאריכים לפי PLC (${presetName}):
+מצורפים כאן תאריכי הPLC:
 
-📅 *אבני דרך:*
+📅 *תאריכי הPLC:*
 ${milestoneLines}${missedAllocationLine}`;
     
     return summary;
