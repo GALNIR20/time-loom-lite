@@ -142,15 +142,9 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
       `  • *${m.name}*: ${formatDateDisplay(m.start)}`
     ).join('\n');
     
-    // Map allocations to include names
-    const allocationWithNames: Record<string, string> = {
-      'UX': 'UX - Ella Gussow',
-    };
-    
     // Build missed allocation line if any are selected
-    const formattedAllocations = missedAllocations.map(a => allocationWithNames[a] || a);
     const missedAllocationLine = missedAllocations.length > 0 
-      ? `\n\n⚠️ *אלוקציות חסרות:* ${formattedAllocations.join(', ')}`
+      ? `\n\n⚠️ *אלוקציות חסרות:* ${missedAllocations.join(', ')}`
       : '';
     
     const summary = `היי כולם 👋
