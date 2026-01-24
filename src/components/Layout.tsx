@@ -1,7 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { ProjectSidebar, SavedProject } from './ProjectSidebar';
+import { MobileNav } from './MobileNav';
 import { useProjects } from '@/hooks/useProjects';
 import { useNavigate } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -9,6 +11,7 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { projects, loading, createProject, updateProject, deleteProject } = useProjects();
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -63,17 +66,34 @@ export function Layout({ children }: LayoutProps) {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <ProjectSidebar
-        projects={savedProjects}
-        currentProjectId={currentProjectId}
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-        onSelectProject={handleSelectProject}
-        onCreateNew={handleCreateNewProject}
-        onDeleteProject={handleDeleteProject}
-      />
-      {children}
+    <div className="min-h-screen bg-background flex flex-col md:flex-row">
+      {/* Mobile Navigation */}
+      {isMobile && (
+        <MobileNav
+          projects={savedProjects}
+          currentProjectId={currentProjectId}
+          onSelectProject={handleSelectProject}
+          onCreateNew={handleCreateNewProject}
+        />
+      )}
+      
+      {/* Desktop Sidebar */}
+      {!isMobile && (
+        <ProjectSidebar
+          projects={savedProjects}
+          currentProjectId={currentProjectId}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          onSelectProject={handleSelectProject}
+          onCreateNew={handleCreateNewProject}
+          onDeleteProject={handleDeleteProject}
+        />
+      )}
+      
+      {/* Main Content - add top padding on mobile for fixed nav */}
+      <main className={`flex-1 ${isMobile ? 'pt-14' : ''}`}>
+        {children}
+      </main>
     </div>
   );
 }
