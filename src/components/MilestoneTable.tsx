@@ -225,7 +225,7 @@ export function MilestoneTable({
                           step="1"
                           value={milestone.durationDays}
                           onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
-                          className="input-field w-20 text-center"
+                          className="input-field w-24 text-center"
                           aria-label={`Days for ${milestone.name}`}
                         />
                         {milestone.overrideDays !== null && (
