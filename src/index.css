@@ -134,12 +134,15 @@
 
   .table-header-cell {
     @apply text-left px-6 py-4 font-semibold uppercase tracking-wider text-xs whitespace-nowrap;
-    color: hsl(217 91% 50%);
-    background-color: hsl(217 91% 97%);
+    @apply text-primary bg-primary/5;
+  }
+
+  .dark .table-header-cell {
+    @apply bg-primary/10;
   }
 
   .table-body-row {
-    @apply hover:bg-muted/30 transition-colors;
+    @apply hover:bg-muted/30 transition-colors bg-card;
     border-bottom: 8px solid hsl(var(--background));
   }
 
