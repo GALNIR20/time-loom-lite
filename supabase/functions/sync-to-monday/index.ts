@@ -48,6 +48,43 @@ serve(async (req) => {
       );
     }
 
+    // First, fetch the board's columns to get the correct column IDs
+    const columnsQuery = `
+      query {
+        boards(ids: [${boardId}]) {
+          columns {
+            id
+            title
+            type
+          }
+        }
+      }
+    `;
+
+    console.log('Fetching board columns...');
+    const columnsResponse = await fetch('https://api.monday.com/v2', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': MONDAY_API_KEY,
+        'API-Version': '2024-01'
+      },
+      body: JSON.stringify({ query: columnsQuery })
+    });
+
+    const columnsData = await columnsResponse.json();
+    const columns = columnsData.data?.boards?.[0]?.columns || [];
+    
+    console.log('Board columns:', JSON.stringify(columns));
+
+    // Find column IDs by type
+    const dateColumn = columns.find((c: { type: string }) => c.type === 'date');
+    const timelineColumn = columns.find((c: { type: string }) => c.type === 'timeline');
+    const numbersColumn = columns.find((c: { type: string }) => c.type === 'numbers' || c.type === 'numeric');
+    const textColumn = columns.find((c: { type: string }) => c.type === 'text');
+
+    console.log('Found columns - date:', dateColumn?.id, 'timeline:', timelineColumn?.id, 'numbers:', numbersColumn?.id, 'text:', textColumn?.id);
+
     // Find the Brief milestone to get the project start date
     const briefMilestone = milestones.find(m => m.name.toLowerCase() === 'brief');
     const projectDate = briefMilestone?.startDate || milestones[0]?.startDate;
@@ -95,24 +132,35 @@ serve(async (req) => {
 
     for (const milestone of milestones) {
       try {
-        // Format dates for Monday.com (YYYY-MM-DD)
         const itemName = `${featureName} - ${milestone.name}`;
         
-        // Build column values - Monday.com expects specific format
-        // Use the Brief date as the "date" column for all items
-        const columnValues: Record<string, unknown> = {
-          // Date column - use the Brief/project date
-          date: { date: projectDate },
-          // Timeline column if it exists - shows start to end
-          timeline: { 
+        // Build column values using the actual column IDs from the board
+        const columnValues: Record<string, unknown> = {};
+        
+        // Date column - use the Brief/project date
+        if (dateColumn?.id) {
+          columnValues[dateColumn.id] = { date: projectDate };
+        }
+        
+        // Timeline column - shows start to end for each milestone
+        if (timelineColumn?.id) {
+          columnValues[timelineColumn.id] = { 
             from: milestone.startDate, 
             to: milestone.endDate 
-          },
-          // Numbers column for duration
-          numbers: milestone.durationDays,
-          // Text column for milestone name
-          text: milestone.name
-        };
+          };
+        }
+        
+        // Numbers column for duration
+        if (numbersColumn?.id) {
+          columnValues[numbersColumn.id] = String(milestone.durationDays);
+        }
+        
+        // Text column for milestone name
+        if (textColumn?.id) {
+          columnValues[textColumn.id] = milestone.name;
+        }
+
+        console.log(`Column values for ${itemName}:`, JSON.stringify(columnValues));
 
         const mutation = `
           mutation {
