@@ -145,16 +145,15 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
     
     // Build missed allocation line if any are selected
     const missedAllocationLine = missedAllocations.length > 0 
-      ? `\n\n⚠️ *Missed Allocation:* ${missedAllocations.join(', ')}`
+      ? `\n\n⚠️ *אלוקציות חסרות:* ${missedAllocations.join(', ')}`
       : '';
     
-    const summary = `Hey all, sharing with you the PLC dates for:
+    const summary = `היי כולם 👋
+אנחנו רוצים לצאת לדרך עם הפרויקט *${projectName}*
 
-📊 *${projectName}*
+מצורפים כאן התאריכים לפי PLC (${presetName}):
 
-🏷️ *PLC Size:* ${presetName}
-
-📅 *PLC Milestones:*
+📅 *אבני דרך:*
 ${milestoneLines}${missedAllocationLine}`;
     
     return summary;
