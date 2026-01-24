@@ -426,7 +426,7 @@ ${milestoneLines}${missedAllocationLine}`;
                                   step="1"
                                   value={milestone.durationDays}
                                   onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
-                                  className="input-field w-14 text-center text-xs py-1"
+                                  className="input-field w-16 text-center text-xs py-1"
                                   aria-label={`Days for ${milestone.name}`}
                                 />
                                 <span className="text-[10px] text-muted-foreground mt-0.5">days</span>
@@ -459,7 +459,7 @@ ${milestoneLines}${missedAllocationLine}`;
                 </div>
                 {/* Days column header - only show in edit mode */}
                 {editMode && (
-                  <div className="w-16 flex-shrink-0 p-2 border-r border-border">
+                  <div className="w-20 flex-shrink-0 p-2 border-r border-border">
                     <span className="text-xs font-medium text-muted-foreground">Days</span>
                   </div>
                 )}
@@ -569,14 +569,14 @@ ${milestoneLines}${missedAllocationLine}`;
                     
                     {/* Days input - only show in edit mode */}
                     {editMode && (
-                      <div className="w-16 flex-shrink-0 p-2 border-r border-border flex items-center justify-center">
+                      <div className="w-20 flex-shrink-0 p-2 border-r border-border flex items-center justify-center">
                         <input
                           type="number"
                           min="0"
                           step="1"
                           value={previewDays}
                           onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
-                          className="input-field w-14 text-center text-xs py-1"
+                          className="input-field w-16 text-center text-xs py-1"
                           aria-label={`Days for ${milestone.name}`}
                         />
                       </div>
