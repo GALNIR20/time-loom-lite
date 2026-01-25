@@ -17,7 +17,12 @@ interface MondayExportModalProps {
   featureName: string;
 }
 
-// Retry helper with exponential backoff
+// Check if browser is online
+function isOnline(): boolean {
+  return typeof navigator !== 'undefined' ? navigator.onLine : true;
+}
+
+// Retry helper with exponential backoff and online check
 async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   maxRetries = 3,
@@ -26,14 +31,22 @@ async function retryWithBackoff<T>(
   let lastError: Error | null = null;
   
   for (let attempt = 0; attempt < maxRetries; attempt++) {
+    if (!isOnline()) {
+      console.log('Browser offline, waiting...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      if (!isOnline()) {
+        throw new Error('No internet connection. Please check your network.');
+      }
+    }
+    
     try {
       return await fn();
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
+      console.log(`Monday API attempt ${attempt + 1}/${maxRetries} failed:`, lastError.message);
       
       if (attempt < maxRetries - 1) {
         const delay = baseDelayMs * Math.pow(2, attempt);
-        console.log(`Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
