@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, forwardRef } from 'react';
 import { X, Loader2, CheckCircle, AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { MilestoneState } from '@/types/timeline';
@@ -22,17 +22,29 @@ function isOnline(): boolean {
   return typeof navigator !== 'undefined' ? navigator.onLine : true;
 }
 
+// Helper to extract error message from various error types
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'object' && error !== null) {
+    const errObj = error as Record<string, unknown>;
+    if (typeof errObj.message === 'string') return errObj.message;
+    if (typeof errObj.error_description === 'string') return errObj.error_description;
+    if (typeof errObj.msg === 'string') return errObj.msg;
+  }
+  return String(error);
+}
+
 // Retry helper with exponential backoff and online check
 async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   maxRetries = 3,
   baseDelayMs = 1000
 ): Promise<T> {
-  let lastError: Error | null = null;
+  let lastErrorMessage = 'Unknown error';
   
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     if (!isOnline()) {
-      console.log('Browser offline, waiting...');
+      console.log('Browser offline, waiting 2s...');
       await new Promise(resolve => setTimeout(resolve, 2000));
       if (!isOnline()) {
         throw new Error('No internet connection. Please check your network.');
@@ -42,8 +54,8 @@ async function retryWithBackoff<T>(
     try {
       return await fn();
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      console.log(`Monday API attempt ${attempt + 1}/${maxRetries} failed:`, lastError.message);
+      lastErrorMessage = getErrorMessage(error);
+      console.log(`Monday API attempt ${attempt + 1}/${maxRetries} failed:`, lastErrorMessage);
       
       if (attempt < maxRetries - 1) {
         const delay = baseDelayMs * Math.pow(2, attempt);
@@ -52,10 +64,10 @@ async function retryWithBackoff<T>(
     }
   }
   
-  throw lastError;
+  throw new Error(lastErrorMessage);
 }
 
-export function MondayExportModal({ isOpen, onClose, milestones, featureName }: MondayExportModalProps) {
+export const MondayExportModal = forwardRef<HTMLDivElement, MondayExportModalProps>(function MondayExportModal({ isOpen, onClose, milestones, featureName }, ref) {
   const [boards, setBoards] = useState<Board[]>([]);
   const [selectedBoard, setSelectedBoard] = useState<string>('');
   const [selectedGroup, setSelectedGroup] = useState<string>('');
@@ -349,4 +361,4 @@ export function MondayExportModal({ isOpen, onClose, milestones, featureName }: 
       </div>
     </div>
   );
-}
+});

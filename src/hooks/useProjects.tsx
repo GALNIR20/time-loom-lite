@@ -22,18 +22,30 @@ function isOnline(): boolean {
   return typeof navigator !== 'undefined' ? navigator.onLine : true;
 }
 
+// Helper to extract error message from various error types
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'object' && error !== null) {
+    const errObj = error as Record<string, unknown>;
+    if (typeof errObj.message === 'string') return errObj.message;
+    if (typeof errObj.error_description === 'string') return errObj.error_description;
+    if (typeof errObj.msg === 'string') return errObj.msg;
+  }
+  return String(error);
+}
+
 // Retry helper with exponential backoff and online check
 async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   maxRetries = 3,
   baseDelayMs = 1000
 ): Promise<T> {
-  let lastError: Error | null = null;
+  let lastErrorMessage = 'Unknown error';
   
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     // Wait for online status before attempting
     if (!isOnline()) {
-      console.log('Browser offline, waiting...');
+      console.log('Browser offline, waiting 2s...');
       await new Promise(resolve => setTimeout(resolve, 2000));
       if (!isOnline()) {
         throw new Error('No internet connection');
@@ -43,8 +55,8 @@ async function retryWithBackoff<T>(
     try {
       return await fn();
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      console.log(`Attempt ${attempt + 1}/${maxRetries} failed:`, lastError.message);
+      lastErrorMessage = getErrorMessage(error);
+      console.log(`Attempt ${attempt + 1}/${maxRetries} failed:`, lastErrorMessage);
       
       if (attempt < maxRetries - 1) {
         const delay = baseDelayMs * Math.pow(2, attempt);
@@ -54,7 +66,7 @@ async function retryWithBackoff<T>(
     }
   }
   
-  throw lastError;
+  throw new Error(lastErrorMessage);
 }
 
 export function useProjects() {
@@ -67,13 +79,15 @@ export function useProjects() {
   const fetchProjects = useCallback(async () => {
     try {
       const data = await retryWithBackoff(async () => {
-        const { data, error } = await supabase
+        const response = await supabase
           .from('projects')
           .select('*')
           .order('updated_at', { ascending: false });
 
-        if (error) throw error;
-        return data;
+        if (response.error) {
+          throw new Error(response.error.message || 'Database query failed');
+        }
+        return response.data;
       });
 
       const projectsData = (data || []).map(p => ({
