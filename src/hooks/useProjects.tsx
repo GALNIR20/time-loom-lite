@@ -17,7 +17,12 @@ export interface DbProject {
   updated_at: string;
 }
 
-// Retry helper with exponential backoff
+// Check if browser is online
+function isOnline(): boolean {
+  return typeof navigator !== 'undefined' ? navigator.onLine : true;
+}
+
+// Retry helper with exponential backoff and online check
 async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   maxRetries = 3,
@@ -26,14 +31,24 @@ async function retryWithBackoff<T>(
   let lastError: Error | null = null;
   
   for (let attempt = 0; attempt < maxRetries; attempt++) {
+    // Wait for online status before attempting
+    if (!isOnline()) {
+      console.log('Browser offline, waiting...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      if (!isOnline()) {
+        throw new Error('No internet connection');
+      }
+    }
+    
     try {
       return await fn();
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
+      console.log(`Attempt ${attempt + 1}/${maxRetries} failed:`, lastError.message);
       
       if (attempt < maxRetries - 1) {
         const delay = baseDelayMs * Math.pow(2, attempt);
-        console.log(`Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`);
+        console.log(`Retrying after ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
@@ -71,18 +86,23 @@ export function useProjects() {
       retryCount.current = 0; // Reset retry count on success
     } catch (error) {
       console.error('Failed to fetch projects:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       
-      // Only show toast on first failure, not on retries
-      if (retryCount.current === 0) {
+      // Show appropriate error based on type
+      if (errorMsg.includes('internet') || errorMsg.includes('offline')) {
+        toast.error('No internet connection. Please check your network.');
+      } else if (retryCount.current === 0) {
         toast.error('Failed to load projects. Retrying...');
       }
+      
       retryCount.current++;
       
-      // Auto-retry after a delay if still failing
-      if (retryCount.current < 5) {
-        setTimeout(() => fetchProjects(), 3000);
+      // Auto-retry with longer delays
+      if (retryCount.current < 3) {
+        setTimeout(() => fetchProjects(), 5000);
       } else {
-        toast.error('Unable to connect to database. Please refresh the page.');
+        setProjects([]); // Clear to show empty state
+        toast.error('Connection failed. Click refresh to try again.');
       }
     } finally {
       setLoading(false);
