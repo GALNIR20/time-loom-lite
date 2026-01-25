@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PresetType } from '@/types/timeline';
@@ -17,20 +17,49 @@ export interface DbProject {
   updated_at: string;
 }
 
+// Retry helper with exponential backoff
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  baseDelayMs = 1000
+): Promise<T> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      if (attempt < maxRetries - 1) {
+        const delay = baseDelayMs * Math.pow(2, attempt);
+        console.log(`Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  throw lastError;
+}
+
 export function useProjects() {
   const [projects, setProjects] = useState<DbProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [realtimeChannel, setRealtimeChannel] = useState<RealtimeChannel | null>(null);
+  const retryCount = useRef(0);
 
-  // Fetch all projects
+  // Fetch all projects with retry logic
   const fetchProjects = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .order('updated_at', { ascending: false });
+      const data = await retryWithBackoff(async () => {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .order('updated_at', { ascending: false });
 
-      if (error) throw error;
+        if (error) throw error;
+        return data;
+      });
 
       const projectsData = (data || []).map(p => ({
         ...p,
@@ -39,9 +68,22 @@ export function useProjects() {
       }));
 
       setProjects(projectsData);
+      retryCount.current = 0; // Reset retry count on success
     } catch (error) {
       console.error('Failed to fetch projects:', error);
-      toast.error('Failed to load projects');
+      
+      // Only show toast on first failure, not on retries
+      if (retryCount.current === 0) {
+        toast.error('Failed to load projects. Retrying...');
+      }
+      retryCount.current++;
+      
+      // Auto-retry after a delay if still failing
+      if (retryCount.current < 5) {
+        setTimeout(() => fetchProjects(), 3000);
+      } else {
+        toast.error('Unable to connect to database. Please refresh the page.');
+      }
     } finally {
       setLoading(false);
     }

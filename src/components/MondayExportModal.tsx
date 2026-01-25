@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { X, Loader2, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { X, Loader2, CheckCircle, AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { MilestoneState } from '@/types/timeline';
 import { toast } from 'sonner';
@@ -17,6 +17,31 @@ interface MondayExportModalProps {
   featureName: string;
 }
 
+// Retry helper with exponential backoff
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  baseDelayMs = 1000
+): Promise<T> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      if (attempt < maxRetries - 1) {
+        const delay = baseDelayMs * Math.pow(2, attempt);
+        console.log(`Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  throw lastError;
+}
+
 export function MondayExportModal({ isOpen, onClose, milestones, featureName }: MondayExportModalProps) {
   const [boards, setBoards] = useState<Board[]>([]);
   const [selectedBoard, setSelectedBoard] = useState<string>('');
@@ -25,10 +50,12 @@ export function MondayExportModal({ isOpen, onClose, milestones, featureName }: 
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<{ created: number; failed: number } | null>(null);
+  const fetchAttempts = useRef(0);
 
   // Fetch boards when modal opens
   useEffect(() => {
     if (isOpen) {
+      fetchAttempts.current = 0;
       fetchBoards();
     }
   }, [isOpen]);
@@ -38,18 +65,29 @@ export function MondayExportModal({ isOpen, onClose, milestones, featureName }: 
     setError(null);
     
     try {
-      const { data, error } = await supabase.functions.invoke('get-monday-boards');
+      const result = await retryWithBackoff(async () => {
+        const { data, error } = await supabase.functions.invoke('get-monday-boards');
+        
+        if (error) throw error;
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        return data;
+      });
       
-      if (error) throw error;
-      
-      if (data.error) {
-        throw new Error(data.error);
-      }
-      
-      setBoards(data.boards || []);
+      setBoards(result.boards || []);
+      fetchAttempts.current = 0;
     } catch (err) {
       console.error('Error fetching boards:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch Monday.com boards');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch Monday.com boards';
+      setError(errorMessage);
+      
+      // Show more helpful error
+      if (errorMessage.includes('fetch') || errorMessage.includes('network')) {
+        setError('Network error. Please check your connection and try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -152,12 +190,21 @@ export function MondayExportModal({ isOpen, onClose, milestones, featureName }: 
 
           {/* Error state */}
           {error && !loading && (
-            <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-              <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm text-destructive font-medium">Error</p>
-                <p className="text-sm text-muted-foreground">{error}</p>
+            <div className="space-y-3">
+              <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm text-destructive font-medium">Error</p>
+                  <p className="text-sm text-muted-foreground">{error}</p>
+                </div>
               </div>
+              <button
+                onClick={fetchBoards}
+                className="btn-secondary w-full flex items-center justify-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Retry
+              </button>
             </div>
           )}
 
