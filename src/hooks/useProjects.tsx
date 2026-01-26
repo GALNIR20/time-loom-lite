@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PresetType } from '@/types/timeline';
 import { RealtimeChannel } from '@supabase/supabase-js';
+import { logActivity } from '@/hooks/useProjectActivity';
 
 export interface DbProject {
   id: string;
@@ -214,6 +215,9 @@ export function useProjects() {
 
       if (error) throw error;
       
+      // Log activity
+      logActivity(project.id, 'created', { description: `Created "${data.feature_name}"` });
+      
       return {
         ...project,
         overrides: (project.overrides as Record<string, number | null>) || {},
@@ -243,6 +247,17 @@ export function useProjects() {
         .eq('id', id);
 
       if (error) throw error;
+      
+      // Log activity with change details
+      const changes: string[] = [];
+      if (data.preset) changes.push(`preset → ${data.preset}`);
+      if (data.project_start) changes.push(`start date changed`);
+      if (data.overrides) changes.push(`milestone durations adjusted`);
+      
+      logActivity(id, 'updated', { 
+        description: changes.length ? changes.join(', ') : 'Project settings updated'
+      });
+      
       return true;
     } catch (error) {
       console.error('Failed to update project:', error);

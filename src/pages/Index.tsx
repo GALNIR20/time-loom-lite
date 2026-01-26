@@ -10,10 +10,12 @@ import { ProjectCompareView } from '@/components/ProjectCompareView';
 import { MondayExportModal } from '@/components/MondayExportModal';
 import { SavedProject } from '@/components/ProjectSidebar';
 import { SprintManager } from '@/components/SprintManager';
+import { ProjectActivityLog } from '@/components/ProjectActivityLog';
 import { DEFAULT_MILESTONES, calculateTimeline, getPresetDuration, PRESET_CONFIGS, getTodayISO, createSprintMilestone, SPRINT_DURATION_DAYS } from '@/lib/timeline';
 import { TimelineExport, PresetType, MilestoneConfig } from '@/types/timeline';
 import { PredictorLogo } from '@/components/PredictorLogo';
 import { useProjects } from '@/hooks/useProjects';
+import { logActivity } from '@/hooks/useProjectActivity';
 
 // Calculate days before I-Phase for a given preset and overrides
 function calculateDaysBeforeIPhase(presetType: PresetType, overrides: Record<string, number | null>, milestoneConfigs: MilestoneConfig[]): number {
@@ -373,11 +375,14 @@ const Index = () => {
     try {
       await navigator.clipboard.writeText(JSON.stringify(exportData, null, 2));
       toast.success('JSON copied to clipboard!');
+      if (currentProjectId) {
+        logActivity(currentProjectId, 'exported_json', { description: 'Exported to JSON' });
+      }
     } catch {
       toast.error('Failed to copy to clipboard');
       setIsJsonModalOpen(true);
     }
-  }, [exportData]);
+  }, [exportData, currentProjectId]);
   const handleReset = useCallback(() => {
     setFeatureName('');
     setIsFeatureNameSet(false);
@@ -405,7 +410,10 @@ const Index = () => {
       [newSprint.id]: SPRINT_DURATION_DAYS
     }));
     toast.success(`Sprint ${nextSprintNumber} added`);
-  }, [customMilestones]);
+    if (currentProjectId) {
+      logActivity(currentProjectId, 'sprint_added', { description: `Sprint ${nextSprintNumber} added` });
+    }
+  }, [customMilestones, currentProjectId]);
   const handleRemoveSprint = useCallback(() => {
     const sprints = customMilestones.filter(m => m.id.startsWith('sprint-'));
     if (sprints.length <= 1) return;
@@ -420,7 +428,10 @@ const Index = () => {
       return rest;
     });
     toast.success(`${lastSprint.name} removed`);
-  }, [customMilestones]);
+    if (currentProjectId) {
+      logActivity(currentProjectId, 'sprint_removed', { description: `${lastSprint.name} removed` });
+    }
+  }, [customMilestones, currentProjectId]);
   return (
     <div className="flex-1 min-h-screen overflow-auto">
       {/* Header */}
@@ -519,6 +530,11 @@ const Index = () => {
               onAddSprint={handleAddSprint}
               onRemoveSprint={handleRemoveSprint}
             />
+
+            <ProjectActivityLog 
+              projectId={currentProjectId} 
+              projectName={featureName}
+            />
           </>
         )}
       </main>
@@ -557,6 +573,15 @@ const Index = () => {
         onClose={() => setIsMondayModalOpen(false)}
         milestones={milestones}
         featureName={featureName || 'Project'}
+        onExportSuccess={(boardName, count) => {
+          if (currentProjectId) {
+            logActivity(currentProjectId, 'exported_monday', { 
+              description: `Exported ${count} milestones to ${boardName}`,
+              boardName,
+              count
+            });
+          }
+        }}
       />
     </div>
   );

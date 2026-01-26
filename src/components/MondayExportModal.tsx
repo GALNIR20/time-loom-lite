@@ -15,6 +15,7 @@ interface MondayExportModalProps {
   onClose: () => void;
   milestones: MilestoneState[];
   featureName: string;
+  onExportSuccess?: (boardName: string, count: number) => void;
 }
 
 // Check if browser is online
@@ -67,7 +68,7 @@ async function retryWithBackoff<T>(
   throw new Error(lastErrorMessage);
 }
 
-export const MondayExportModal = forwardRef<HTMLDivElement, MondayExportModalProps>(function MondayExportModal({ isOpen, onClose, milestones, featureName }, ref) {
+export const MondayExportModal = forwardRef<HTMLDivElement, MondayExportModalProps>(function MondayExportModal({ isOpen, onClose, milestones, featureName, onExportSuccess }, ref) {
   const [boards, setBoards] = useState<Board[]>([]);
   const [selectedBoard, setSelectedBoard] = useState<string>('');
   const [selectedGroup, setSelectedGroup] = useState<string>('');
@@ -157,6 +158,9 @@ export const MondayExportModal = forwardRef<HTMLDivElement, MondayExportModalPro
       
       if (data.created > 0) {
         toast.success(`Successfully synced ${data.created} milestones to Monday.com`);
+        // Notify parent of successful export
+        const boardName = boards.find(b => b.id === selectedBoard)?.name || 'board';
+        onExportSuccess?.(boardName, data.created);
       }
       
       if (data.failed > 0) {
