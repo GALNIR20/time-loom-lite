@@ -92,18 +92,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_approved: boolean
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          is_approved?: boolean
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          is_approved?: boolean
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
@@ -113,18 +116,21 @@ export type Database = {
     Views: {
       admin_users_view: {
         Row: {
+          is_approved: boolean | null
           project_count: number | null
           role: Database["public"]["Enums"]["app_role"] | null
           role_assigned_at: string | null
           user_id: string | null
         }
         Insert: {
+          is_approved?: boolean | null
           project_count?: never
           role?: Database["public"]["Enums"]["app_role"] | null
           role_assigned_at?: string | null
           user_id?: string | null
         }
         Update: {
+          is_approved?: boolean | null
           project_count?: never
           role?: Database["public"]["Enums"]["app_role"] | null
           role_assigned_at?: string | null
@@ -142,6 +148,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_user_approved: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user"

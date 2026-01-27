@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.get-monday-boards]
 verify_jwt = false
+
+[functions.get-admin-users]
+verify_jwt = false
