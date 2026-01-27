@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { PresetType } from '@/types/timeline';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { logActivity } from '@/hooks/useProjectActivity';
+import { useAuth } from '@/hooks/useAuth';
 
 export interface DbProject {
   id: string;
@@ -16,6 +17,7 @@ export interface DbProject {
   locked_dev_start: string | null;
   created_at: string;
   updated_at: string;
+  user_id: string | null;
 }
 
 // Check if browser is online
@@ -71,6 +73,7 @@ async function retryWithBackoff<T>(
 }
 
 export function useProjects() {
+  const { user } = useAuth();
   const [projects, setProjects] = useState<DbProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [realtimeChannel, setRealtimeChannel] = useState<RealtimeChannel | null>(null);
@@ -199,6 +202,11 @@ export function useProjects() {
     locked_dev_start?: string | null;
   }) => {
     try {
+      if (!user) {
+        toast.error('You must be logged in to create a project');
+        return null;
+      }
+      
       const { data: project, error } = await supabase
         .from('projects')
         .insert({
@@ -208,7 +216,8 @@ export function useProjects() {
           show_detailed: data.show_detailed ?? true,
           overrides: data.overrides || {},
           hidden_milestones: data.hidden_milestones || [],
-          locked_dev_start: data.locked_dev_start || null
+          locked_dev_start: data.locked_dev_start || null,
+          user_id: user.id
         })
         .select()
         .single();
