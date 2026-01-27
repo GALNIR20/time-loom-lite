@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Plus, FolderOpen, Trash2, ChevronDown, Calendar, Settings } from 'lucide-react';
+import { Plus, FolderOpen, Trash2, ChevronDown, Calendar, Settings, LogOut } from 'lucide-react';
 import { PresetType } from '@/types/timeline';
 import { PredictorLogo } from '@/components/PredictorLogo';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,6 +53,13 @@ export function ProjectSidebar({
   const [projectToDelete, setProjectToDelete] = useState<SavedProject | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success('Signed out successfully');
+    navigate('/auth');
+  };
 
   const navItems = [
     { path: '/calendar', icon: Calendar, label: 'Calendar' },
@@ -97,9 +106,17 @@ export function ProjectSidebar({
             </button>
           ))}
         </nav>
-        {/* Theme toggle in collapsed mode */}
-        <div className="mt-auto pt-4 border-t border-border/50">
+        {/* Footer in collapsed mode */}
+        <div className="mt-auto pt-4 border-t border-border/50 flex flex-col items-center gap-2">
           <ThemeToggle />
+          <button
+            onClick={handleSignOut}
+            className="p-3 rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+            aria-label="Sign out"
+            title="Sign out"
+          >
+            <LogOut className="w-5 h-5" />
+          </button>
         </div>
       </div>
     );
@@ -211,15 +228,31 @@ export function ProjectSidebar({
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-border/50 p-4 flex items-center justify-between">
-        <button
-          onClick={onToggleCollapse}
-          className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-        >
-          <ChevronDown className="w-5 h-5 -rotate-90" />
-          <span>Collapse</span>
-        </button>
-        <ThemeToggle />
+      <div className="border-t border-border/50 p-4">
+        {/* User info */}
+        <div className="flex items-center justify-between mb-3 px-2">
+          <span className="text-xs text-muted-foreground truncate max-w-[140px]" title={user?.email || ''}>
+            {user?.email}
+          </span>
+          <button
+            onClick={handleSignOut}
+            className="p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+            aria-label="Sign out"
+            title="Sign out"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex items-center justify-between">
+          <button
+            onClick={onToggleCollapse}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <ChevronDown className="w-5 h-5 -rotate-90" />
+            <span>Collapse</span>
+          </button>
+          <ThemeToggle />
+        </div>
       </div>
 
       {/* Delete Confirmation Dialog */}

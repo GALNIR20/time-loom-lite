@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Menu, X, Plus, FolderOpen, Calendar, Settings } from "lucide-react";
+import { Menu, X, Plus, FolderOpen, Calendar, Settings, LogOut } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { PredictorLogo } from "@/components/PredictorLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SavedProject } from "@/components/ProjectSidebar";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 interface MobileNavProps {
   projects: SavedProject[];
@@ -23,6 +25,14 @@ export function MobileNav({
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success('Signed out successfully');
+    navigate('/auth');
+    setIsOpen(false);
+  };
 
   const navItems = [
     { path: "/", icon: FolderOpen, label: "Projects" },
@@ -128,6 +138,22 @@ export function MobileNav({
                       </div>
                     </div>
                   )}
+
+                  {/* Sign Out Button */}
+                  <div className="mt-6 pt-4 border-t border-border">
+                    <div className="px-2 mb-3">
+                      <span className="text-xs text-muted-foreground truncate block">
+                        {user?.email}
+                      </span>
+                    </div>
+                    <button
+                      onClick={handleSignOut}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                    >
+                      <LogOut className="w-5 h-5" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
                 </nav>
               </div>
             </SheetContent>
