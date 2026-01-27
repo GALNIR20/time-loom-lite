@@ -111,7 +111,27 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      admin_users_view: {
+        Row: {
+          project_count: number | null
+          role: Database["public"]["Enums"]["app_role"] | null
+          role_assigned_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          project_count?: never
+          role?: Database["public"]["Enums"]["app_role"] | null
+          role_assigned_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          project_count?: never
+          role?: Database["public"]["Enums"]["app_role"] | null
+          role_assigned_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_current_user_id: { Args: never; Returns: string }

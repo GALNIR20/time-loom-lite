@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Menu, X, Plus, FolderOpen, Calendar, Settings, LogOut } from "lucide-react";
+import { Menu, X, Plus, FolderOpen, Calendar, Settings, LogOut, Shield } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { PredictorLogo } from "@/components/PredictorLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SavedProject } from "@/components/ProjectSidebar";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 import { toast } from "sonner";
 
 interface MobileNavProps {
@@ -26,6 +27,7 @@ export function MobileNav({
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const { isAdmin } = useAdmin();
 
   const handleSignOut = async () => {
     await signOut();
@@ -38,6 +40,7 @@ export function MobileNav({
     { path: "/", icon: FolderOpen, label: "Projects" },
     { path: "/calendar", icon: Calendar, label: "Calendar" },
     { path: "/settings", icon: Settings, label: "Settings" },
+    ...(isAdmin ? [{ path: "/admin", icon: Shield, label: "Admin" }] : []),
   ];
 
   const handleNavigation = (path: string) => {
