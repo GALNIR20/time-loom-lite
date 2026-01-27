@@ -66,6 +66,13 @@ export function useAdmin() {
   const fetchUsers = useCallback(async () => {
     if (!isAdmin) return;
     
+    // Check for valid session before calling edge function
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.log('No valid session, skipping user fetch');
+      return;
+    }
+    
     setLoadingUsers(true);
     try {
       const { data, error } = await supabase.functions.invoke('get-admin-users');
