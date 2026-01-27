@@ -36,12 +36,14 @@ export default function AdminPage() {
     revokeApproval,
     promoteToAdmin,
     demoteFromAdmin,
-    deleteProject
+    deleteProject,
+    declineUser
   } = useAdmin();
 
   const [userToPromote, setUserToPromote] = useState<AdminUser | null>(null);
   const [userToDemote, setUserToDemote] = useState<AdminUser | null>(null);
   const [userToApprove, setUserToApprove] = useState<AdminUser | null>(null);
+  const [userToDecline, setUserToDecline] = useState<AdminUser | null>(null);
   const [userToRevoke, setUserToRevoke] = useState<AdminUser | null>(null);
   const [projectToDelete, setProjectToDelete] = useState<AdminProject | null>(null);
   const [activeTab, setActiveTab] = useState('pending');
@@ -211,6 +213,14 @@ export default function AdminPage() {
                           >
                             <Check className="w-4 h-4 mr-1" />
                             Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => setUserToDecline(u)}
+                          >
+                            <X className="w-4 h-4 mr-1" />
+                            Decline
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -400,6 +410,32 @@ export default function AdminPage() {
               className="bg-green-600 hover:bg-green-700"
             >
               Approve
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Decline User Dialog */}
+      <AlertDialog open={!!userToDecline} onOpenChange={(open) => !open && setUserToDecline(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Decline User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Decline <strong>{userToDecline?.email}</strong>? They will be removed from the pending list.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (userToDecline) {
+                  declineUser(userToDecline.user_id);
+                  setUserToDecline(null);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Decline
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
