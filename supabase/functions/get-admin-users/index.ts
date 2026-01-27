@@ -125,19 +125,21 @@ serve(async (req) => {
       };
     });
 
-    // Combine user data with roles
-    const users = authUsers.users.map((user) => {
-      const roleInfo = rolesMap[user.id];
-      return {
-        user_id: user.id,
-        email: user.email || "No email",
-        role: roleInfo?.role || "user",
-        is_approved: roleInfo?.is_approved ?? false,
-        role_assigned_at: roleInfo?.created_at || user.created_at,
-        project_count: projectCounts[user.id] || 0,
-        created_at: user.created_at,
-      };
-    });
+    // Combine user data with roles - only include users that have a role entry
+    const users = authUsers.users
+      .filter((user) => rolesMap[user.id]) // Only users with role entries
+      .map((user) => {
+        const roleInfo = rolesMap[user.id];
+        return {
+          user_id: user.id,
+          email: user.email || "No email",
+          role: roleInfo.role,
+          is_approved: roleInfo.is_approved,
+          role_assigned_at: roleInfo.created_at,
+          project_count: projectCounts[user.id] || 0,
+          created_at: user.created_at,
+        };
+      });
 
     console.log(`Successfully fetched ${users.length} users`);
 
