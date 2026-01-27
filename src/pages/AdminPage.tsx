@@ -53,13 +53,14 @@ export default function AdminPage() {
     }
   }, [loading, isAdmin, navigate]);
 
-  // Fetch data when admin status confirmed
+  // Fetch data when admin status confirmed - only run once when isAdmin becomes true
   useEffect(() => {
     if (isAdmin) {
       fetchUsers();
       fetchAllProjects();
     }
-  }, [isAdmin, fetchUsers, fetchAllProjects]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
 
   if (loading) {
     return (
