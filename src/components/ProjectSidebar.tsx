@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Plus, FolderOpen, Trash2, ChevronDown, Calendar, Settings, LogOut } from 'lucide-react';
+import { Plus, FolderOpen, Trash2, ChevronDown, Calendar, Settings, LogOut, Shield } from 'lucide-react';
 import { PresetType } from '@/types/timeline';
 import { PredictorLogo } from '@/components/PredictorLogo';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdmin } from '@/hooks/useAdmin';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -54,6 +55,7 @@ export function ProjectSidebar({
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const { isAdmin } = useAdmin();
 
   const handleSignOut = async () => {
     await signOut();
@@ -64,6 +66,7 @@ export function ProjectSidebar({
   const navItems = [
     { path: '/calendar', icon: Calendar, label: 'Calendar' },
     { path: '/settings', icon: Settings, label: 'Settings' },
+    ...(isAdmin ? [{ path: '/admin', icon: Shield, label: 'Admin' }] : []),
   ];
 
   if (isCollapsed) {
