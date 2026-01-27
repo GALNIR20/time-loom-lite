@@ -254,6 +254,26 @@ export function useAdmin() {
     }
   }, [fetchAllProjects]);
 
+  // Decline a pending user (remove their role entry)
+  const declineUser = useCallback(async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      
+      toast.success('User declined');
+      fetchUsers();
+      return true;
+    } catch (error) {
+      console.error('Error declining user:', error);
+      toast.error('Failed to decline user');
+      return false;
+    }
+  }, [fetchUsers]);
+
   return {
     isAdmin,
     loading,
@@ -267,6 +287,7 @@ export function useAdmin() {
     revokeApproval,
     promoteToAdmin,
     demoteFromAdmin,
-    deleteProject
+    deleteProject,
+    declineUser
   };
 }
