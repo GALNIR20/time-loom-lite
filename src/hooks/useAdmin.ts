@@ -7,8 +7,10 @@ export interface AdminUser {
   user_id: string;
   email: string;
   role: 'admin' | 'user';
+  is_approved: boolean;
   role_assigned_at: string;
   project_count: number;
+  created_at: string;
 }
 
 export interface AdminProject {
@@ -60,44 +62,19 @@ export function useAdmin() {
     checkAdmin();
   }, [user]);
 
-  // Fetch all users (admin only)
+  // Fetch all users via edge function (admin only)
   const fetchUsers = useCallback(async () => {
     if (!isAdmin) return;
     
     setLoadingUsers(true);
     try {
-      // Get user roles
-      const { data: rolesData, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role, created_at');
+      const { data, error } = await supabase.functions.invoke('get-admin-users');
 
-      if (rolesError) throw rolesError;
+      if (error) throw error;
 
-      // Get project counts per user
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('projects')
-        .select('user_id');
-
-      if (projectsError) throw projectsError;
-
-      // Count projects per user
-      const projectCounts: Record<string, number> = {};
-      projectsData?.forEach(p => {
-        if (p.user_id) {
-          projectCounts[p.user_id] = (projectCounts[p.user_id] || 0) + 1;
-        }
-      });
-
-      // Build user list with project counts
-      const userList: AdminUser[] = (rolesData || []).map(role => ({
-        user_id: role.user_id,
-        email: `User ${role.user_id.slice(0, 8)}...`, // We don't have access to auth.users, show partial ID
-        role: role.role as 'admin' | 'user',
-        role_assigned_at: role.created_at,
-        project_count: projectCounts[role.user_id] || 0
-      }));
-
-      setUsers(userList);
+      if (data?.users) {
+        setUsers(data.users);
+      }
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error('Failed to load users');
@@ -119,11 +96,17 @@ export function useAdmin() {
 
       if (error) throw error;
 
+      // Create email map from users
+      const emailMap: Record<string, string> = {};
+      users.forEach(u => {
+        emailMap[u.user_id] = u.email;
+      });
+
       const projects: AdminProject[] = (data || []).map(p => ({
         id: p.id,
         feature_name: p.feature_name,
         user_id: p.user_id || 'unknown',
-        user_email: p.user_id ? `User ${p.user_id.slice(0, 8)}...` : 'No owner',
+        user_email: p.user_id ? (emailMap[p.user_id] || `User ${p.user_id.slice(0, 8)}...`) : 'No owner',
         preset: p.preset,
         created_at: p.created_at,
         updated_at: p.updated_at
@@ -136,7 +119,53 @@ export function useAdmin() {
     } finally {
       setLoadingProjects(false);
     }
-  }, [isAdmin]);
+  }, [isAdmin, users]);
+
+  // Approve a user
+  const approveUser = useCallback(async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from('user_roles')
+        .update({ is_approved: true })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      
+      toast.success('User approved');
+      fetchUsers();
+      return true;
+    } catch (error) {
+      console.error('Error approving user:', error);
+      toast.error('Failed to approve user');
+      return false;
+    }
+  }, [fetchUsers]);
+
+  // Reject/revoke approval from a user
+  const revokeApproval = useCallback(async (userId: string) => {
+    // Prevent self-revocation
+    if (userId === user?.id) {
+      toast.error("You cannot revoke your own approval");
+      return false;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('user_roles')
+        .update({ is_approved: false })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      
+      toast.success('User approval revoked');
+      fetchUsers();
+      return true;
+    } catch (error) {
+      console.error('Error revoking approval:', error);
+      toast.error('Failed to revoke approval');
+      return false;
+    }
+  }, [user?.id, fetchUsers]);
 
   // Promote user to admin
   const promoteToAdmin = useCallback(async (userId: string) => {
@@ -154,10 +183,11 @@ export function useAdmin() {
         return true;
       }
 
-      // Insert admin role
+      // Update to admin role
       const { error } = await supabase
         .from('user_roles')
-        .insert({ user_id: userId, role: 'admin' });
+        .update({ role: 'admin' })
+        .eq('user_id', userId);
 
       if (error) throw error;
       
@@ -182,9 +212,8 @@ export function useAdmin() {
     try {
       const { error } = await supabase
         .from('user_roles')
-        .delete()
-        .eq('user_id', userId)
-        .eq('role', 'admin');
+        .update({ role: 'user' })
+        .eq('user_id', userId);
 
       if (error) throw error;
       
@@ -227,6 +256,8 @@ export function useAdmin() {
     loadingProjects,
     fetchUsers,
     fetchAllProjects,
+    approveUser,
+    revokeApproval,
     promoteToAdmin,
     demoteFromAdmin,
     deleteProject

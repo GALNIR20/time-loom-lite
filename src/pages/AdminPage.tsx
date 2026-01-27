@@ -17,7 +17,7 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle 
 } from '@/components/ui/alert-dialog';
-import { Loader2, Users, FolderOpen, Shield, ShieldOff, Trash2, RefreshCw } from 'lucide-react';
+import { Loader2, Users, FolderOpen, Shield, ShieldOff, Trash2, RefreshCw, Check, X, Clock, UserCheck } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function AdminPage() {
@@ -32,6 +32,8 @@ export default function AdminPage() {
     loadingProjects,
     fetchUsers, 
     fetchAllProjects,
+    approveUser,
+    revokeApproval,
     promoteToAdmin,
     demoteFromAdmin,
     deleteProject
@@ -39,7 +41,10 @@ export default function AdminPage() {
 
   const [userToPromote, setUserToPromote] = useState<AdminUser | null>(null);
   const [userToDemote, setUserToDemote] = useState<AdminUser | null>(null);
+  const [userToApprove, setUserToApprove] = useState<AdminUser | null>(null);
+  const [userToRevoke, setUserToRevoke] = useState<AdminUser | null>(null);
   const [projectToDelete, setProjectToDelete] = useState<AdminProject | null>(null);
+  const [activeTab, setActiveTab] = useState('pending');
 
   // Redirect non-admins
   useEffect(() => {
@@ -68,6 +73,8 @@ export default function AdminPage() {
     return null;
   }
 
+  const pendingUsers = users.filter(u => !u.is_approved);
+  const approvedUsers = users.filter(u => u.is_approved);
   const adminCount = users.filter(u => u.role === 'admin').length;
   const totalUsers = users.length;
   const totalProjects = allProjects.length;
@@ -86,7 +93,7 @@ export default function AdminPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -99,6 +106,26 @@ export default function AdminPage() {
             </p>
           </CardContent>
         </Card>
+        <Card className={pendingUsers.length > 0 ? 'border-amber-500 dark:border-amber-400' : ''}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending Approval</CardTitle>
+            <Clock className="h-4 w-4 text-amber-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{pendingUsers.length}</div>
+            <p className="text-xs text-muted-foreground">Awaiting review</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Approved Users</CardTitle>
+            <UserCheck className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{approvedUsers.length}</div>
+            <p className="text-xs text-muted-foreground">Active accounts</p>
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
@@ -109,26 +136,23 @@ export default function AdminPage() {
             <p className="text-xs text-muted-foreground">Across all users</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Projects/User</CardTitle>
-            <FolderOpen className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {totalUsers > 0 ? (totalProjects / totalUsers).toFixed(1) : 0}
-            </div>
-            <p className="text-xs text-muted-foreground">Per registered user</p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Tabs for Users and Projects */}
-      <Tabs defaultValue="users" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
+          <TabsTrigger value="pending" className="gap-2">
+            <Clock className="w-4 h-4" />
+            Pending
+            {pendingUsers.length > 0 && (
+              <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                {pendingUsers.length}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="users" className="gap-2">
             <Users className="w-4 h-4" />
-            Users
+            Approved Users
           </TabsTrigger>
           <TabsTrigger value="projects" className="gap-2">
             <FolderOpen className="w-4 h-4" />
@@ -136,12 +160,74 @@ export default function AdminPage() {
           </TabsTrigger>
         </TabsList>
 
+        {/* Pending Users Tab */}
+        <TabsContent value="pending" className="space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Pending Approvals</CardTitle>
+                <CardDescription>Users waiting for account approval</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" onClick={fetchUsers} disabled={loadingUsers}>
+                <RefreshCw className={`w-4 h-4 mr-2 ${loadingUsers ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {loadingUsers ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : pendingUsers.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <UserCheck className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No pending users to approve</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Signed Up</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pendingUsers.map((u) => (
+                      <TableRow key={u.user_id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{u.email}</p>
+                            <p className="text-xs text-muted-foreground font-mono">{u.user_id.slice(0, 8)}...</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>{format(new Date(u.created_at), 'PPp')}</TableCell>
+                        <TableCell className="text-right space-x-2">
+                          <Button
+                            size="sm"
+                            onClick={() => setUserToApprove(u)}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <Check className="w-4 h-4 mr-1" />
+                            Approve
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Approved Users Tab */}
         <TabsContent value="users" className="space-y-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle>User Management</CardTitle>
-                <CardDescription>View and manage user roles</CardDescription>
+                <CardTitle>Approved Users</CardTitle>
+                <CardDescription>Manage active user accounts and roles</CardDescription>
               </div>
               <Button variant="outline" size="sm" onClick={fetchUsers} disabled={loadingUsers}>
                 <RefreshCw className={`w-4 h-4 mr-2 ${loadingUsers ? 'animate-spin' : ''}`} />
@@ -157,7 +243,7 @@ export default function AdminPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>User ID</TableHead>
+                      <TableHead>Email</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead>Projects</TableHead>
                       <TableHead>Joined</TableHead>
@@ -165,13 +251,18 @@ export default function AdminPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {users.map((u) => (
+                    {approvedUsers.map((u) => (
                       <TableRow key={u.user_id}>
-                        <TableCell className="font-mono text-sm">
-                          {u.user_id.slice(0, 8)}...
-                          {u.user_id === user?.id && (
-                            <Badge variant="secondary" className="ml-2">You</Badge>
-                          )}
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">
+                              {u.email}
+                              {u.user_id === user?.id && (
+                                <Badge variant="secondary" className="ml-2">You</Badge>
+                              )}
+                            </p>
+                            <p className="text-xs text-muted-foreground font-mono">{u.user_id.slice(0, 8)}...</p>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Badge variant={u.role === 'admin' ? 'default' : 'secondary'}>
@@ -181,7 +272,7 @@ export default function AdminPage() {
                         </TableCell>
                         <TableCell>{u.project_count}</TableCell>
                         <TableCell>{format(new Date(u.role_assigned_at), 'PP')}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right space-x-2">
                           {u.role === 'admin' ? (
                             <Button
                               variant="outline"
@@ -194,14 +285,24 @@ export default function AdminPage() {
                               Remove Admin
                             </Button>
                           ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setUserToPromote(u)}
-                            >
-                              <Shield className="w-4 h-4 mr-1" />
-                              Make Admin
-                            </Button>
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setUserToPromote(u)}
+                              >
+                                <Shield className="w-4 h-4 mr-1" />
+                                Make Admin
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setUserToRevoke(u)}
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </>
                           )}
                         </TableCell>
                       </TableRow>
@@ -246,8 +347,11 @@ export default function AdminPage() {
                     {allProjects.map((project) => (
                       <TableRow key={project.id}>
                         <TableCell className="font-medium">{project.feature_name}</TableCell>
-                        <TableCell className="font-mono text-sm">
-                          {project.user_id.slice(0, 8)}...
+                        <TableCell>
+                          <div>
+                            <p className="text-sm">{project.user_email}</p>
+                            <p className="text-xs text-muted-foreground font-mono">{project.user_id.slice(0, 8)}...</p>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">{project.preset}</Badge>
@@ -274,13 +378,65 @@ export default function AdminPage() {
         </TabsContent>
       </Tabs>
 
+      {/* Approve User Dialog */}
+      <AlertDialog open={!!userToApprove} onOpenChange={(open) => !open && setUserToApprove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Approve User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Approve <strong>{userToApprove?.email}</strong> to access the application?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (userToApprove) {
+                  approveUser(userToApprove.user_id);
+                  setUserToApprove(null);
+                }
+              }}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Approve
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Revoke Approval Dialog */}
+      <AlertDialog open={!!userToRevoke} onOpenChange={(open) => !open && setUserToRevoke(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revoke Access</AlertDialogTitle>
+            <AlertDialogDescription>
+              Revoke access for <strong>{userToRevoke?.email}</strong>? They will no longer be able to use the application.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (userToRevoke) {
+                  revokeApproval(userToRevoke.user_id);
+                  setUserToRevoke(null);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Revoke Access
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Promote Confirmation Dialog */}
       <AlertDialog open={!!userToPromote} onOpenChange={(open) => !open && setUserToPromote(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Promote to Admin</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to give admin privileges to user {userToPromote?.user_id.slice(0, 8)}...?
+              Are you sure you want to give admin privileges to <strong>{userToPromote?.email}</strong>?
               They will be able to manage all users and projects.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -306,7 +462,7 @@ export default function AdminPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remove Admin Privileges</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove admin privileges from user {userToDemote?.user_id.slice(0, 8)}...?
+              Are you sure you want to remove admin privileges from <strong>{userToDemote?.email}</strong>?
               They will no longer be able to access the admin dashboard.
             </AlertDialogDescription>
           </AlertDialogHeader>
