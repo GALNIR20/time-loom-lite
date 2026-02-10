@@ -12,7 +12,7 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { projects, loading, createProject, updateProject, deleteProject } = useProjects();
+  const { projects, loading, createProject, updateProject, duplicateProject, deleteProject, isProjectOwner, userId } = useProjects();
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -27,7 +27,9 @@ export function Layout({ children }: LayoutProps) {
     overrides: p.overrides,
     hiddenMilestones: p.hidden_milestones,
     lockedDevStart: p.locked_dev_start,
-    savedAt: p.updated_at
+    milestoneChecklists: p.milestone_checklists || {},
+    savedAt: p.updated,
+    owner: p.owner,
   }));
 
   const handleSelectProject = useCallback((project: SavedProject) => {
@@ -41,6 +43,28 @@ export function Layout({ children }: LayoutProps) {
     navigate('/');
     window.dispatchEvent(new CustomEvent('createNewProject'));
   }, [navigate]);
+
+  const handleDuplicateProject = useCallback(async (project: SavedProject) => {
+    const newProject = await duplicateProject(project.id);
+    if (newProject) {
+      // Select the newly created project
+      const saved: SavedProject = {
+        id: newProject.id,
+        featureName: newProject.feature_name,
+        isFeatureNameSet: true,
+        projectStart: newProject.project_start,
+        preset: newProject.preset as SavedProject['preset'],
+        showDetailed: newProject.show_detailed,
+        overrides: newProject.overrides,
+        hiddenMilestones: newProject.hidden_milestones,
+        lockedDevStart: newProject.locked_dev_start,
+        milestoneChecklists: newProject.milestone_checklists || {},
+        savedAt: newProject.updated,
+        owner: newProject.owner,
+      };
+      handleSelectProject(saved);
+    }
+  }, [duplicateProject, handleSelectProject]);
 
   const handleDeleteProject = useCallback(async (id: string) => {
     await deleteProject(id);
@@ -82,11 +106,13 @@ export function Layout({ children }: LayoutProps) {
         <ProjectSidebar
           projects={savedProjects}
           currentProjectId={currentProjectId}
+          currentUserId={userId}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           onSelectProject={handleSelectProject}
           onCreateNew={handleCreateNewProject}
           onDeleteProject={handleDeleteProject}
+          onDuplicateProject={handleDuplicateProject}
         />
       )}
       

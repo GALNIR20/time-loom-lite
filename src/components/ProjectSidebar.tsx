@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Plus, FolderOpen, Trash2, ChevronDown, Calendar, Settings, LogOut, Shield } from 'lucide-react';
+import { Plus, FolderOpen, Trash2, ChevronDown, Calendar, Settings, LogOut, Shield, Eye, Search, X, Copy } from 'lucide-react';
 import { PresetType } from '@/types/timeline';
 import { PredictorLogo } from '@/components/PredictorLogo';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
+import { useGame } from '@/hooks/useGame';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -28,34 +29,42 @@ export interface SavedProject {
   overrides: Record<string, number | null>;
   hiddenMilestones: string[];
   lockedDevStart: string | null;
+  milestoneChecklists: Record<string, string[]>;
   savedAt: string;
+  owner: string;
 }
 
 interface ProjectSidebarProps {
   projects: SavedProject[];
   currentProjectId: string | null;
+  currentUserId: string | null;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   onSelectProject: (project: SavedProject) => void;
   onCreateNew: () => void;
   onDeleteProject: (id: string) => void;
+  onDuplicateProject: (project: SavedProject) => void;
 }
 
 export function ProjectSidebar({
   projects,
   currentProjectId,
+  currentUserId,
   isCollapsed,
   onToggleCollapse,
   onSelectProject,
   onCreateNew,
   onDeleteProject,
+  onDuplicateProject,
 }: ProjectSidebarProps) {
   const [isProjectsExpanded, setIsProjectsExpanded] = useState(true);
   const [projectToDelete, setProjectToDelete] = useState<SavedProject | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { isAdmin } = useAdmin();
+  const { selectedGame, clearGame } = useGame();
 
   const handleSignOut = async () => {
     await signOut();
@@ -128,10 +137,31 @@ export function ProjectSidebar({
   return (
     <div className="w-60 bg-background border-r border-border/50 flex flex-col h-full shadow-sm">
       {/* Logo Header */}
-      <div className="p-6 flex items-center gap-3">
+      <div className="p-6 pb-3 flex items-center gap-3">
         <PredictorLogo size="md" />
         <span className="font-bold text-foreground text-xl tracking-tight">PREDICTOR</span>
       </div>
+
+      {/* Game Badge */}
+      {selectedGame && (
+        <div className="px-6 pb-3">
+          <button
+            onClick={() => {
+              clearGame();
+              navigate('/select-game');
+            }}
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
+              selectedGame === 'SGH'
+                ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400 hover:bg-violet-500/20'
+                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20'
+            }`}
+            title="Switch game"
+          >
+            <span>{selectedGame}</span>
+            <span className="text-[10px] font-normal opacity-70">Switch</span>
+          </button>
+        </div>
+      )}
 
       {/* Navigation Menu */}
       <nav className="flex-1 px-4 py-2 overflow-y-auto">
@@ -163,42 +193,92 @@ export function ProjectSidebar({
           {/* Projects List */}
           {isProjectsExpanded && (
             <div className="mt-1 ml-6 pl-4 border-l-2 border-border/50 space-y-1">
+              {/* Search input */}
+              {projects.length > 0 && (
+                <div className="relative mb-1">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/60" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search..."
+                    className="w-full text-xs py-1.5 pl-7 pr-6 rounded-md bg-muted/50 border border-border/50 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-muted-foreground/60 hover:text-foreground transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              )}
               {projects.length === 0 ? (
                 <p className="text-xs text-muted-foreground py-2 pl-2">
                   No projects yet
                 </p>
-              ) : (
-                projects.map((project) => {
-                  const isActive = currentProjectId === project.id;
-                  return (
-                    <div
-                      key={project.id}
-                      className="group flex items-center justify-between relative"
-                    >
-                      <button
-                        onClick={() => onSelectProject(project)}
-                        className={`flex-1 text-left text-sm py-2.5 px-2 rounded-lg transition-colors truncate ${
-                          isActive
-                            ? 'text-primary font-medium bg-primary/5'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                        }`}
+              ) : (() => {
+                const filtered = projects.filter((p) =>
+                  !searchQuery || p.featureName.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+                return filtered.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2 pl-2">
+                    No projects found
+                  </p>
+                ) : (
+                  filtered.map((project) => {
+                    const isActive = currentProjectId === project.id;
+                    const isOwner = currentUserId ? project.owner === currentUserId : false;
+                    return (
+                      <div
+                        key={project.id}
+                        className="group flex items-center justify-between relative"
                       >
-                        {project.featureName || 'Untitled Project'}
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setProjectToDelete(project);
-                        }}
-                        className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
-                        aria-label={`Delete ${project.featureName || 'project'}`}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  );
-                })
-              )}
+                        <button
+                          onClick={() => onSelectProject(project)}
+                          className={`flex-1 text-left text-sm py-2.5 px-2 rounded-lg transition-colors truncate flex items-center gap-1.5 ${
+                            isActive
+                              ? 'text-primary font-medium bg-primary/5'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                          }`}
+                        >
+                          {!isOwner && (
+                            <Eye className="w-3 h-3 shrink-0 text-muted-foreground/60" title="View only" />
+                          )}
+                          <span className="truncate">{project.featureName || 'Untitled Project'}</span>
+                        </button>
+                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-all">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDuplicateProject(project);
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                            aria-label={`Duplicate ${project.featureName || 'project'}`}
+                            title="Duplicate project"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                          {(isOwner || isAdmin) && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setProjectToDelete(project);
+                              }}
+                              className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                              aria-label={`Delete ${project.featureName || 'project'}`}
+                              title="Delete project"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                );
+              })()}
             </div>
           )}
         </div>

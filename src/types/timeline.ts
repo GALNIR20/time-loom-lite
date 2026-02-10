@@ -1,5 +1,11 @@
-export type PhaseType = 'Concept Phase' | 'Sketch Phase' | 'Development';
+export type PhaseType = string;
 export type PresetType = 'Big' | 'Medium' | 'BLITZ';
+
+export interface PhaseConfig {
+  id: string;
+  name: string;
+  color: string; // tailwind color key: 'blue', 'purple', 'green', 'orange', 'red', 'cyan', 'pink', 'yellow'
+}
 
 export interface MilestoneConfig {
   id: string;

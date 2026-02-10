@@ -56,11 +56,11 @@ function ActivityItem({ activity }: { activity: ProjectActivity }) {
           </p>
         )}
         <p className="text-xs text-muted-foreground mt-1">
-          {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
+          {formatDistanceToNow(new Date(activity.created), { addSuffix: true })}
         </p>
       </div>
       <span className="text-xs text-muted-foreground whitespace-nowrap">
-        {format(new Date(activity.created_at), 'HH:mm')}
+        {format(new Date(activity.created), 'HH:mm')}
       </span>
     </div>
   );

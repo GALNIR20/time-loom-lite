@@ -1,8 +1,29 @@
 import { MilestoneState, MilestoneConfig } from '@/types/timeline';
 import { formatDateDisplay, formatDuration } from '@/lib/timeline';
-import { X, ArrowRight, Trash2, RotateCcw, ChevronDown, ChevronUp, Merge, Unlink } from 'lucide-react';
-import { useState } from 'react';
+import { X, ArrowRight, Trash2, RotateCcw, ChevronDown, ChevronUp, Merge, Unlink, Lock, Unlock, ClipboardCheck } from 'lucide-react';
+import { useState, useRef } from 'react';
 import { parseISO, format, differenceInDays } from 'date-fns';
+import { getPhaseColor, getSprintCodeConfig, getSprintDurationDays } from '@/hooks/useMilestoneSettings';
+import { getItemIdsForMilestone } from '@/hooks/useChecklistSettings';
+
+// Dynamic phase badge classes based on color
+const PHASE_BADGE_CLASSES: Record<string, string> = {
+  blue: 'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-blue-500/10 text-blue-700 dark:text-blue-400',
+  purple: 'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-purple-500/10 text-purple-700 dark:text-purple-400',
+  green: 'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-green-500/10 text-green-700 dark:text-green-400',
+  orange: 'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-orange-500/10 text-orange-700 dark:text-orange-400',
+  red: 'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-red-500/10 text-red-700 dark:text-red-400',
+  cyan: 'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-cyan-500/10 text-cyan-700 dark:text-cyan-400',
+  pink: 'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-pink-500/10 text-pink-700 dark:text-pink-400',
+  yellow: 'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
+  indigo: 'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-indigo-500/10 text-indigo-700 dark:text-indigo-400',
+  emerald: 'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+};
+
+function getPhaseBadgeClass(phaseName: string): string {
+  const color = getPhaseColor(phaseName);
+  return PHASE_BADGE_CLASSES[color] || PHASE_BADGE_CLASSES.blue;
+}
 
 // Discovery meetings configuration: maps milestone id to its discovery meetings
 const DISCOVERY_MEETINGS: Record<string, string[]> = {
@@ -24,6 +45,12 @@ interface MilestoneTableProps {
   onRestoreMilestone: (id: string) => void;
   mergedMilestones: Record<string, string[]>;
   onUnmergeMilestone: (targetId: string, sourceName: string) => void;
+  readOnly?: boolean;
+  lockedMilestones?: Record<string, string>;
+  onToggleLock?: (milestoneId: string) => void;
+  milestoneChecklists?: Record<string, string[]>;
+  onMilestoneNameClick?: (milestoneId: string) => void;
+  onDateChange?: (milestoneId: string, newDate: string) => void;
 }
 
 // Convert calendar days to work days (5 work days per week)
@@ -34,20 +61,18 @@ function calendarToWorkDays(calendarDays: number): number {
   return weeks * 5 + Math.min(remainingDays, 5);
 }
 
-// Calculate sprint code based on the 2026 sprint plan
-// Reference: Jan 13, 2026 = 2.409, each biweekly sprint increments by 1
+// Calculate sprint code based on configurable reference point per game
 function getSprintCode(startDate: string): string {
   const date = parseISO(startDate);
-  // Reference point: Jan 13, 2026 = sprint code 409
-  const referenceDate = new Date(2026, 0, 13); // Jan 13, 2026
-  const referenceCode = 409;
+  const config = getSprintCodeConfig();
+  const sprintDays = getSprintDurationDays();
   
-  // Calculate biweeks (14 days) difference from reference
+  const referenceDate = parseISO(config.referenceDate);
   const daysDiff = differenceInDays(date, referenceDate);
-  const biweeksDiff = Math.round(daysDiff / 14);
-  const code = referenceCode + biweeksDiff;
+  const sprintsDiff = Math.round(daysDiff / sprintDays);
+  const code = config.referenceNumber + sprintsDiff;
   
-  return `2.${code}`;
+  return `${config.prefix}${code}`;
 }
 
 // Format date as D.M (day.month)
@@ -75,6 +100,12 @@ export function MilestoneTable({
   onRestoreMilestone,
   mergedMilestones,
   onUnmergeMilestone,
+  readOnly = false,
+  lockedMilestones = {},
+  onToggleLock,
+  milestoneChecklists = {},
+  onMilestoneNameClick,
+  onDateChange,
 }: MilestoneTableProps) {
   const [showHidden, setShowHidden] = useState(false);
   const [expandedDiscovery, setExpandedDiscovery] = useState<Set<string>>(new Set());
@@ -166,9 +197,11 @@ export function MilestoneTable({
               </th>
               <th className="table-header-cell">Next Milestone</th>
               <th className="table-header-cell">Phase</th>
-              <th className="table-header-cell w-12 text-center">
-                <span className="sr-only">Actions</span>
-              </th>
+              {!readOnly && (
+                <th className="table-header-cell w-12 text-center">
+                  <span className="sr-only">Actions</span>
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -176,25 +209,93 @@ export function MilestoneTable({
               <>
                 <tr key={milestone.id} className="table-body-row">
                   <td className="table-body-cell text-muted-foreground whitespace-nowrap">
-                    {formatDateDisplay(milestone.start)}
+                    <div className="flex items-center gap-1">
+                      {onToggleLock && (
+                        <button
+                          onClick={() => onToggleLock(milestone.id)}
+                          className={`p-0.5 rounded transition-colors ${
+                            lockedMilestones[milestone.id]
+                              ? 'text-primary'
+                              : 'text-muted-foreground/30 hover:text-muted-foreground'
+                          }`}
+                          title={lockedMilestones[milestone.id] ? 'Unlock date' : 'Lock date'}
+                          aria-label={lockedMilestones[milestone.id] ? `Unlock ${milestone.name} date` : `Lock ${milestone.name} date`}
+                          disabled={readOnly}
+                        >
+                          {lockedMilestones[milestone.id] ? (
+                            <Lock className="w-3.5 h-3.5" />
+                          ) : (
+                            <Unlock className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      )}
+                      {!readOnly && onDateChange ? (
+                        <input
+                          type="date"
+                          value={milestone.start}
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              onDateChange(milestone.id, e.target.value);
+                            }
+                          }}
+                          onClick={(e) => {
+                            try { (e.currentTarget as HTMLInputElement).showPicker(); } catch {}
+                          }}
+                          className={`bg-transparent border-none outline-none text-sm cursor-pointer rounded px-1 py-0.5 hover:bg-primary/10 hover:text-primary transition-colors ${
+                            lockedMilestones[milestone.id] ? 'font-semibold text-primary' : 'text-muted-foreground'
+                          }`}
+                          style={{ width: '140px' }}
+                          disabled={!!lockedMilestones[milestone.id]}
+                        />
+                      ) : (
+                        <span className={lockedMilestones[milestone.id] ? 'font-semibold text-primary' : ''}>
+                          {formatDateDisplay(milestone.start)}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="table-body-cell font-medium">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="whitespace-nowrap">{getDisplayName(milestone)}</span>
+                      <button
+                        onClick={() => onMilestoneNameClick?.(milestone.id)}
+                        className="whitespace-nowrap hover:text-primary hover:underline underline-offset-2 transition-colors text-left cursor-pointer"
+                        title="Open checklist"
+                      >
+                        {getDisplayName(milestone)}
+                      </button>
+                      {/* Checklist progress indicator — shows unchecked count */}
+                      {(() => {
+                        const total = getItemIdsForMilestone(milestone.id).length;
+                        const checked = milestoneChecklists[milestone.id]?.length ?? total;
+                        const unchecked = total - checked;
+                        if (unchecked === 0) return null;
+                        return (
+                          <span
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium cursor-pointer bg-orange-500/10 text-orange-600 dark:text-orange-400"
+                            onClick={() => onMilestoneNameClick?.(milestone.id)}
+                            title={`${unchecked} item${unchecked > 1 ? 's' : ''} unchecked`}
+                          >
+                            <ClipboardCheck className="w-3 h-3" />
+                            {unchecked}
+                          </span>
+                        );
+                      })()}
                       {!milestone.id.startsWith('sprint-') && mergedMilestones[milestone.id]?.map((mergedName) => (
                         <span
                           key={mergedName}
                           className="inline-flex items-center gap-1 px-2 py-0.5 bg-warning/20 text-warning rounded-full text-xs"
                         >
                           + {mergedName}
-                          <button
-                            onClick={() => onUnmergeMilestone(milestone.id, mergedName)}
-                            className="hover:bg-warning/30 rounded-full p-0.5 transition-colors"
-                            aria-label={`Unmerge ${mergedName}`}
-                            title="Unmerge"
-                          >
-                            <Unlink className="w-3 h-3" />
-                          </button>
+                          {!readOnly && (
+                            <button
+                              onClick={() => onUnmergeMilestone(milestone.id, mergedName)}
+                              className="hover:bg-warning/30 rounded-full p-0.5 transition-colors"
+                              aria-label={`Unmerge ${mergedName}`}
+                              title="Unmerge"
+                            >
+                              <Unlink className="w-3 h-3" />
+                            </button>
+                          )}
                         </span>
                       ))}
                     </div>
@@ -227,8 +328,9 @@ export function MilestoneTable({
                           onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
                           className="input-field w-24 text-center"
                           aria-label={`Days for ${milestone.name}`}
+                          disabled={readOnly}
                         />
-                        {milestone.overrideDays !== null && (
+                        {!readOnly && milestone.overrideDays !== null && (
                           <button
                             onClick={() => onDaysChange(milestone.id, null)}
                             className="btn-ghost"
@@ -243,7 +345,7 @@ export function MilestoneTable({
                           {calendarToWorkDays(milestone.durationDays)}d
                         </span>
                       )}
-                      {milestone.durationDays === 0 && getMergeTargets(index).length > 0 && (
+                      {!readOnly && milestone.durationDays === 0 && getMergeTargets(index).length > 0 && (
                         <div className="relative">
                           <button
                             onClick={() => setMergeDropdownOpen(mergeDropdownOpen === milestone.id ? null : milestone.id)}
@@ -278,28 +380,22 @@ export function MilestoneTable({
                     {getNextMilestoneName(index)}
                   </td>
                   <td className="table-body-cell">
-                    <span
-                      className={
-                        milestone.phase === 'Concept Phase'
-                          ? 'phase-badge-concept'
-                          : milestone.phase === 'Sketch Phase'
-                          ? 'phase-badge-sketch'
-                          : 'phase-badge-development'
-                      }
-                    >
+                    <span className={getPhaseBadgeClass(milestone.phase)}>
                       {milestone.phase}
                     </span>
                   </td>
-                  <td className="table-body-cell text-center px-2">
-                    <button
-                      onClick={() => onRemoveMilestone(milestone.id)}
-                      className="p-2 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                      aria-label={`Remove ${milestone.name}`}
-                      title="Remove milestone"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </td>
+                  {!readOnly && (
+                    <td className="table-body-cell text-center px-2">
+                      <button
+                        onClick={() => onRemoveMilestone(milestone.id)}
+                        className="p-2 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        aria-label={`Remove ${milestone.name}`}
+                        title="Remove milestone"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  )}
                 </tr>
                 {/* Discovery meetings expandable row */}
                 {DISCOVERY_MEETINGS[milestone.id] && expandedDiscovery.has(milestone.id) && (
@@ -311,15 +407,7 @@ export function MilestoneTable({
                             key={meeting}
                             className="flex items-center gap-2 p-2 rounded-md bg-background/50"
                           >
-                            <span
-                              className={`text-[10px] ${
-                                milestone.phase === 'Concept Phase'
-                                  ? 'phase-badge-concept'
-                                  : milestone.phase === 'Sketch Phase'
-                                  ? 'phase-badge-sketch'
-                                  : 'phase-badge-development'
-                              }`}
-                            >
+                            <span className={`text-[10px] ${getPhaseBadgeClass(milestone.phase)}`}>
                               Discovery
                             </span>
                             <span className="text-sm font-medium">{meeting}</span>
@@ -342,47 +430,104 @@ export function MilestoneTable({
             {/* Header row */}
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <span
-                  className={`text-[10px] ${
-                    milestone.phase === 'Concept Phase'
-                      ? 'phase-badge-concept'
-                      : milestone.phase === 'Sketch Phase'
-                      ? 'phase-badge-sketch'
-                      : 'phase-badge-development'
-                  }`}
-                >
+                <span className={`text-[10px] ${getPhaseBadgeClass(milestone.phase)}`}>
                   {milestone.phase}
                 </span>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <h3 className="font-medium text-foreground text-sm truncate">{getDisplayName(milestone)}</h3>
+                  <button
+                    onClick={() => onMilestoneNameClick?.(milestone.id)}
+                    className="font-medium text-foreground text-sm truncate hover:text-primary hover:underline underline-offset-2 transition-colors text-left"
+                    title="Open checklist"
+                  >
+                    {getDisplayName(milestone)}
+                  </button>
+                  {(() => {
+                    const total = getItemIdsForMilestone(milestone.id).length;
+                    const checked = milestoneChecklists[milestone.id]?.length ?? total;
+                    const unchecked = total - checked;
+                    if (unchecked === 0) return null;
+                    return (
+                      <span
+                        className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded-full text-[9px] font-medium bg-orange-500/10 text-orange-600 dark:text-orange-400"
+                        onClick={() => onMilestoneNameClick?.(milestone.id)}
+                      >
+                        <ClipboardCheck className="w-2.5 h-2.5" />
+                        {unchecked}
+                      </span>
+                    );
+                  })()}
                   {!milestone.id.startsWith('sprint-') && mergedMilestones[milestone.id]?.map((mergedName) => (
                     <span
                       key={mergedName}
                       className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-warning/20 text-warning rounded-full text-[10px]"
                     >
                       + {mergedName}
-                      <button
-                        onClick={() => onUnmergeMilestone(milestone.id, mergedName)}
-                        className="hover:bg-warning/30 rounded-full p-0.5 transition-colors"
-                        aria-label={`Unmerge ${mergedName}`}
-                      >
-                        <Unlink className="w-2.5 h-2.5" />
-                      </button>
+                      {!readOnly && (
+                        <button
+                          onClick={() => onUnmergeMilestone(milestone.id, mergedName)}
+                          className="hover:bg-warning/30 rounded-full p-0.5 transition-colors"
+                          aria-label={`Unmerge ${mergedName}`}
+                        >
+                          <Unlink className="w-2.5 h-2.5" />
+                        </button>
+                      )}
                     </span>
                   ))}
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                  {formatDateDisplay(milestone.start)}
-                </span>
-                <button
-                  onClick={() => onRemoveMilestone(milestone.id)}
-                  className="btn-ghost text-muted-foreground hover:text-destructive p-1"
-                  aria-label={`Remove ${milestone.name}`}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-0.5">
+                  {onToggleLock && (
+                    <button
+                      onClick={() => onToggleLock(milestone.id)}
+                      className={`p-0.5 rounded transition-colors ${
+                        lockedMilestones[milestone.id]
+                          ? 'text-primary'
+                          : 'text-muted-foreground/30 hover:text-muted-foreground'
+                      }`}
+                      title={lockedMilestones[milestone.id] ? 'Unlock date' : 'Lock date'}
+                      disabled={readOnly}
+                    >
+                      {lockedMilestones[milestone.id] ? (
+                        <Lock className="w-3 h-3" />
+                      ) : (
+                        <Unlock className="w-3 h-3" />
+                      )}
+                    </button>
+                  )}
+                  {!readOnly && onDateChange ? (
+                    <input
+                      type="date"
+                      value={milestone.start}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          onDateChange(milestone.id, e.target.value);
+                        }
+                      }}
+                      onClick={(e) => {
+                        try { (e.currentTarget as HTMLInputElement).showPicker(); } catch {}
+                      }}
+                      className={`bg-transparent border-none outline-none text-[10px] cursor-pointer rounded px-0.5 py-0.5 hover:bg-primary/10 hover:text-primary transition-colors ${
+                        lockedMilestones[milestone.id] ? 'font-semibold text-primary' : 'text-muted-foreground'
+                      }`}
+                      disabled={!!lockedMilestones[milestone.id]}
+                      style={{ width: '110px' }}
+                    />
+                  ) : (
+                    <span className={`text-[10px] whitespace-nowrap ${lockedMilestones[milestone.id] ? 'font-semibold text-primary' : 'text-muted-foreground'}`}>
+                      {formatDateDisplay(milestone.start)}
+                    </span>
+                  )}
+                </div>
+                {!readOnly && (
+                  <button
+                    onClick={() => onRemoveMilestone(milestone.id)}
+                    className="btn-ghost text-muted-foreground hover:text-destructive p-1"
+                    aria-label={`Remove ${milestone.name}`}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -397,6 +542,7 @@ export function MilestoneTable({
                   onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
                   className="input-field w-14 text-center text-xs py-1"
                   aria-label={`Days for ${milestone.name}`}
+                  disabled={readOnly}
                 />
                 <span className="text-xs text-muted-foreground">days</span>
                 {useWorkDays && milestone.durationDays > 0 && (
@@ -404,7 +550,7 @@ export function MilestoneTable({
                     {calendarToWorkDays(milestone.durationDays)}w
                   </span>
                 )}
-                {milestone.overrideDays !== null && (
+                {!readOnly && milestone.overrideDays !== null && (
                   <button
                     onClick={() => onDaysChange(milestone.id, null)}
                     className="btn-ghost p-1"
@@ -414,7 +560,7 @@ export function MilestoneTable({
                   </button>
                 )}
                 {/* Merge button - appears when days is 0 */}
-                {milestone.durationDays === 0 && getMergeTargets(index).length > 0 && (
+                {!readOnly && milestone.durationDays === 0 && getMergeTargets(index).length > 0 && (
                   <div className="relative">
                     <button
                       onClick={() => setMergeDropdownOpen(mergeDropdownOpen === milestone.id ? null : milestone.id)}
@@ -472,15 +618,7 @@ export function MilestoneTable({
                         key={meeting}
                         className="flex items-center gap-2 p-1.5 rounded-md bg-muted/30"
                       >
-                        <span
-                          className={`text-[9px] ${
-                            milestone.phase === 'Concept Phase'
-                              ? 'phase-badge-concept'
-                              : milestone.phase === 'Sketch Phase'
-                              ? 'phase-badge-sketch'
-                              : 'phase-badge-execution'
-                          }`}
-                        >
+                        <span className={`text-[9px] ${getPhaseBadgeClass(milestone.phase)}`}>
                           Discovery
                         </span>
                         <span className="text-xs font-medium">{meeting}</span>
@@ -503,7 +641,7 @@ export function MilestoneTable({
       </div>
 
       {/* Hidden Milestones Section */}
-      {hiddenList.length > 0 && (
+      {!readOnly && hiddenList.length > 0 && (
         <div className="border-t border-border">
           <button
             onClick={() => setShowHidden(!showHidden)}
@@ -520,15 +658,7 @@ export function MilestoneTable({
                   className="flex items-center justify-between p-2 rounded-md bg-muted/30"
                 >
                   <div className="flex items-center gap-2">
-                    <span
-                      className={`text-[10px] ${
-                        m.phase === 'Concept Phase'
-                          ? 'phase-badge-concept'
-                          : m.phase === 'Sketch Phase'
-                          ? 'phase-badge-sketch'
-                          : 'phase-badge-execution'
-                      }`}
-                    >
+                    <span className={`text-[10px] ${getPhaseBadgeClass(m.phase)}`}>
                       {m.phase}
                     </span>
                     <span className="text-sm font-medium">{m.name}</span>

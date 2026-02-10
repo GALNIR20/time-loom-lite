@@ -18,11 +18,12 @@ interface TimelineViewProps {
   onClose: () => void;
   onDaysChange: (id: string, value: number | null) => void;
   onRemoveMilestone: (id: string) => void;
+  readOnly?: boolean;
 }
 
 type ViewMode = 'days' | 'weeks' | 'months' | 'quarters' | 'milestones';
 
-export function TimelineView({ milestones, featureName, preset, isOpen, onClose, onDaysChange, onRemoveMilestone }: TimelineViewProps) {
+export function TimelineView({ milestones, featureName, preset, isOpen, onClose, onDaysChange, onRemoveMilestone, readOnly = false }: TimelineViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('milestones');
   const [editMode, setEditMode] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -69,6 +70,37 @@ export function TimelineView({ milestones, featureName, preset, isOpen, onClose,
       timelineStart: weekStart, // Use week start for alignment
     };
   }, [milestones]);
+
+  // Group weeks by month for the month header row (weeks view)
+  const weekMonthGroups = useMemo(() => {
+    if (weeks.length === 0) return [];
+    const groups: { label: string; span: number }[] = [];
+    let currentMonth = format(weeks[0], 'MMM yyyy');
+    let count = 1;
+    for (let i = 1; i < weeks.length; i++) {
+      const month = format(weeks[i], 'MMM yyyy');
+      if (month === currentMonth) {
+        count++;
+      } else {
+        groups.push({ label: currentMonth, span: count });
+        currentMonth = month;
+        count = 1;
+      }
+    }
+    groups.push({ label: currentMonth, span: count });
+    return groups;
+  }, [weeks]);
+
+  // Indices of weeks that start a new month (for bold dividers)
+  const monthBoundaryWeekIndices = useMemo(() => {
+    const boundaries = new Set<number>();
+    for (let i = 1; i < weeks.length; i++) {
+      if (format(weeks[i], 'MMM yyyy') !== format(weeks[i - 1], 'MMM yyyy')) {
+        boundaries.add(i);
+      }
+    }
+    return boundaries;
+  }, [weeks]);
 
   // Calculate today's position percentage for each view mode
   const todayPosition = useMemo(() => {
@@ -292,16 +324,18 @@ ${milestoneLines}${missedAllocationLine}`;
           </div>
           <div className="flex items-center gap-4">
             {/* Edit Mode Toggle */}
-            <label className="flex items-center gap-2 cursor-pointer">
-              <Checkbox 
-                checked={editMode} 
-                onCheckedChange={(checked) => setEditMode(checked === true)}
-              />
-              <span className="text-sm text-muted-foreground flex items-center gap-1">
-                <Pencil className="w-3 h-3" />
-                Edit Mode
-              </span>
-            </label>
+            {!readOnly && (
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox 
+                  checked={editMode} 
+                  onCheckedChange={(checked) => setEditMode(checked === true)}
+                />
+                <span className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Pencil className="w-3 h-3" />
+                  Edit Mode
+                </span>
+              </label>
+            )}
             {/* View Mode Toggle */}
             <div className="flex rounded-lg border border-border overflow-hidden">
               <button
@@ -385,28 +419,28 @@ ${milestoneLines}${missedAllocationLine}`;
         {/* Timeline Content */}
         <div className="flex-1 overflow-auto" ref={milestonesRef}>
           {viewMode === 'milestones' ? (
-            /* Visual Milestones View */
-            <div className="p-6 overflow-x-auto bg-card">
-              <div className="relative min-w-[800px] pr-8">
+            /* Visual Milestones View — responsive: fits all milestones on one screen */
+            <div className="p-4 sm:p-6 bg-card h-full">
+              <div className="relative w-full">
                 {/* Milestone nodes with connectors */}
-                <div className="flex items-start relative">
+                <div className="flex items-start relative w-full">
                   {milestones.map((milestone, index) => (
-                    <div key={milestone.id} className="flex items-start">
+                    <div key={milestone.id} className="flex items-start flex-1 min-w-0">
                       {/* Milestone node */}
-                      <div className="flex flex-col items-center">
+                      <div className="flex flex-col items-center flex-1 min-w-0">
                         {/* Node circle */}
                         <div 
-                          className={`w-12 h-12 rounded-full ${getMilestoneColor(milestone.id)} flex items-center justify-center shadow-lg z-10 border-4 border-card`}
+                          className={`w-9 h-9 sm:w-11 sm:h-11 rounded-full ${getMilestoneColor(milestone.id)} flex items-center justify-center shadow-lg z-10 border-[3px] border-card flex-shrink-0`}
                         >
-                          <span className="text-sm font-bold text-white leading-none">{index + 1}</span>
+                          <span className="text-xs sm:text-sm font-bold text-white leading-none">{index + 1}</span>
                         </div>
                         
                         {/* Milestone info */}
-                        <div className="mt-3 text-center min-w-[100px]">
-                          <span className="text-sm font-semibold text-foreground block">
+                        <div className="mt-2 text-center w-full px-0.5">
+                          <span className="text-[10px] sm:text-xs font-semibold text-foreground block truncate">
                             {milestone.name}
                           </span>
-                          <span className="text-xs text-muted-foreground block mt-1">
+                          <span className="text-[9px] sm:text-[10px] text-muted-foreground block mt-0.5">
                             {formatDateDisplay(milestone.start)}
                           </span>
                         </div>
@@ -414,25 +448,25 @@ ${milestoneLines}${missedAllocationLine}`;
                       
                       {/* Connector between nodes */}
                       {index < milestones.length - 1 && (
-                        <div className="flex flex-col items-center mx-2" style={{ marginTop: '20px' }}>
+                        <div className="flex flex-col items-center flex-shrink-0" style={{ marginTop: milestones.length > 8 ? '14px' : '18px' }}>
                           {/* Line and days input */}
                           <div className="flex items-center">
-                            <div className={`h-1 ${editMode ? 'w-8' : 'w-16'} ${getMilestoneColor(milestone.id)}`} />
+                            <div className={`h-0.5 sm:h-1 ${milestones.length > 10 ? 'w-2' : milestones.length > 6 ? 'w-4' : editMode ? 'w-6' : 'w-10'} ${getMilestoneColor(milestone.id)}`} />
                             {editMode && (
-                              <div className="flex flex-col items-center mx-1">
+                              <div className="flex flex-col items-center mx-0.5">
                                 <input
                                   type="number"
                                   min="0"
                                   step="1"
                                   value={milestone.durationDays}
                                   onChange={(e) => handleDaysInput(milestone.id, e.target.value)}
-                                  className="input-field w-16 text-center text-xs py-1"
+                                  className="input-field w-10 sm:w-14 text-center text-[10px] sm:text-xs py-0.5 sm:py-1"
                                   aria-label={`Days for ${milestone.name}`}
                                 />
-                                <span className="text-[10px] text-muted-foreground mt-0.5">days</span>
+                                <span className="text-[8px] sm:text-[10px] text-muted-foreground mt-0.5">days</span>
                               </div>
                             )}
-                            <div className={`h-1 ${editMode ? 'w-8' : 'w-16'} ${getMilestoneColor(milestones[index + 1].id)}`} />
+                            <div className={`h-0.5 sm:h-1 ${milestones.length > 10 ? 'w-2' : milestones.length > 6 ? 'w-4' : editMode ? 'w-6' : 'w-10'} ${getMilestoneColor(milestones[index + 1].id)}`} />
                           </div>
                         </div>
                       )}
@@ -452,65 +486,92 @@ ${milestoneLines}${missedAllocationLine}`;
                 </div>
               )}
               {/* Calendar Header */}
-              <div className="flex border-b border-border sticky top-0 bg-card z-10">
-                {/* Milestone column header */}
-                <div className="w-40 flex-shrink-0 p-2 border-r border-border">
-                  <span className="text-xs font-medium text-muted-foreground">Milestone</span>
-                </div>
-                {/* Days column header - only show in edit mode */}
-                {editMode && (
-                  <div className="w-20 flex-shrink-0 p-2 border-r border-border">
-                    <span className="text-xs font-medium text-muted-foreground">Days</span>
+              <div className="border-b border-border sticky top-0 bg-muted z-20 shadow-sm">
+                {/* Month row — only in weeks view */}
+                {viewMode === 'weeks' && (
+                  <div className="flex border-b border-border">
+                    <div className="w-40 flex-shrink-0 border-r border-border bg-muted" />
+                    {editMode && <div className="w-20 flex-shrink-0 border-r border-border bg-muted" />}
+                    {editMode && <div className="w-28 flex-shrink-0 border-r border-border bg-muted" />}
+                    <div className="flex">
+                      {weekMonthGroups.map((group, i) => (
+                        <div
+                          key={i}
+                          className="flex-shrink-0 text-center py-1 border-r border-primary/25 last:border-r-0 bg-muted"
+                          style={{ width: 80 * group.span }}
+                        >
+                          <span className="text-[11px] font-semibold text-primary">
+                            {group.label}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
-                {/* Next column header - only show in edit mode */}
-                {editMode && (
-                  <div className="w-28 flex-shrink-0 p-2 border-r border-border">
-                    <span className="text-xs font-medium text-muted-foreground">Next</span>
-                  </div>
-                )}
-                {/* Calendar columns */}
+                {/* Week / Month / Quarter / Days row */}
                 <div className="flex">
-                  {viewMode === 'weeks' && weeks.map((week, i) => (
-                    <div 
-                      key={i} 
-                      className="w-[80px] flex-shrink-0 p-2 text-center border-r border-border last:border-r-0 bg-muted/20"
-                    >
-                      <span className="text-[10px] font-medium text-muted-foreground block">
-                        W{format(week, 'w')}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {format(week, 'MMM d')}
-                      </span>
-                    </div>
-                  ))}
-                  {viewMode === 'months' && months.map((month, i) => (
-                    <div 
-                      key={i} 
-                      className="w-[120px] flex-shrink-0 p-2 text-center border-r border-border last:border-r-0 bg-muted/20"
-                    >
-                      <span className="text-xs font-medium text-muted-foreground">
-                        {format(month, 'MMM yyyy')}
-                      </span>
-                    </div>
-                  ))}
-                  {viewMode === 'quarters' && quarters.map((q, i) => (
-                    <div 
-                      key={i} 
-                      className="w-[150px] flex-shrink-0 p-2 text-center border-r border-border last:border-r-0 bg-muted/20"
-                    >
-                      <span className="text-xs font-medium text-muted-foreground">
-                        Q{Math.ceil((parseISO(format(q, 'yyyy-MM-dd')).getMonth() + 1) / 3)} {format(q, 'yyyy')}
-                      </span>
-                    </div>
-                  ))}
-                  {viewMode === 'days' && (
-                    <div className="flex-1 p-2 text-center bg-muted/20">
-                      <span className="text-xs font-medium text-muted-foreground">
-                        {format(startDate, 'MMM d')} — {format(endDate, 'MMM d, yyyy')}
-                      </span>
+                  {/* Milestone column header */}
+                  <div className="w-40 flex-shrink-0 p-2 border-r border-border bg-muted">
+                    <span className="text-xs font-medium text-muted-foreground">Milestone</span>
+                  </div>
+                  {/* Days column header - only show in edit mode */}
+                  {editMode && (
+                    <div className="w-20 flex-shrink-0 p-2 border-r border-border bg-muted">
+                      <span className="text-xs font-medium text-muted-foreground">Days</span>
                     </div>
                   )}
+                  {/* Next column header - only show in edit mode */}
+                  {editMode && (
+                    <div className="w-28 flex-shrink-0 p-2 border-r border-border bg-muted">
+                      <span className="text-xs font-medium text-muted-foreground">Next</span>
+                    </div>
+                  )}
+                  {/* Calendar columns */}
+                  <div className="flex">
+                    {viewMode === 'weeks' && weeks.map((week, i) => {
+                      const isMonthEnd = monthBoundaryWeekIndices.has(i + 1);
+                      return (
+                      <div 
+                        key={i} 
+                        className={`w-[80px] flex-shrink-0 p-2 text-center last:border-r-0 bg-muted ${isMonthEnd ? 'border-r border-primary/25' : 'border-r border-border'}`}
+                      >
+                        <span className="text-[10px] font-medium text-muted-foreground block">
+                          W{format(week, 'w')}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {format(week, 'MMM d')}
+                        </span>
+                      </div>
+                      );
+                    })}
+                    {viewMode === 'months' && months.map((month, i) => (
+                      <div 
+                        key={i} 
+                        className="w-[120px] flex-shrink-0 p-2 text-center border-r border-border last:border-r-0 bg-muted"
+                      >
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {format(month, 'MMM yyyy')}
+                        </span>
+                      </div>
+                    ))}
+                    {viewMode === 'quarters' && quarters.map((q, i) => (
+                      <div 
+                        key={i} 
+                        className="w-[150px] flex-shrink-0 p-2 text-center border-r border-border last:border-r-0 bg-muted"
+                      >
+                        <span className="text-xs font-medium text-muted-foreground">
+                          Q{Math.ceil((parseISO(format(q, 'yyyy-MM-dd')).getMonth() + 1) / 3)} {format(q, 'yyyy')}
+                        </span>
+                      </div>
+                    ))}
+                    {viewMode === 'days' && (
+                      <div className="flex-1 p-2 text-center bg-muted">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {format(startDate, 'MMM d')} — {format(endDate, 'MMM d, yyyy')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -621,13 +682,15 @@ ${milestoneLines}${missedAllocationLine}`;
                     >
                       <div className="h-8 w-full relative">
                         {/* Grid lines for weeks/months/quarters */}
-                        {viewMode === 'weeks' && weeks.map((_, i) => (
+                        {viewMode === 'weeks' && weeks.map((_, i) => {
+                          const isMonthEnd = monthBoundaryWeekIndices.has(i + 1);
+                          return (
                           <div
                             key={i}
-                            className="absolute top-0 bottom-0 border-r border-border/50"
+                            className={`absolute top-0 bottom-0 ${isMonthEnd ? 'border-r border-primary/25' : 'border-r border-border/30'}`}
                             style={{ left: `${((i + 1) / weeks.length) * 100}%` }}
                           />
-                        ))}
+                        );})}
                         {viewMode === 'months' && months.map((_, i) => (
                           <div
                             key={i}

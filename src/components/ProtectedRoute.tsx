@@ -1,18 +1,22 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { useGame } from '@/hooks/useGame';
+import { pb } from '@/lib/pocketbase';
 import { Loader2, Clock } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  skipGameCheck?: boolean;
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, skipGameCheck = false }: ProtectedRouteProps) {
   const { user, loading, signOut } = useAuth();
+  const { selectedGame, clearGame } = useGame();
   const [isApproved, setIsApproved] = useState<boolean | null>(null);
+  const [allowedGames, setAllowedGames] = useState<string[] | null>(null);
   const [checkingApproval, setCheckingApproval] = useState(true);
 
   useEffect(() => {
@@ -23,21 +27,14 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       }
 
       try {
-        const { data, error } = await supabase
-          .from('user_roles')
-          .select('is_approved')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (error) {
-          console.error('Error checking approval status:', error);
-          setIsApproved(false);
-        } else {
-          setIsApproved(data?.is_approved ?? false);
-        }
+        // Fetch fresh user data to check approval status and allowed games
+        const record = await pb.collection('users').getOne(user.id, { requestKey: 'check-approval' });
+        setIsApproved((record.is_approved as boolean) ?? false);
+        setAllowedGames((record.allowed_games as string[]) || []);
       } catch (error) {
         console.error('Error checking approval status:', error);
         setIsApproved(false);
+        setAllowedGames([]);
       } finally {
         setCheckingApproval(false);
       }
@@ -49,6 +46,19 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       setCheckingApproval(false);
     }
   }, [user]);
+
+  // If non-admin user has selected a game that is no longer in their allowed list, clear it
+  useEffect(() => {
+    if (
+      user?.role !== 'admin' &&
+      allowedGames !== null &&
+      selectedGame &&
+      allowedGames.length > 0 &&
+      !allowedGames.includes(selectedGame)
+    ) {
+      clearGame();
+    }
+  }, [allowedGames, selectedGame, clearGame, user?.role]);
 
   if (loading || checkingApproval) {
     return (
@@ -91,6 +101,26 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         </Card>
       </div>
     );
+  }
+
+  // Admins bypass game restrictions
+  const isAdmin = user?.role === 'admin';
+
+  // If non-admin user selected a game they don't have access to, redirect to game select
+  if (
+    !skipGameCheck &&
+    !isAdmin &&
+    selectedGame &&
+    allowedGames !== null &&
+    allowedGames.length > 0 &&
+    !allowedGames.includes(selectedGame)
+  ) {
+    return <Navigate to="/select-game" replace />;
+  }
+
+  // Redirect to game selection if no game is selected (unless we're on the game select page itself)
+  if (!skipGameCheck && !selectedGame) {
+    return <Navigate to="/select-game" replace />;
   }
 
   return <>{children}</>;

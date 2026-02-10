@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Json } from '@/integrations/supabase/types';
+import { pb } from '@/lib/pocketbase';
 
 export interface ProjectActivity {
   id: string;
-  project_id: string;
+  project: string;
   action: string;
   details: Record<string, unknown>;
-  created_at: string;
+  created: string;
 }
 
 export function useProjectActivity(projectId: string | null) {
@@ -22,15 +21,18 @@ export function useProjectActivity(projectId: string | null) {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('project_activity')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: false })
-        .limit(50);
+      const data = await pb.collection('project_activity').getList(1, 50, {
+        filter: `project = '${projectId}'`,
+        sort: '-created',
+      });
 
-      if (error) throw error;
-      setActivities((data as ProjectActivity[]) || []);
+      setActivities(data.items.map(item => ({
+        id: item.id,
+        project: item.project as string,
+        action: item.action as string,
+        details: (item.details as Record<string, unknown>) || {},
+        created: item.created,
+      })));
     } catch (error) {
       console.error('Failed to fetch activities:', error);
     } finally {
@@ -43,24 +45,21 @@ export function useProjectActivity(projectId: string | null) {
 
     // Subscribe to realtime updates
     if (projectId) {
-      const channel = supabase
-        .channel(`activity-${projectId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'project_activity',
-            filter: `project_id=eq.${projectId}`,
-          },
-          (payload) => {
-            setActivities((prev) => [payload.new as ProjectActivity, ...prev].slice(0, 50));
-          }
-        )
-        .subscribe();
+      pb.collection('project_activity').subscribe('*', (data) => {
+        if (data.action === 'create' && data.record.project === projectId) {
+          const newActivity: ProjectActivity = {
+            id: data.record.id,
+            project: data.record.project as string,
+            action: data.record.action as string,
+            details: (data.record.details as Record<string, unknown>) || {},
+            created: data.record.created,
+          };
+          setActivities(prev => [newActivity, ...prev].slice(0, 50));
+        }
+      });
 
       return () => {
-        supabase.removeChannel(channel);
+        pb.collection('project_activity').unsubscribe('*');
       };
     }
   }, [projectId, fetchActivities]);
@@ -75,12 +74,11 @@ export async function logActivity(
   details: Record<string, unknown> = {}
 ) {
   try {
-    const { error } = await supabase.from('project_activity').insert([{
-      project_id: projectId,
+    await pb.collection('project_activity').create({
+      project: projectId,
       action,
-      details: details as Json,
-    }]);
-    if (error) console.error('Failed to log activity:', error);
+      details,
+    });
   } catch (error) {
     console.error('Failed to log activity:', error);
   }

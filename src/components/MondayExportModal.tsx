@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, forwardRef } from 'react';
 import { X, Loader2, CheckCircle, AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { pb } from '@/lib/pocketbase';
 import { MilestoneState } from '@/types/timeline';
 import { toast } from 'sonner';
 
@@ -45,7 +45,7 @@ async function retryWithBackoff<T>(
   
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     if (!isOnline()) {
-      console.log('Browser offline, waiting 2s...');
+      // Browser offline, waiting 2s...
       await new Promise(resolve => setTimeout(resolve, 2000));
       if (!isOnline()) {
         throw new Error('No internet connection. Please check your network.');
@@ -56,7 +56,7 @@ async function retryWithBackoff<T>(
       return await fn();
     } catch (error) {
       lastErrorMessage = getErrorMessage(error);
-      console.log(`Monday API attempt ${attempt + 1}/${maxRetries} failed:`, lastErrorMessage);
+      // Monday API retry attempt failed
       
       if (attempt < maxRetries - 1) {
         const delay = baseDelayMs * Math.pow(2, attempt);
@@ -92,9 +92,8 @@ export const MondayExportModal = forwardRef<HTMLDivElement, MondayExportModalPro
     
     try {
       const result = await retryWithBackoff(async () => {
-        const { data, error } = await supabase.functions.invoke('get-monday-boards');
-        
-        if (error) throw error;
+        // Call PocketBase custom endpoint for Monday.com boards
+        const data = await pb.send('/api/monday/boards', { method: 'POST' });
         
         if (data.error) {
           throw new Error(data.error);
@@ -139,16 +138,17 @@ export const MondayExportModal = forwardRef<HTMLDivElement, MondayExportModalPro
         durationDays: m.durationDays
       }));
 
-      const { data, error } = await supabase.functions.invoke('sync-to-monday', {
-        body: {
+      // Call PocketBase custom endpoint for Monday.com sync
+      const data = await pb.send('/api/monday/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           boardId: selectedBoard,
           groupId: selectedGroup || undefined,
           featureName: featureName || 'Project',
           milestones: milestonesData
-        }
+        }),
       });
-
-      if (error) throw error;
 
       if (data.error) {
         throw new Error(data.error);

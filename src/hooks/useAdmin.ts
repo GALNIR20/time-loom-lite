@@ -1,26 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { pb } from '@/lib/pocketbase';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
 export interface AdminUser {
-  user_id: string;
+  id: string;
   email: string;
   role: 'admin' | 'user';
   is_approved: boolean;
-  role_assigned_at: string;
+  allowed_games: string[];
+  created: string;
   project_count: number;
-  created_at: string;
 }
 
 export interface AdminProject {
   id: string;
   feature_name: string;
-  user_id: string;
+  owner: string;
   user_email: string;
   preset: string;
-  created_at: string;
-  updated_at: string;
+  created: string;
+  updated: string;
 }
 
 export function useAdmin() {
@@ -32,56 +32,51 @@ export function useAdmin() {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingProjects, setLoadingProjects] = useState(false);
 
-  // Check if current user is admin
+  // Check if current user is admin (role is on the user record)
   useEffect(() => {
-    async function checkAdmin() {
-      if (!user) {
-        setIsAdmin(false);
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('role', 'admin')
-          .maybeSingle();
-
-        if (error) throw error;
-        setIsAdmin(!!data);
-      } catch (error) {
-        console.error('Error checking admin status:', error);
-        setIsAdmin(false);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    checkAdmin();
-  }, [user]);
-
-  // Fetch all users via edge function (admin only)
-  const fetchUsers = useCallback(async () => {
-    if (!isAdmin) return;
-    
-    // Check for valid session before calling edge function
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      console.log('No valid session, skipping user fetch');
+    if (!user) {
+      setIsAdmin(false);
+      setLoading(false);
       return;
     }
-    
+
+    setIsAdmin(user.role === 'admin');
+    setLoading(false);
+  }, [user]);
+
+  // Fetch all users (admin only — requires proper PocketBase API rules)
+  const fetchUsers = useCallback(async () => {
+    if (!isAdmin) return;
+
+    if (!pb.authStore.isValid) {
+      // No valid session, skipping user fetch
+      return;
+    }
+
     setLoadingUsers(true);
     try {
-      const { data, error } = await supabase.functions.invoke('get-admin-users');
+      // Fetch all users and all projects to compute counts
+      const usersData = await pb.collection('users').getFullList({ requestKey: 'admin-users' });
+      const projectsData = await pb.collection('projects').getFullList({ requestKey: 'admin-users-projects' });
 
-      if (error) throw error;
+      // Count projects per user
+      const projectCounts: Record<string, number> = {};
+      projectsData.forEach(p => {
+        const ownerId = p.owner as string;
+        if (ownerId) {
+          projectCounts[ownerId] = (projectCounts[ownerId] || 0) + 1;
+        }
+      });
 
-      if (data?.users) {
-        setUsers(data.users);
-      }
+      setUsers(usersData.map(u => ({
+        id: u.id,
+        email: u.email as string,
+        role: (u.role as 'admin' | 'user') || 'user',
+        is_approved: (u.is_approved as boolean) ?? false,
+        allowed_games: (u.allowed_games as string[]) || [],
+        created: u.created,
+        project_count: projectCounts[u.id] || 0,
+      })));
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error('Failed to load users');
@@ -93,31 +88,28 @@ export function useAdmin() {
   // Fetch all projects (admin only)
   const fetchAllProjects = useCallback(async () => {
     if (!isAdmin) return;
-    
+
     setLoadingProjects(true);
     try {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .order('updated_at', { ascending: false });
-
-      if (error) throw error;
-
-      // Create email map from users
-      const emailMap: Record<string, string> = {};
-      users.forEach(u => {
-        emailMap[u.user_id] = u.email;
+      // Fetch projects with expanded owner to get email directly
+      const data = await pb.collection('projects').getFullList({
+        sort: '-updated',
+        expand: 'owner',
+        requestKey: 'admin-projects',
       });
 
-      const projects: AdminProject[] = (data || []).map(p => ({
-        id: p.id,
-        feature_name: p.feature_name,
-        user_id: p.user_id || 'unknown',
-        user_email: p.user_id ? (emailMap[p.user_id] || `User ${p.user_id.slice(0, 8)}...`) : 'No owner',
-        preset: p.preset,
-        created_at: p.created_at,
-        updated_at: p.updated_at
-      }));
+      const projects: AdminProject[] = data.map(p => {
+        const expandedOwner = p.expand?.owner as { email?: string } | undefined;
+        return {
+          id: p.id,
+          feature_name: p.feature_name as string,
+          owner: (p.owner as string) || 'unknown',
+          user_email: expandedOwner?.email || 'Unknown',
+          preset: p.preset as string,
+          created: p.created,
+          updated: p.updated,
+        };
+      });
 
       setAllProjects(projects);
     } catch (error) {
@@ -126,18 +118,12 @@ export function useAdmin() {
     } finally {
       setLoadingProjects(false);
     }
-  }, [isAdmin, users]);
+  }, [isAdmin]);
 
   // Approve a user
   const approveUser = useCallback(async (userId: string) => {
     try {
-      const { error } = await supabase
-        .from('user_roles')
-        .update({ is_approved: true })
-        .eq('user_id', userId);
-
-      if (error) throw error;
-      
+      await pb.collection('users').update(userId, { is_approved: true });
       toast.success('User approved');
       fetchUsers();
       return true;
@@ -148,22 +134,15 @@ export function useAdmin() {
     }
   }, [fetchUsers]);
 
-  // Reject/revoke approval from a user
+  // Revoke approval from a user
   const revokeApproval = useCallback(async (userId: string) => {
-    // Prevent self-revocation
     if (userId === user?.id) {
       toast.error("You cannot revoke your own approval");
       return false;
     }
 
     try {
-      const { error } = await supabase
-        .from('user_roles')
-        .update({ is_approved: false })
-        .eq('user_id', userId);
-
-      if (error) throw error;
-      
+      await pb.collection('users').update(userId, { is_approved: false });
       toast.success('User approval revoked');
       fetchUsers();
       return true;
@@ -177,27 +156,13 @@ export function useAdmin() {
   // Promote user to admin
   const promoteToAdmin = useCallback(async (userId: string) => {
     try {
-      // Check if already admin
-      const { data: existing } = await supabase
-        .from('user_roles')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('role', 'admin')
-        .maybeSingle();
-
-      if (existing) {
+      const targetUser = users.find(u => u.id === userId);
+      if (targetUser?.role === 'admin') {
         toast.info('User is already an admin');
         return true;
       }
 
-      // Update to admin role
-      const { error } = await supabase
-        .from('user_roles')
-        .update({ role: 'admin' })
-        .eq('user_id', userId);
-
-      if (error) throw error;
-      
+      await pb.collection('users').update(userId, { role: 'admin' });
       toast.success('User promoted to admin');
       fetchUsers();
       return true;
@@ -206,24 +171,17 @@ export function useAdmin() {
       toast.error('Failed to promote user');
       return false;
     }
-  }, [fetchUsers]);
+  }, [users, fetchUsers]);
 
   // Demote admin to user
   const demoteFromAdmin = useCallback(async (userId: string) => {
-    // Prevent self-demotion
     if (userId === user?.id) {
       toast.error("You cannot demote yourself");
       return false;
     }
 
     try {
-      const { error } = await supabase
-        .from('user_roles')
-        .update({ role: 'user' })
-        .eq('user_id', userId);
-
-      if (error) throw error;
-      
+      await pb.collection('users').update(userId, { role: 'user' });
       toast.success('Admin privileges removed');
       fetchUsers();
       return true;
@@ -237,13 +195,7 @@ export function useAdmin() {
   // Delete a project (admin only)
   const deleteProject = useCallback(async (projectId: string) => {
     try {
-      const { error } = await supabase
-        .from('projects')
-        .delete()
-        .eq('id', projectId);
-
-      if (error) throw error;
-      
+      await pb.collection('projects').delete(projectId);
       toast.success('Project deleted');
       fetchAllProjects();
       return true;
@@ -254,16 +206,24 @@ export function useAdmin() {
     }
   }, [fetchAllProjects]);
 
-  // Decline a pending user (remove their role entry)
+  // Update allowed games for a user
+  const updateUserGames = useCallback(async (userId: string, games: string[]) => {
+    try {
+      await pb.collection('users').update(userId, { allowed_games: games });
+      toast.success('User game access updated');
+      fetchUsers();
+      return true;
+    } catch (error) {
+      console.error('Error updating user games:', error);
+      toast.error('Failed to update game access');
+      return false;
+    }
+  }, [fetchUsers]);
+
+  // Decline a pending user (deletes the user account)
   const declineUser = useCallback(async (userId: string) => {
     try {
-      const { error } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId);
-
-      if (error) throw error;
-      
+      await pb.collection('users').delete(userId);
       toast.success('User declined');
       fetchUsers();
       return true;
@@ -288,6 +248,7 @@ export function useAdmin() {
     promoteToAdmin,
     demoteFromAdmin,
     deleteProject,
-    declineUser
+    declineUser,
+    updateUserGames,
   };
 }
