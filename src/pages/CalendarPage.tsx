@@ -5,8 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, addMonths, subMonths, isSameDay, eachDayOfInterval } from 'date-fns';
 import { SavedProject } from '@/components/ProjectSidebar';
-import { calculateTimeline, DEFAULT_MILESTONES, createSprintMilestone } from '@/lib/timeline';
+import { calculateTimeline, createSprintMilestone } from '@/lib/timeline';
 import { MilestoneState } from '@/types/timeline';
+import { getCustomMilestoneConfigs, getCustomPresetConfigs } from '@/hooks/useMilestoneSettings';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -70,6 +71,8 @@ export default function CalendarPage() {
   // Calculate milestones for all projects
   const allMilestones = useMemo(() => {
     const result: { milestone: MilestoneState; projectName: string; projectId: string }[] = [];
+    const customMilestones = getCustomMilestoneConfigs();
+    const customPresetConfigs = getCustomPresetConfigs();
 
     savedProjects.forEach((project) => {
       if (!project.isFeatureNameSet) return;
@@ -77,7 +80,7 @@ export default function CalendarPage() {
       // Build milestone configs including sprints
       const sprintCount = Object.keys(project.overrides).filter(k => k.startsWith('sprint-')).length;
       const milestoneConfigs = [
-        ...DEFAULT_MILESTONES.filter(m => !project.hiddenMilestones.includes(m.id)),
+        ...customMilestones.filter(m => !project.hiddenMilestones.includes(m.id)),
         ...Array.from({ length: sprintCount }, (_, i) => createSprintMilestone(i + 1)),
       ];
 
@@ -85,7 +88,8 @@ export default function CalendarPage() {
         milestoneConfigs,
         project.overrides,
         project.projectStart,
-        project.preset
+        project.preset,
+        customPresetConfigs
       );
 
       milestones.forEach((milestone) => {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { pb } from '@/lib/pocketbase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +11,6 @@ import { PredictorLogo } from '@/components/PredictorLogo';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 
 const authSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -69,7 +69,7 @@ export default function AuthPage() {
     setIsLoading(false);
     
     if (error) {
-      if (error.message.includes('Invalid login credentials')) {
+      if (error.message.includes('Invalid login credentials') || error.message.includes('Failed to authenticate')) {
         toast.error('Invalid email or password');
       } else {
         toast.error(error.message);
@@ -89,7 +89,7 @@ export default function AuthPage() {
     setIsLoading(false);
     
     if (error) {
-      if (error.message.includes('already registered')) {
+      if (error.message.includes('already registered') || error.message.includes('already exists')) {
         toast.error('An account with this email already exists');
       } else {
         toast.error(error.message);
@@ -109,16 +109,15 @@ export default function AuthPage() {
     }
 
     setIsLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    setIsLoading(false);
-
-    if (error) {
-      toast.error(error.message);
-    } else {
+    try {
+      await pb.collection('users').requestPasswordReset(email);
       setResetEmailSent(true);
       toast.success('Password reset email sent! Check your inbox.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to send reset email';
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
     }
   };
 

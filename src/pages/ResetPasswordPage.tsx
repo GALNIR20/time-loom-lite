@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { pb } from '@/lib/pocketbase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,22 +11,19 @@ import { Loader2 } from 'lucide-react';
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token') || '';
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isValidSession, setIsValidSession] = useState(false);
-
-  useEffect(() => {
-    // Check if we have a valid recovery session
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setIsValidSession(true);
-      }
-    });
-  }, []);
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!token) {
+      toast.error('Invalid reset link. Please request a new one.');
+      return;
+    }
     
     if (password.length < 6) {
       toast.error('Password must be at least 6 characters');
@@ -39,18 +36,43 @@ export default function ResetPasswordPage() {
     }
 
     setIsLoading(true);
-    
-    const { error } = await supabase.auth.updateUser({ password });
-    
-    setIsLoading(false);
 
-    if (error) {
-      toast.error(error.message);
-    } else {
+    try {
+      await pb.collection('users').confirmPasswordReset(token, password, confirmPassword);
       toast.success('Password updated successfully!');
-      navigate('/');
+      navigate('/auth');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to reset password';
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  if (!token) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center space-y-4">
+            <div className="flex justify-center">
+              <PredictorLogo size="lg" />
+            </div>
+            <div>
+              <CardTitle className="text-2xl font-bold">Invalid Reset Link</CardTitle>
+              <CardDescription>
+                This password reset link is invalid or has expired.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Button className="w-full" onClick={() => navigate('/auth')}>
+              Back to Sign In
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">

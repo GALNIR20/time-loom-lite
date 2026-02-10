@@ -7,6 +7,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { formatDateDisplay } from '@/lib/timeline';
+import { getPhaseColor } from '@/hooks/useMilestoneSettings';
 
 interface GanttBarProps {
   milestoneId: string;
@@ -27,8 +28,23 @@ interface GanttBarProps {
   ) => void;
 }
 
-const getMilestoneColor = (milestoneId: string) => {
-  const baseId = milestoneId.replace(/-\d+$/, ''); // Handle sprint-1, sprint-2, etc.
+// Color map for gantt bar backgrounds based on phase color
+const GANTT_PHASE_COLORS: Record<string, string> = {
+  blue: 'bg-blue-500',
+  purple: 'bg-purple-500',
+  green: 'bg-green-500',
+  orange: 'bg-orange-500',
+  red: 'bg-red-500',
+  cyan: 'bg-cyan-500',
+  pink: 'bg-pink-500',
+  yellow: 'bg-yellow-500',
+  indigo: 'bg-indigo-500',
+  emerald: 'bg-emerald-500',
+};
+
+const getMilestoneColor = (milestoneId: string, phaseName?: string) => {
+  const baseId = milestoneId.replace(/-\d+$/, '');
+  // Keep known milestone-specific colors for backward compatibility
   switch (baseId) {
     case 'brief':
       return 'bg-milestone-brief';
@@ -45,6 +61,11 @@ const getMilestoneColor = (milestoneId: string) => {
     case 'sprint':
       return 'bg-success';
     default:
+      // For dynamically added milestones, use phase color
+      if (phaseName) {
+        const color = getPhaseColor(phaseName);
+        return GANTT_PHASE_COLORS[color] || 'bg-blue-500';
+      }
       return 'bg-muted';
   }
 };
@@ -78,7 +99,7 @@ export function GanttBar({
   const barContent = (
     <div
       ref={containerRef}
-      className={`absolute top-1 bottom-1 rounded ${getMilestoneColor(milestoneId)} flex items-center transition-all shadow-sm ${
+      className={`absolute top-1 bottom-1 rounded ${getMilestoneColor(milestoneId, phaseName)} flex items-center transition-all shadow-sm ${
         isDragging ? 'ring-2 ring-ring ring-offset-1 z-20' : ''
       } ${editMode ? 'cursor-ew-resize' : ''}`}
       style={{

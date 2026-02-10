@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { pb } from '@/lib/pocketbase';
 import { toast } from 'sonner';
 import { PresetType } from '@/types/timeline';
-import { RealtimeChannel } from '@supabase/supabase-js';
 import { logActivity } from '@/hooks/useProjectActivity';
 import { useAuth } from '@/hooks/useAuth';
+import { useGame } from '@/hooks/useGame';
 
 export interface DbProject {
   id: string;
@@ -15,26 +15,16 @@ export interface DbProject {
   overrides: Record<string, number | null>;
   hidden_milestones: string[];
   locked_dev_start: string | null;
-  created_at: string;
-  updated_at: string;
-  user_id: string | null;
+  milestone_checklists: Record<string, string[]>;
+  game: string;
+  created: string;
+  updated: string;
+  owner: string;
 }
 
 // Check if browser is online
 function isOnline(): boolean {
   return typeof navigator !== 'undefined' ? navigator.onLine : true;
-}
-
-// Helper to extract error message from various error types
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === 'object' && error !== null) {
-    const errObj = error as Record<string, unknown>;
-    if (typeof errObj.message === 'string') return errObj.message;
-    if (typeof errObj.error_description === 'string') return errObj.error_description;
-    if (typeof errObj.msg === 'string') return errObj.msg;
-  }
-  return String(error);
 }
 
 // Retry helper with exponential backoff and online check
@@ -44,138 +34,120 @@ async function retryWithBackoff<T>(
   baseDelayMs = 1000
 ): Promise<T> {
   let lastErrorMessage = 'Unknown error';
-  
+
   for (let attempt = 0; attempt < maxRetries; attempt++) {
-    // Wait for online status before attempting
     if (!isOnline()) {
-      console.log('Browser offline, waiting 2s...');
+      // Browser offline, waiting 2s...
       await new Promise(resolve => setTimeout(resolve, 2000));
       if (!isOnline()) {
         throw new Error('No internet connection');
       }
     }
-    
+
     try {
       return await fn();
     } catch (error) {
-      lastErrorMessage = getErrorMessage(error);
-      console.log(`Attempt ${attempt + 1}/${maxRetries} failed:`, lastErrorMessage);
-      
+      lastErrorMessage = error instanceof Error ? error.message : String(error);
+      // Retry attempt failed
+
       if (attempt < maxRetries - 1) {
         const delay = baseDelayMs * Math.pow(2, attempt);
-        console.log(`Retrying after ${delay}ms...`);
+        // Retrying after delay
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
   }
-  
+
   throw new Error(lastErrorMessage);
+}
+
+function recordToProject(record: Record<string, unknown>): DbProject {
+  return {
+    id: record.id as string,
+    feature_name: record.feature_name as string,
+    project_start: record.project_start as string,
+    preset: record.preset as string,
+    show_detailed: record.show_detailed as boolean,
+    overrides: (record.overrides as Record<string, number | null>) || {},
+    hidden_milestones: (record.hidden_milestones as string[]) || [],
+    locked_dev_start: (record.locked_dev_start as string) || null,
+    milestone_checklists: (record.milestone_checklists as Record<string, string[]>) || {},
+    game: (record.game as string) || '',
+    created: record.created as string,
+    updated: record.updated as string,
+    owner: record.owner as string,
+  };
 }
 
 export function useProjects() {
   const { user } = useAuth();
+  const { selectedGame } = useGame();
   const [projects, setProjects] = useState<DbProject[]>([]);
   const [loading, setLoading] = useState(true);
-  const [realtimeChannel, setRealtimeChannel] = useState<RealtimeChannel | null>(null);
   const retryCount = useRef(0);
 
-  // Fetch all projects with retry logic
+  // Fetch all projects with retry logic, filtered by selected game
   const fetchProjects = useCallback(async () => {
     try {
       const data = await retryWithBackoff(async () => {
-        const response = await supabase
-          .from('projects')
-          .select('*')
-          .order('updated_at', { ascending: false });
-
-        if (response.error) {
-          throw new Error(response.error.message || 'Database query failed');
-        }
-        return response.data;
+        return await pb.collection('projects').getFullList({
+          sort: '-updated',
+          requestKey: null, // disable auto-cancellation
+          ...(selectedGame ? { filter: `game = "${selectedGame}"` } : {}),
+        });
       });
 
-      const projectsData = (data || []).map(p => ({
-        ...p,
-        overrides: (p.overrides as Record<string, number | null>) || {},
-        hidden_milestones: (p.hidden_milestones as string[]) || [],
-      }));
-
+      const projectsData = (data || []).map(p => recordToProject(p as unknown as Record<string, unknown>));
       setProjects(projectsData);
-      retryCount.current = 0; // Reset retry count on success
+      retryCount.current = 0;
     } catch (error) {
       console.error('Failed to fetch projects:', error);
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      
-      // Show appropriate error based on type
+
       if (errorMsg.includes('internet') || errorMsg.includes('offline')) {
         toast.error('No internet connection. Please check your network.');
       } else if (retryCount.current === 0) {
         toast.error('Failed to load projects. Retrying...');
       }
-      
+
       retryCount.current++;
-      
-      // Auto-retry with longer delays
+
       if (retryCount.current < 3) {
         setTimeout(() => fetchProjects(), 5000);
       } else {
-        setProjects([]); // Clear to show empty state
+        setProjects([]);
         toast.error('Connection failed. Click refresh to try again.');
       }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedGame]);
 
   // Set up realtime subscription
   useEffect(() => {
     fetchProjects();
 
-    // Subscribe to realtime changes
-    const channel = supabase
-      .channel('projects-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'projects'
-        },
-        (payload) => {
-          console.log('Realtime update:', payload);
-          
-          if (payload.eventType === 'INSERT') {
-            const newProject = payload.new as DbProject;
-            setProjects(prev => {
-              if (prev.some(p => p.id === newProject.id)) return prev;
-              return [{
-                ...newProject,
-                overrides: (newProject.overrides as Record<string, number | null>) || {},
-                hidden_milestones: (newProject.hidden_milestones as string[]) || [],
-              }, ...prev];
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            const updatedProject = payload.new as DbProject;
-            setProjects(prev => 
-              prev.map(p => 
-                p.id === updatedProject.id 
-                  ? {
-                      ...updatedProject,
-                      overrides: (updatedProject.overrides as Record<string, number | null>) || {},
-                      hidden_milestones: (updatedProject.hidden_milestones as string[]) || [],
-                    }
-                  : p
-              )
-            );
-          } else if (payload.eventType === 'DELETE') {
-            const deletedId = (payload.old as { id: string }).id;
-            setProjects(prev => prev.filter(p => p.id !== deletedId));
-          }
-        }
-      )
-      .subscribe();
+    // Subscribe to realtime changes on projects
+    pb.collection('projects').subscribe('*', (data) => {
+      // Realtime update received
 
-    setRealtimeChannel(channel);
+      if (data.action === 'create') {
+        const newProject = recordToProject(data.record as unknown as Record<string, unknown>);
+        // Only add if it matches the current game filter
+        if (selectedGame && newProject.game !== selectedGame) return;
+        setProjects(prev => {
+          if (prev.some(p => p.id === newProject.id)) return prev;
+          return [newProject, ...prev];
+        });
+      } else if (data.action === 'update') {
+        const updatedProject = recordToProject(data.record as unknown as Record<string, unknown>);
+        setProjects(prev =>
+          prev.map(p => p.id === updatedProject.id ? updatedProject : p)
+        );
+      } else if (data.action === 'delete') {
+        setProjects(prev => prev.filter(p => p.id !== data.record.id));
+      }
+    });
 
     // Also listen for manual refetch events (for cross-component sync)
     const handleRefetch = () => {
@@ -184,9 +156,7 @@ export function useProjects() {
     window.addEventListener('refetchProjects', handleRefetch);
 
     return () => {
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
+      pb.collection('projects').unsubscribe('*');
       window.removeEventListener('refetchProjects', handleRefetch);
     };
   }, [fetchProjects]);
@@ -200,44 +170,37 @@ export function useProjects() {
     overrides?: Record<string, number | null>;
     hidden_milestones?: string[];
     locked_dev_start?: string | null;
+    milestone_checklists?: Record<string, string[]>;
   }) => {
     try {
       if (!user) {
         toast.error('You must be logged in to create a project');
         return null;
       }
-      
-      const { data: project, error } = await supabase
-        .from('projects')
-        .insert({
-          feature_name: data.feature_name,
-          project_start: data.project_start,
-          preset: data.preset,
-          show_detailed: data.show_detailed ?? true,
-          overrides: data.overrides || {},
-          hidden_milestones: data.hidden_milestones || [],
-          locked_dev_start: data.locked_dev_start || null,
-          user_id: user.id
-        })
-        .select()
-        .single();
 
-      if (error) throw error;
-      
+      const project = await pb.collection('projects').create({
+        feature_name: data.feature_name,
+        project_start: data.project_start,
+        preset: data.preset,
+        show_detailed: data.show_detailed ?? true,
+        overrides: data.overrides || {},
+        hidden_milestones: data.hidden_milestones || [],
+        locked_dev_start: data.locked_dev_start || null,
+        milestone_checklists: data.milestone_checklists || {},
+        game: selectedGame || '',
+        owner: user.id,
+      });
+
       // Log activity
       logActivity(project.id, 'created', { description: `Created "${data.feature_name}"` });
-      
-      return {
-        ...project,
-        overrides: (project.overrides as Record<string, number | null>) || {},
-        hidden_milestones: (project.hidden_milestones as string[]) || [],
-      } as DbProject;
+
+      return recordToProject(project as unknown as Record<string, unknown>);
     } catch (error) {
       console.error('Failed to create project:', error);
       toast.error('Failed to create project');
       return null;
     }
-  }, []);
+  }, [user, selectedGame]);
 
   // Update an existing project
   const updateProject = useCallback(async (id: string, data: Partial<{
@@ -248,25 +211,21 @@ export function useProjects() {
     overrides: Record<string, number | null>;
     hidden_milestones: string[];
     locked_dev_start: string | null;
+    milestone_checklists: Record<string, string[]>;
   }>) => {
     try {
-      const { error } = await supabase
-        .from('projects')
-        .update(data)
-        .eq('id', id);
+      await pb.collection('projects').update(id, data);
 
-      if (error) throw error;
-      
       // Log activity with change details
       const changes: string[] = [];
       if (data.preset) changes.push(`preset → ${data.preset}`);
       if (data.project_start) changes.push(`start date changed`);
       if (data.overrides) changes.push(`milestone durations adjusted`);
-      
-      logActivity(id, 'updated', { 
+
+      logActivity(id, 'updated', {
         description: changes.length ? changes.join(', ') : 'Project settings updated'
       });
-      
+
       return true;
     } catch (error) {
       console.error('Failed to update project:', error);
@@ -275,15 +234,46 @@ export function useProjects() {
     }
   }, []);
 
+  // Duplicate a project
+  const duplicateProject = useCallback(async (id: string) => {
+    try {
+      if (!user) {
+        toast.error('You must be logged in to duplicate a project');
+        return null;
+      }
+
+      // Fetch the source project
+      const source = await pb.collection('projects').getOne(id);
+
+      // Create a copy with the current user as owner
+      const project = await pb.collection('projects').create({
+        feature_name: `${source.feature_name || 'Untitled'} (Copy)`,
+        project_start: source.project_start,
+        preset: source.preset,
+        show_detailed: source.show_detailed,
+        overrides: source.overrides || {},
+        hidden_milestones: source.hidden_milestones || [],
+        locked_dev_start: source.locked_dev_start || null,
+        milestone_checklists: source.milestone_checklists || {},
+        game: selectedGame || source.game || '',
+        owner: user.id,
+      });
+
+      logActivity(project.id, 'created', { description: `Duplicated from "${source.feature_name}"` });
+      toast.success(`Project duplicated as "${source.feature_name} (Copy)"`);
+
+      return recordToProject(project as unknown as Record<string, unknown>);
+    } catch (error) {
+      console.error('Failed to duplicate project:', error);
+      toast.error('Failed to duplicate project');
+      return null;
+    }
+  }, [user, selectedGame]);
+
   // Delete a project
   const deleteProject = useCallback(async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('projects')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      await pb.collection('projects').delete(id);
       toast.success('Project deleted');
       return true;
     } catch (error) {
@@ -293,12 +283,21 @@ export function useProjects() {
     }
   }, []);
 
+  const isProjectOwner = useCallback((projectId: string) => {
+    if (!user) return false;
+    const project = projects.find(p => p.id === projectId);
+    return project?.owner === user.id;
+  }, [user, projects]);
+
   return {
     projects,
     loading,
     fetchProjects,
     createProject,
     updateProject,
+    duplicateProject,
     deleteProject,
+    isProjectOwner,
+    userId: user?.id || null,
   };
 }

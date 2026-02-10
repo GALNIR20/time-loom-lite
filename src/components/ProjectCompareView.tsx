@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
 import { format, parseISO, differenceInDays, min, max, addDays, startOfWeek, getWeek } from 'date-fns';
 import { SavedProject } from './ProjectSidebar';
-import { calculateTimeline, DEFAULT_MILESTONES } from '@/lib/timeline';
+import { calculateTimeline } from '@/lib/timeline';
 import { MilestoneState } from '@/types/timeline';
+import { getCustomMilestoneConfigs, getCustomPresetConfigs, getPresetDisplayNames } from '@/hooks/useMilestoneSettings';
 
 interface ProjectCompareViewProps {
   isOpen: boolean;
@@ -32,11 +33,7 @@ const MILESTONE_COLORS: Record<string, string> = {
   'rfc': 'bg-milestone-rfc',
 };
 
-const PHASE_COLORS: Record<string, { bg: string; border: string }> = {
-  'Concept Phase': { bg: 'bg-phase-concept', border: 'border-phase-concept' },
-  'Sketch Phase': { bg: 'bg-phase-sketch', border: 'border-phase-sketch' },
-  'Development': { bg: 'bg-phase-dev', border: 'border-phase-dev' },
-};
+// Phase colors are now dynamic - managed via useMilestoneSettings
 
 const getMilestoneColor = (milestoneId: string): string => {
   // Check for sprint milestones
@@ -46,8 +43,49 @@ const getMilestoneColor = (milestoneId: string): string => {
   return MILESTONE_COLORS[milestoneId] || 'bg-primary';
 };
 
+const COMPARE_STORAGE_KEY = 'predictor-compare-projects';
+
+function loadCompareSelection(): string[] {
+  try {
+    const game = localStorage.getItem('predictor-selected-game');
+    const key = game ? `${COMPARE_STORAGE_KEY}-${game}` : COMPARE_STORAGE_KEY;
+    const raw = localStorage.getItem(key);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+
+function saveCompareSelection(ids: string[]) {
+  try {
+    const game = localStorage.getItem('predictor-selected-game');
+    const key = game ? `${COMPARE_STORAGE_KEY}-${game}` : COMPARE_STORAGE_KEY;
+    localStorage.setItem(key, JSON.stringify(ids));
+  } catch {}
+}
+
 export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompareViewProps) {
-  const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
+  const [selectedProjects, setSelectedProjects] = useState<string[]>(() => {
+    // Load persisted selection and filter out projects that no longer exist
+    return loadCompareSelection();
+  });
+
+  // Filter out stale project IDs when the project list changes
+  useEffect(() => {
+    if (projects.length === 0) return;
+    setSelectedProjects(prev => {
+      const valid = prev.filter(id => id === '' || projects.some(p => p.id === id));
+      if (valid.length !== prev.length) {
+        saveCompareSelection(valid);
+        return valid;
+      }
+      return prev;
+    });
+  }, [projects]);
+
+  // Persist selection whenever it changes
+  useEffect(() => {
+    saveCompareSelection(selectedProjects);
+  }, [selectedProjects]);
 
   // Calculate timelines for selected projects
   const projectTimelines = useMemo(() => {
@@ -58,11 +96,14 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
       const project = projects.find((p) => p.id === projectId);
       if (!project) return;
 
+      const customMilestones = getCustomMilestoneConfigs();
+      const customPresetConfigs = getCustomPresetConfigs();
       const milestones = calculateTimeline(
-        DEFAULT_MILESTONES.filter((m) => !project.hiddenMilestones.includes(m.id)),
+        customMilestones.filter((m) => !project.hiddenMilestones.includes(m.id)),
         project.overrides,
         project.projectStart,
-        project.preset
+        project.preset,
+        customPresetConfigs
       );
 
       const totalDays = milestones.reduce((sum, m) => sum + m.durationDays, 0);
@@ -103,6 +144,37 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
     return weeks;
   }, [dateRange]);
 
+  // Group weeks by month for the month header row
+  const monthGroups = useMemo(() => {
+    if (weekColumns.length === 0) return [];
+    const groups: { label: string; span: number }[] = [];
+    let currentMonth = format(weekColumns[0].date, 'MMM yyyy');
+    let count = 1;
+    for (let i = 1; i < weekColumns.length; i++) {
+      const month = format(weekColumns[i].date, 'MMM yyyy');
+      if (month === currentMonth) {
+        count++;
+      } else {
+        groups.push({ label: currentMonth, span: count });
+        currentMonth = month;
+        count = 1;
+      }
+    }
+    groups.push({ label: currentMonth, span: count });
+    return groups;
+  }, [weekColumns]);
+
+  // Indices of weeks that start a new month (for bold dividers)
+  const monthBoundaryWeekIndices = useMemo(() => {
+    const boundaries = new Set<number>();
+    for (let i = 1; i < weekColumns.length; i++) {
+      if (format(weekColumns[i].date, 'MMM yyyy') !== format(weekColumns[i - 1].date, 'MMM yyyy')) {
+        boundaries.add(i);
+      }
+    }
+    return boundaries;
+  }, [weekColumns]);
+
   const addProjectSlot = () => {
     setSelectedProjects(prev => [...prev, '']);
   };
@@ -133,9 +205,27 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
     return (daysDiff / 7) * columnWidth;
   };
 
+  // Measure the timeline container to compute dynamic column width
+  const timelineContainerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    const el = timelineContainerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      setContainerWidth(entries[0].contentRect.width);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  const columnWidth = 80; // px per week column
+  const sidebarWidth = 176; // w-44 = 11rem = 176px
+  const availableWidth = containerWidth > 0 ? containerWidth - sidebarWidth : 0;
+  const columnWidth = weekColumns.length > 0 && availableWidth > 0
+    ? Math.max(Math.floor(availableWidth / weekColumns.length), 36)
+    : 80;
 
   // Find shortest and longest projects for comparison
   const sortedByDuration = [...projectTimelines].sort((a, b) => a.totalDays - b.totalDays);
@@ -154,7 +244,7 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
             <h2 className="text-lg font-semibold text-foreground">Timeline View</h2>
             {projectTimelines.length > 0 && (
               <span className="text-muted-foreground">
-                — ({projectTimelines[0]?.project.preset || 'Big'} PLC)
+                — ({getPresetDisplayNames()[projectTimelines[0]?.project.preset || 'Big']})
               </span>
             )}
           </div>
@@ -252,30 +342,52 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
         </div>
 
         {/* Timeline Content */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto" ref={timelineContainerRef}>
           {projectTimelines.length === 0 ? (
             <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
               Add projects to compare their timelines
             </div>
           ) : (
             <div className="min-w-fit">
-              {/* Week Headers */}
+              {/* Month + Week Headers */}
               <div className="sticky top-0 bg-card z-10 border-b border-border">
+                {/* Month row */}
+                <div className="flex border-b border-border">
+                  <div className="w-44 flex-shrink-0 border-r border-border" />
+                  <div className="flex">
+                    {monthGroups.map((group, i) => (
+                      <div
+                        key={i}
+                        className="border-r border-primary/25 text-center py-1 bg-muted/40 last:border-r-0"
+                        style={{ width: columnWidth * group.span }}
+                      >
+                        <span className="text-[11px] font-semibold text-primary">
+                          {group.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* Week row */}
                 <div className="flex">
                   <div className="w-44 flex-shrink-0 p-3 border-r border-border">
                     <span className="text-xs font-medium text-muted-foreground">Milestone</span>
                   </div>
                   <div className="flex">
-                    {weekColumns.map((week, i) => (
+                    {weekColumns.map((week, i) => {
+                      const isMonthEnd = monthBoundaryWeekIndices.has(i + 1);
+                      return (
                       <div
                         key={i}
-                        className="border-r border-border text-center py-2"
+                        className={`text-center py-2 overflow-hidden ${isMonthEnd ? 'border-r border-primary/25' : 'border-r border-border'}`}
                         style={{ width: columnWidth }}
                       >
-                        <div className="text-xs font-semibold text-foreground">W{week.weekNum}</div>
-                        <div className="text-[10px] text-muted-foreground">{week.label}</div>
+                        <div className="text-[10px] font-semibold text-foreground truncate">W{week.weekNum}</div>
+                        {columnWidth >= 50 && (
+                          <div className="text-[9px] text-muted-foreground truncate">{week.label}</div>
+                        )}
                       </div>
-                    ))}
+                    );})}
                   </div>
                 </div>
               </div>
@@ -293,26 +405,28 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
                       </div>
                       <div className="flex relative" style={{ minHeight: 80 }}>
                         {/* Week grid cells */}
-                        {weekColumns.map((_, i) => (
+                        {weekColumns.map((_, i) => {
+                          const isMonthEnd = monthBoundaryWeekIndices.has(i + 1);
+                          return (
                           <div
                             key={i}
-                            className="border-r border-border/50"
+                            className={isMonthEnd ? 'border-r border-primary/25' : 'border-r border-border/30'}
                             style={{ width: columnWidth, height: 80 }}
                           />
-                        ))}
+                        );})}
                         {/* Connecting line between milestones */}
                         {milestones.length > 1 && (
                           <div
                             className="absolute top-[23px] h-[2px] bg-primary/30"
                             style={{
-                              left: getExactPosition(milestones[0].end) + 16,
-                              width: getExactPosition(milestones[milestones.length - 1].end) - getExactPosition(milestones[0].end),
+                              left: getExactPosition(milestones[0].start) + 16,
+                              width: getExactPosition(milestones[milestones.length - 1].start) - getExactPosition(milestones[0].start),
                             }}
                           />
                         )}
                         {/* Milestone markers with labels */}
                         {milestones.map((milestone, milestoneIndex) => {
-                          const position = getExactPosition(milestone.end);
+                          const position = getExactPosition(milestone.start);
                           const colorClass = getMilestoneColor(milestone.id);
                           return (
                             <div
@@ -325,16 +439,16 @@ export function ProjectCompareView({ isOpen, onClose, projects }: ProjectCompare
                             >
                               <div
                                 className={`w-8 h-8 rounded-full ${colorClass} flex items-center justify-center shadow-md z-10`}
-                                title={`${milestone.name}: ${format(parseISO(milestone.end), 'MMM d, yyyy')}`}
+                                title={`${milestone.name}: ${format(parseISO(milestone.start), 'MMM d, yyyy')}`}
                               >
                                 <span className="text-xs font-bold text-white">{milestoneIndex + 1}</span>
                               </div>
-                              <div className="mt-1 text-center w-20">
+                              <div className="mt-1 text-center" style={{ width: Math.max(columnWidth, 48) }}>
                                 <div className="text-[10px] font-medium text-foreground truncate">
                                   {milestone.name}
                                 </div>
                                 <div className="text-[10px] text-muted-foreground">
-                                  {format(parseISO(milestone.end), 'MMM d')}
+                                  {format(parseISO(milestone.start), 'MMM d')}
                                 </div>
                               </div>
                             </div>

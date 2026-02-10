@@ -1,10 +1,9 @@
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { RecordModel } from 'pocketbase';
+import { pb } from '@/lib/pocketbase';
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: RecordModel | null;
   loading: boolean;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -13,7 +12,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  session: null,
   loading: true,
   signUp: async () => ({ error: null }),
   signIn: async () => ({ error: null }),
@@ -21,59 +19,75 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<RecordModel | null>(
+    pb.authStore.isValid ? (pb.authStore.record as RecordModel) : null
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
-
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    // Validate existing session by refreshing the token
+    if (pb.authStore.isValid) {
+      pb.collection('users').authRefresh()
+        .then(() => {
+          setUser(pb.authStore.record as RecordModel);
+        })
+        .catch(() => {
+          pb.authStore.clear();
+          setUser(null);
+        })
+        .finally(() => setLoading(false));
+    } else {
       setLoading(false);
+    }
+
+    // Listen for auth state changes (cross-tab sync, token refresh, etc.)
+    const unsubscribe = pb.authStore.onChange((_token, record) => {
+      setUser(record as RecordModel | null);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl
-      }
-    });
-    
-    return { error: error ? new Error(error.message) : null };
+    try {
+      // Create the user record
+      await pb.collection('users').create({
+        email,
+        password,
+        passwordConfirm: password,
+        role: 'user',
+        is_approved: false,
+      });
+
+      // Auto-login after successful signup
+      await pb.collection('users').authWithPassword(email, password);
+      return { error: null };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { error: new Error(message) };
+    }
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
-    return { error: error ? new Error(error.message) : null };
+    try {
+      await pb.collection('users').authWithPassword(email, password);
+      return { error: null };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { error: new Error(message) };
+    }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    pb.authStore.clear();
+    // Clear selected game so game selection screen shows on next login
+    localStorage.removeItem('predictor-selected-game');
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

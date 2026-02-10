@@ -20,6 +20,8 @@ import {
 import { Loader2, Users, FolderOpen, Shield, ShieldOff, Trash2, RefreshCw, Check, X, Clock, UserCheck } from 'lucide-react';
 import { format } from 'date-fns';
 
+const AVAILABLE_GAMES = ['SGH', 'HOF'] as const;
+
 export default function AdminPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -37,7 +39,8 @@ export default function AdminPage() {
     promoteToAdmin,
     demoteFromAdmin,
     deleteProject,
-    declineUser
+    declineUser,
+    updateUserGames
   } = useAdmin();
 
   const [userToPromote, setUserToPromote] = useState<AdminUser | null>(null);
@@ -191,20 +194,47 @@ export default function AdminPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Email</TableHead>
+                      <TableHead>Assign Games</TableHead>
                       <TableHead>Signed Up</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {pendingUsers.map((u) => (
-                      <TableRow key={u.user_id}>
+                      <TableRow key={u.id}>
                         <TableCell>
                           <div>
                             <p className="font-medium">{u.email}</p>
-                            <p className="text-xs text-muted-foreground font-mono">{u.user_id.slice(0, 8)}...</p>
+                            <p className="text-xs text-muted-foreground font-mono">{u.id.slice(0, 8)}...</p>
                           </div>
                         </TableCell>
-                        <TableCell>{format(new Date(u.created_at), 'PPp')}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            {AVAILABLE_GAMES.map((game) => {
+                              const isActive = u.allowed_games.includes(game);
+                              return (
+                                <button
+                                  key={game}
+                                  onClick={() => {
+                                    const newGames = isActive
+                                      ? u.allowed_games.filter(g => g !== game)
+                                      : [...u.allowed_games, game];
+                                    updateUserGames(u.id, newGames);
+                                  }}
+                                  className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                                    isActive
+                                      ? 'bg-primary text-primary-foreground'
+                                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                  }`}
+                                  title={isActive ? `Remove ${game} access` : `Grant ${game} access`}
+                                >
+                                  {game}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </TableCell>
+                        <TableCell>{format(new Date(u.created), 'PPp')}</TableCell>
                         <TableCell className="text-right space-x-2">
                           <Button
                             size="sm"
@@ -256,6 +286,7 @@ export default function AdminPage() {
                     <TableRow>
                       <TableHead>Email</TableHead>
                       <TableHead>Role</TableHead>
+                      <TableHead>Games</TableHead>
                       <TableHead>Projects</TableHead>
                       <TableHead>Joined</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -263,16 +294,16 @@ export default function AdminPage() {
                   </TableHeader>
                   <TableBody>
                     {approvedUsers.map((u) => (
-                      <TableRow key={u.user_id}>
+                      <TableRow key={u.id}>
                         <TableCell>
                           <div>
                             <p className="font-medium">
                               {u.email}
-                              {u.user_id === user?.id && (
+                              {u.id === user?.id && (
                                 <Badge variant="secondary" className="ml-2">You</Badge>
                               )}
                             </p>
-                            <p className="text-xs text-muted-foreground font-mono">{u.user_id.slice(0, 8)}...</p>
+                            <p className="text-xs text-muted-foreground font-mono">{u.id.slice(0, 8)}...</p>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -281,15 +312,41 @@ export default function AdminPage() {
                             {u.role}
                           </Badge>
                         </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            {AVAILABLE_GAMES.map((game) => {
+                              const isActive = u.allowed_games.includes(game);
+                              return (
+                                <button
+                                  key={game}
+                                  onClick={() => {
+                                    const newGames = isActive
+                                      ? u.allowed_games.filter(g => g !== game)
+                                      : [...u.allowed_games, game];
+                                    updateUserGames(u.id, newGames);
+                                  }}
+                                  className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                                    isActive
+                                      ? 'bg-primary text-primary-foreground'
+                                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                  }`}
+                                  title={isActive ? `Remove ${game} access` : `Grant ${game} access`}
+                                >
+                                  {game}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </TableCell>
                         <TableCell>{u.project_count}</TableCell>
-                        <TableCell>{format(new Date(u.role_assigned_at), 'PP')}</TableCell>
+                        <TableCell>{format(new Date(u.created), 'PP')}</TableCell>
                         <TableCell className="text-right space-x-2">
                           {u.role === 'admin' ? (
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => setUserToDemote(u)}
-                              disabled={u.user_id === user?.id}
+                              disabled={u.id === user?.id}
                               className="text-destructive hover:text-destructive"
                             >
                               <ShieldOff className="w-4 h-4 mr-1" />
@@ -359,16 +416,13 @@ export default function AdminPage() {
                       <TableRow key={project.id}>
                         <TableCell className="font-medium">{project.feature_name}</TableCell>
                         <TableCell>
-                          <div>
-                            <p className="text-sm">{project.user_email}</p>
-                            <p className="text-xs text-muted-foreground font-mono">{project.user_id.slice(0, 8)}...</p>
-                          </div>
+                          <p className="text-sm">{project.user_email}</p>
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">{project.preset}</Badge>
                         </TableCell>
-                        <TableCell>{format(new Date(project.created_at), 'PP')}</TableCell>
-                        <TableCell>{format(new Date(project.updated_at), 'PP')}</TableCell>
+                        <TableCell>{format(new Date(project.created), 'PP')}</TableCell>
+                        <TableCell>{format(new Date(project.updated), 'PP')}</TableCell>
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"
@@ -403,7 +457,7 @@ export default function AdminPage() {
             <AlertDialogAction
               onClick={() => {
                 if (userToApprove) {
-                  approveUser(userToApprove.user_id);
+                  approveUser(userToApprove.id);
                   setUserToApprove(null);
                 }
               }}
@@ -429,7 +483,7 @@ export default function AdminPage() {
             <AlertDialogAction
               onClick={() => {
                 if (userToDecline) {
-                  declineUser(userToDecline.user_id);
+                  declineUser(userToDecline.id);
                   setUserToDecline(null);
                 }
               }}
@@ -455,7 +509,7 @@ export default function AdminPage() {
             <AlertDialogAction
               onClick={() => {
                 if (userToRevoke) {
-                  revokeApproval(userToRevoke.user_id);
+                  revokeApproval(userToRevoke.id);
                   setUserToRevoke(null);
                 }
               }}
@@ -482,7 +536,7 @@ export default function AdminPage() {
             <AlertDialogAction
               onClick={() => {
                 if (userToPromote) {
-                  promoteToAdmin(userToPromote.user_id);
+                  promoteToAdmin(userToPromote.id);
                   setUserToPromote(null);
                 }
               }}
@@ -508,7 +562,7 @@ export default function AdminPage() {
             <AlertDialogAction
               onClick={() => {
                 if (userToDemote) {
-                  demoteFromAdmin(userToDemote.user_id);
+                  demoteFromAdmin(userToDemote.id);
                   setUserToDemote(null);
                 }
               }}

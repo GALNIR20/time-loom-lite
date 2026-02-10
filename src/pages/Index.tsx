@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { parseISO, subDays, format, addDays } from 'date-fns';
+import { parseISO, format, addDays, differenceInDays } from 'date-fns';
 import { ControlsPanel } from '@/components/ControlsPanel';
 import { SummaryCards } from '@/components/SummaryCards';
 import { MilestoneTable } from '@/components/MilestoneTable';
@@ -11,25 +11,112 @@ import { MondayExportModal } from '@/components/MondayExportModal';
 import { SavedProject } from '@/components/ProjectSidebar';
 import { SprintManager } from '@/components/SprintManager';
 import { ProjectActivityLog } from '@/components/ProjectActivityLog';
-import { DEFAULT_MILESTONES, calculateTimeline, getPresetDuration, PRESET_CONFIGS, getTodayISO, createSprintMilestone, SPRINT_DURATION_DAYS } from '@/lib/timeline';
+import { calculateTimeline, getPresetDuration, getTodayISO, createSprintMilestone, getSprintDuration } from '@/lib/timeline';
 import { TimelineExport, PresetType, MilestoneConfig } from '@/types/timeline';
 import { PredictorLogo } from '@/components/PredictorLogo';
+import { MilestoneChecklistDialog } from '@/components/MilestoneChecklistDialog';
+import { getItemIdsForMilestone } from '@/hooks/useChecklistSettings';
 import { useProjects } from '@/hooks/useProjects';
 import { logActivity } from '@/hooks/useProjectActivity';
+import { useMilestoneSettings } from '@/hooks/useMilestoneSettings';
 
-// Calculate days before I-Phase for a given preset and overrides
-function calculateDaysBeforeIPhase(presetType: PresetType, overrides: Record<string, number | null>, milestoneConfigs: MilestoneConfig[]): number {
-  const iPhaseIndex = milestoneConfigs.findIndex(m => m.id === 'i-phase');
-  if (iPhaseIndex === -1) return 0;
-  return milestoneConfigs.slice(0, iPhaseIndex).reduce((sum, config) => {
+// Calculate days before a given milestone for a given preset and overrides
+function calculateDaysBeforeMilestone(milestoneId: string, presetType: PresetType, overrides: Record<string, number | null>, milestoneConfigs: MilestoneConfig[], customPresetConfigs?: Record<PresetType, Record<string, number>>): number {
+  const targetIndex = milestoneConfigs.findIndex(m => m.id === milestoneId);
+  if (targetIndex === -1) return 0;
+  return milestoneConfigs.slice(0, targetIndex).reduce((sum, config) => {
     const overrideDays = overrides[config.id] ?? null;
-    const duration = getPresetDuration(config.id, presetType, overrideDays);
+    const duration = getPresetDuration(config.id, presetType, overrideDays, customPresetConfigs);
     return sum + duration;
   }, 0);
 }
 
+// Encode multiple locked milestones for persistence (backward compatible)
+// Format: "id1|date1;id2|date2;..." or null if empty
+function encodeLocks(locks: Record<string, string>): string | null {
+  const entries = Object.entries(locks);
+  if (entries.length === 0) return null;
+  return entries.map(([id, date]) => `${id}|${date}`).join(';');
+}
+
+// Decode locked milestones from persistence
+// Handles: null, old single "date" format, old single "id|date" format, new multi "id|date;id|date" format
+function decodeLocks(value: string | null): Record<string, string> {
+  if (!value) return {};
+  // New multi-lock format: "id1|date1;id2|date2"
+  if (value.includes(';')) {
+    const result: Record<string, string> = {};
+    value.split(';').forEach(part => {
+      const pipeIdx = part.indexOf('|');
+      if (pipeIdx > 0) {
+        result[part.slice(0, pipeIdx)] = part.slice(pipeIdx + 1);
+      }
+    });
+    return result;
+  }
+  // Old single lock format: "id|date"
+  if (value.includes('|')) {
+    const pipeIdx = value.indexOf('|');
+    return { [value.slice(0, pipeIdx)]: value.slice(pipeIdx + 1) };
+  }
+  // Backward compat: old format was just a date string for I-Phase
+  return { 'i-phase': value };
+}
+
+// Adjust overrides so that locked milestone dates are maintained.
+// Instead of moving project start, this adjusts the duration of the nearest
+// preceding unlocked milestone to absorb the difference.
+// changedMilestoneId: if provided, this milestone's duration won't be adjusted
+//   (because the user just changed it — adjust an earlier one instead).
+function enforceLockedDates(
+  locks: Record<string, string>,
+  configs: MilestoneConfig[],
+  overrides: Record<string, number | null>,
+  projectStart: string,
+  presetType: PresetType,
+  customPresetConfigs?: Record<PresetType, Record<string, number>>,
+  changedMilestoneId?: string
+): Record<string, number | null> {
+  if (Object.keys(locks).length === 0) return overrides;
+  const adjusted = { ...overrides };
+
+  for (let i = 0; i < configs.length; i++) {
+    const config = configs[i];
+    const lockedDate = locks[config.id];
+    if (!lockedDate) continue;
+    if (i === 0) continue; // first milestone starts at project start, can't adjust
+
+    // Calculate current start date of this milestone with (possibly already adjusted) overrides
+    let totalDays = 0;
+    for (let j = 0; j < i; j++) {
+      totalDays += getPresetDuration(configs[j].id, presetType, adjusted[configs[j].id] ?? null, customPresetConfigs);
+    }
+    const expectedDays = differenceInDays(parseISO(lockedDate), parseISO(projectStart));
+    let diff = totalDays - expectedDays; // positive = milestone is too late, negative = too early
+    if (diff === 0) continue;
+
+    // Walk backward from immediately preceding milestone to find one to adjust
+    for (let j = i - 1; j >= 0 && diff !== 0; j--) {
+      // Skip the milestone the user just changed
+      if (changedMilestoneId && configs[j].id === changedMilestoneId) continue;
+      // Skip locked milestones (their dates are sacred too)
+      if (locks[configs[j].id]) continue;
+
+      const curDuration = getPresetDuration(configs[j].id, presetType, adjusted[configs[j].id] ?? null, customPresetConfigs);
+      const newDuration = Math.max(0, curDuration - diff);
+      const actualAdjustment = curDuration - newDuration;
+      adjusted[configs[j].id] = newDuration;
+      diff -= actualAdjustment;
+    }
+  }
+  return adjusted;
+}
+
 const Index = () => {
-  const { projects, createProject, updateProject } = useProjects();
+  const { projects, createProject, updateProject, isProjectOwner } = useProjects();
+  const { getMilestoneConfigs, getPresetConfigs } = useMilestoneSettings();
+  const milestoneDefaults = useMemo(() => getMilestoneConfigs(), [getMilestoneConfigs]);
+  const presetConfigs = useMemo(() => getPresetConfigs(), [getPresetConfigs]);
   
   const [featureName, setFeatureName] = useState('');
   const [isFeatureNameSet, setIsFeatureNameSet] = useState(false);
@@ -38,18 +125,46 @@ const Index = () => {
   const [showDetailed, setShowDetailed] = useState(true);
   const [useWorkDays, setUseWorkDays] = useState(false);
   const [overrides, setOverrides] = useState<Record<string, number | null>>({});
-  // Custom milestones (starts with defaults, can add sprints)
-  const [customMilestones, setCustomMilestones] = useState<MilestoneConfig[]>(DEFAULT_MILESTONES);
+  // Custom milestones (starts with settings defaults, can add sprints)
+  const [customMilestones, setCustomMilestones] = useState<MilestoneConfig[]>(milestoneDefaults);
   const [hiddenMilestones, setHiddenMilestones] = useState<Set<string>>(new Set());
   // Track merged milestones: key = target milestone id, value = array of merged source milestone names
   const [mergedMilestones, setMergedMilestones] = useState<Record<string, string[]>>({});
+
+  // Helper: rebuild customMilestones from base milestones + sprint overrides
+  const rebuildMilestones = useCallback((projectOverrides: Record<string, number | null>) => {
+    // Detect sprints from overrides (keys like 'sprint-1', 'sprint-2', ...)
+    const sprintIds = Object.keys(projectOverrides)
+      .filter(k => k.startsWith('sprint-'))
+      .sort((a, b) => {
+        const numA = parseInt(a.replace('sprint-', ''), 10);
+        const numB = parseInt(b.replace('sprint-', ''), 10);
+        return numA - numB;
+      });
+    const sprintMilestones = sprintIds.map(id => {
+      const num = parseInt(id.replace('sprint-', ''), 10);
+      return createSprintMilestone(num);
+    });
+    setCustomMilestones([...milestoneDefaults, ...sprintMilestones]);
+  }, [milestoneDefaults]);
+
+  // Keep customMilestones base (non-sprint) milestones in sync with settings
+  useEffect(() => {
+    setCustomMilestones(prev => {
+      const sprints = prev.filter(m => m.id.startsWith('sprint-'));
+      return [...milestoneDefaults, ...sprints];
+    });
+  }, [milestoneDefaults]);
   const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
   const [isTimelineViewOpen, setIsTimelineViewOpen] = useState(false);
   const [isCompareViewOpen, setIsCompareViewOpen] = useState(false);
   const [isMondayModalOpen, setIsMondayModalOpen] = useState(false);
 
-  // Track the user's intended dev start date (null = not manually set)
-  const [lockedDevStart, setLockedDevStart] = useState<string | null>(null);
+  // Track which milestones' dates are locked (milestone id → locked date)
+  const [lockedMilestones, setLockedMilestones] = useState<Record<string, string>>({});
+
+  // Milestone checklists: milestoneId → array of checked item ids
+  const [milestoneChecklists, setMilestoneChecklists] = useState<Record<string, string[]>>({});
 
   // Multi-project management
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
@@ -57,10 +172,60 @@ const Index = () => {
   // Track if we're currently saving to avoid loops
   const isSaving = useRef(false);
 
+  // Ownership check: if viewing someone else's project, it's read-only
+  const isOwner = useMemo(() => {
+    if (!currentProjectId) return true; // New project = user is the owner
+    return isProjectOwner(currentProjectId);
+  }, [currentProjectId, isProjectOwner]);
+
+  // Encoded lock for persistence
+  const encodedLock = useMemo(() => encodeLocks(lockedMilestones), [lockedMilestones]);
+
+  // Ref to track latest state for immediate save before project switch
+  // This prevents data loss when switching projects within the auto-save debounce window
+  const latestSaveState = useRef({
+    currentProjectId: null as string | null,
+    isFeatureNameSet: false,
+    isOwner: true,
+    featureName: '',
+    projectStart: '',
+    preset: 'Big' as PresetType,
+    showDetailed: true,
+    overrides: {} as Record<string, number | null>,
+    hiddenMilestones: new Set<string>(),
+    encodedLock: null as string | null,
+    milestoneChecklists: {} as Record<string, string[]>,
+  });
+
+  // Keep ref in sync with state (runs after every render)
+  useEffect(() => {
+    latestSaveState.current = {
+      currentProjectId, isFeatureNameSet, isOwner, featureName, projectStart, preset, showDetailed, overrides, hiddenMilestones, encodedLock, milestoneChecklists,
+    };
+  });
+
+  // Save current project immediately (fire-and-forget, uses ref for latest state)
+  // Called before switching projects to prevent data loss from debounced auto-save
+  const saveCurrentProjectNow = useCallback(() => {
+    const s = latestSaveState.current;
+    if (!s.currentProjectId || !s.isFeatureNameSet || !s.isOwner) return;
+    updateProject(s.currentProjectId, {
+      feature_name: s.featureName,
+      project_start: s.projectStart,
+      preset: s.preset,
+      show_detailed: s.showDetailed,
+      overrides: s.overrides,
+      hidden_milestones: Array.from(s.hiddenMilestones),
+      locked_dev_start: s.encodedLock,
+      milestone_checklists: s.milestoneChecklists,
+    });
+  }, [updateProject]);
+
   // Auto-save project to database whenever state changes (debounced)
   useEffect(() => {
     // Only auto-save if we have a feature name set (user has started working)
-    if (!isFeatureNameSet || isSaving.current) return;
+    // Don't auto-save if we're viewing someone else's project
+    if (!isFeatureNameSet || isSaving.current || !isOwner) return;
 
     const timeoutId = setTimeout(async () => {
       isSaving.current = true;
@@ -74,7 +239,8 @@ const Index = () => {
           show_detailed: showDetailed,
           overrides,
           hidden_milestones: Array.from(hiddenMilestones),
-          locked_dev_start: lockedDevStart
+          locked_dev_start: encodedLock,
+          milestone_checklists: milestoneChecklists,
         });
       } else {
         // Create new project
@@ -85,7 +251,8 @@ const Index = () => {
           show_detailed: showDetailed,
           overrides,
           hidden_milestones: Array.from(hiddenMilestones),
-          locked_dev_start: lockedDevStart
+          locked_dev_start: encodedLock,
+          milestone_checklists: milestoneChecklists,
         });
         if (newProject) {
           setCurrentProjectId(newProject.id);
@@ -98,7 +265,14 @@ const Index = () => {
     }, 1000); // 1s debounce for database saves
 
     return () => clearTimeout(timeoutId);
-  }, [featureName, isFeatureNameSet, projectStart, preset, showDetailed, overrides, hiddenMilestones, lockedDevStart, currentProjectId, createProject, updateProject]);
+  }, [featureName, isFeatureNameSet, projectStart, preset, showDetailed, overrides, hiddenMilestones, encodedLock, milestoneChecklists, currentProjectId, createProject, updateProject, isOwner]);
+
+  // Save current project when component unmounts (navigating away from page)
+  useEffect(() => {
+    return () => {
+      saveCurrentProjectNow();
+    };
+  }, [saveCurrentProjectNow]);
 
   // Sync currentProjectId with Layout
   useEffect(() => {
@@ -108,7 +282,10 @@ const Index = () => {
   // Listen for events from Layout sidebar
   useEffect(() => {
     const handleLoadProject = (e: CustomEvent<SavedProject>) => {
+      // Save current project immediately before switching to prevent data loss
+      saveCurrentProjectNow();
       const project = e.detail;
+      const locks = decodeLocks(project.lockedDevStart);
       setCurrentProjectId(project.id);
       setFeatureName(project.featureName || '');
       setIsFeatureNameSet(true);
@@ -117,10 +294,15 @@ const Index = () => {
       setShowDetailed(project.showDetailed ?? true);
       setOverrides(project.overrides || {});
       setHiddenMilestones(new Set(project.hiddenMilestones || []));
-      setLockedDevStart(project.lockedDevStart || null);
+      setLockedMilestones(locks);
+      setMergedMilestones({});
+      setMilestoneChecklists(project.milestoneChecklists || {});
+      rebuildMilestones(project.overrides || {});
     };
 
     const handleCreateNew = () => {
+      // Save current project immediately before creating new
+      saveCurrentProjectNow();
       setCurrentProjectId(null);
       setFeatureName('');
       setIsFeatureNameSet(false);
@@ -129,7 +311,10 @@ const Index = () => {
       setShowDetailed(true);
       setOverrides({});
       setHiddenMilestones(new Set());
-      setLockedDevStart(null);
+      setLockedMilestones({});
+      setMergedMilestones({});
+      setMilestoneChecklists({});
+      setCustomMilestones(milestoneDefaults);
     };
 
     window.addEventListener('loadProject', handleLoadProject as EventListener);
@@ -139,7 +324,7 @@ const Index = () => {
       window.removeEventListener('loadProject', handleLoadProject as EventListener);
       window.removeEventListener('createNewProject', handleCreateNew as EventListener);
     };
-  }, []);
+  }, [rebuildMilestones, milestoneDefaults, saveCurrentProjectNow]);
 
   // Get the current project from database projects
   const currentSavedProject = useMemo(() => {
@@ -157,48 +342,58 @@ const Index = () => {
       overrides: dbProject.overrides,
       hiddenMilestones: dbProject.hidden_milestones,
       lockedDevStart: dbProject.locked_dev_start,
-      savedAt: dbProject.updated_at
+      milestoneChecklists: dbProject.milestone_checklists || {},
+      savedAt: dbProject.updated
     } as SavedProject;
   }, [projects, currentProjectId]);
 
   // Check if current state differs from saved project
   const hasUnsavedChanges = useMemo(() => {
     if (!currentSavedProject) return false;
-    return featureName !== currentSavedProject.featureName || projectStart !== currentSavedProject.projectStart || preset !== currentSavedProject.preset || showDetailed !== currentSavedProject.showDetailed || JSON.stringify(overrides) !== JSON.stringify(currentSavedProject.overrides) || JSON.stringify(Array.from(hiddenMilestones).sort()) !== JSON.stringify([...currentSavedProject.hiddenMilestones].sort()) || lockedDevStart !== currentSavedProject.lockedDevStart;
-  }, [currentSavedProject, featureName, projectStart, preset, showDetailed, overrides, hiddenMilestones, lockedDevStart]);
+    return featureName !== currentSavedProject.featureName || projectStart !== currentSavedProject.projectStart || preset !== currentSavedProject.preset || showDetailed !== currentSavedProject.showDetailed || JSON.stringify(overrides) !== JSON.stringify(currentSavedProject.overrides) || JSON.stringify(Array.from(hiddenMilestones).sort()) !== JSON.stringify([...currentSavedProject.hiddenMilestones].sort()) || encodedLock !== currentSavedProject.lockedDevStart;
+  }, [currentSavedProject, featureName, projectStart, preset, showDetailed, overrides, hiddenMilestones, encodedLock]);
   
   const handleSave = useCallback(async () => {
-    if (currentProjectId) {
-      await updateProject(currentProjectId, {
-        feature_name: featureName,
-        project_start: projectStart,
-        preset,
-        show_detailed: showDetailed,
-        overrides,
-        hidden_milestones: Array.from(hiddenMilestones),
-        locked_dev_start: lockedDevStart
-      });
-      toast.success('Project saved!');
-    } else {
-      const newProject = await createProject({
-        feature_name: featureName || 'Untitled Project',
-        project_start: projectStart,
-        preset,
-        show_detailed: showDetailed,
-        overrides,
-        hidden_milestones: Array.from(hiddenMilestones),
-        locked_dev_start: lockedDevStart
-      });
-      if (newProject) {
-        setCurrentProjectId(newProject.id);
-        // Notify other components to refetch projects
-        window.dispatchEvent(new CustomEvent('refetchProjects'));
-        toast.success('Project created!');
+    if (isSaving.current || !isOwner) return;
+    isSaving.current = true;
+    try {
+      if (currentProjectId) {
+        await updateProject(currentProjectId, {
+          feature_name: featureName,
+          project_start: projectStart,
+          preset,
+          show_detailed: showDetailed,
+          overrides,
+          hidden_milestones: Array.from(hiddenMilestones),
+          locked_dev_start: encodedLock,
+          milestone_checklists: milestoneChecklists,
+        });
+        toast.success('Project saved!');
+      } else {
+        const newProject = await createProject({
+          feature_name: featureName || 'Untitled Project',
+          project_start: projectStart,
+          preset,
+          show_detailed: showDetailed,
+          overrides,
+          hidden_milestones: Array.from(hiddenMilestones),
+          locked_dev_start: encodedLock,
+          milestone_checklists: milestoneChecklists,
+        });
+        if (newProject) {
+          setCurrentProjectId(newProject.id);
+          // Notify other components to refetch projects
+          window.dispatchEvent(new CustomEvent('refetchProjects'));
+          toast.success('Project created!');
+        }
       }
+    } finally {
+      isSaving.current = false;
     }
-  }, [currentProjectId, featureName, projectStart, preset, showDetailed, overrides, hiddenMilestones, lockedDevStart, createProject, updateProject]);
+  }, [currentProjectId, featureName, projectStart, preset, showDetailed, overrides, hiddenMilestones, encodedLock, milestoneChecklists, createProject, updateProject, isOwner]);
   const handleRestore = useCallback(() => {
     if (!currentSavedProject) return;
+    const locks = decodeLocks(currentSavedProject.lockedDevStart);
     setFeatureName(currentSavedProject.featureName || '');
     setIsFeatureNameSet(currentSavedProject.isFeatureNameSet || false);
     setProjectStart(currentSavedProject.projectStart || getTodayISO());
@@ -206,10 +401,16 @@ const Index = () => {
     setShowDetailed(currentSavedProject.showDetailed ?? true);
     setOverrides(currentSavedProject.overrides || {});
     setHiddenMilestones(new Set(currentSavedProject.hiddenMilestones || []));
-    setLockedDevStart(currentSavedProject.lockedDevStart || null);
+    setLockedMilestones(locks);
+    setMergedMilestones({});
+    setMilestoneChecklists(currentSavedProject.milestoneChecklists || {});
+    rebuildMilestones(currentSavedProject.overrides || {});
     toast.success('Project restored!');
-  }, [currentSavedProject]);
+  }, [currentSavedProject, rebuildMilestones]);
   const handleSelectProject = useCallback((project: SavedProject) => {
+    // Save current project immediately before switching
+    saveCurrentProjectNow();
+    const locks = decodeLocks(project.lockedDevStart);
     setCurrentProjectId(project.id);
     setFeatureName(project.featureName || '');
     // When selecting a saved project, always show full content (project was previously set up)
@@ -219,9 +420,14 @@ const Index = () => {
     setShowDetailed(project.showDetailed ?? true);
     setOverrides(project.overrides || {});
     setHiddenMilestones(new Set(project.hiddenMilestones || []));
-    setLockedDevStart(project.lockedDevStart || null);
-  }, []);
+    setLockedMilestones(locks);
+    setMergedMilestones({});
+    setMilestoneChecklists(project.milestoneChecklists || {});
+    rebuildMilestones(project.overrides || {});
+  }, [rebuildMilestones, saveCurrentProjectNow]);
   const handleCreateNewProject = useCallback(() => {
+    // Save current project immediately before creating new
+    saveCurrentProjectNow();
     setCurrentProjectId(null);
     setFeatureName('');
     setIsFeatureNameSet(false);
@@ -230,13 +436,16 @@ const Index = () => {
     setShowDetailed(true);
     setOverrides({});
     setHiddenMilestones(new Set());
-    setLockedDevStart(null);
-  }, []);
+    setLockedMilestones({});
+    setMergedMilestones({});
+    setMilestoneChecklists({});
+    setCustomMilestones(milestoneDefaults);
+  }, [milestoneDefaults, saveCurrentProjectNow]);
   // handleDeleteProject is now handled by Layout via useProjects hook
 
   // Filter out hidden milestones from the config before calculating
   const activeMilestoneConfigs = useMemo(() => customMilestones.filter(m => !hiddenMilestones.has(m.id)), [customMilestones, hiddenMilestones]);
-  const milestones = useMemo(() => calculateTimeline(activeMilestoneConfigs, overrides, projectStart, preset), [activeMilestoneConfigs, overrides, projectStart, preset]);
+  const milestones = useMemo(() => calculateTimeline(activeMilestoneConfigs, overrides, projectStart, preset, presetConfigs), [activeMilestoneConfigs, overrides, projectStart, preset, presetConfigs]);
 
   // Total days until I-Phase (not entire project)
   const totalDays = useMemo(() => {
@@ -264,27 +473,81 @@ const Index = () => {
   const devDays = useMemo(() => {
     return milestones.filter(m => m.phase === 'Development').reduce((sum, m) => sum + m.durationDays, 0);
   }, [milestones]);
-  const daysBeforeIPhase = useMemo(() => calculateDaysBeforeIPhase(preset, overrides, customMilestones), [overrides, preset, customMilestones]);
+  const daysBeforeIPhase = useMemo(() => calculateDaysBeforeMilestone('i-phase', preset, overrides, activeMilestoneConfigs, presetConfigs), [overrides, preset, activeMilestoneConfigs, presetConfigs]);
+
+  // Ref to skip the next enforce cycle (used by handleDaysChange which enforces inline)
+  const skipNextEnforce = useRef(false);
+
+  // Enforce locked dates by adjusting preceding milestone durations.
+  // Runs whenever anything that affects dates changes. Project start is NEVER touched.
+  useEffect(() => {
+    if (skipNextEnforce.current) {
+      skipNextEnforce.current = false;
+      return;
+    }
+    if (Object.keys(lockedMilestones).length === 0) return;
+    const enforced = enforceLockedDates(lockedMilestones, activeMilestoneConfigs, overrides, projectStart, preset, presetConfigs);
+    if (JSON.stringify(enforced) !== JSON.stringify(overrides)) {
+      setOverrides(enforced);
+    }
+  }, [lockedMilestones, activeMilestoneConfigs, overrides, projectStart, preset, presetConfigs]);
+
   const handleDevStartChange = useCallback((devStartDate: string) => {
-    // Lock this dev start date
-    setLockedDevStart(devStartDate);
-    // Calculate project start by going back from dev start
-    const devStart = parseISO(devStartDate);
-    const daysBack = calculateDaysBeforeIPhase(preset, overrides, customMilestones);
-    const newProjectStart = subDays(devStart, daysBack);
-    setProjectStart(format(newProjectStart, 'yyyy-MM-dd'));
-  }, [preset, overrides, customMilestones]);
+    // Calculate how many days all milestones before I-Phase take
+    const totalDaysBefore = calculateDaysBeforeMilestone('i-phase', preset, overrides, activeMilestoneConfigs, presetConfigs);
+    // Move project start so that I-Phase lands on the chosen date
+    const newProjectStart = format(addDays(parseISO(devStartDate), -totalDaysBefore), 'yyyy-MM-dd');
+    setProjectStart(newProjectStart);
+    // The enforce effect will handle any locked milestones afterward
+  }, [preset, overrides, activeMilestoneConfigs, presetConfigs]);
+
   const handlePresetChange = useCallback((newPreset: PresetType) => {
     setPreset(newPreset);
+    // Effect will enforce locked dates with the new preset
+  }, []);
 
-    // If user has locked a dev start date, recalculate project start
-    if (lockedDevStart) {
-      const devStart = parseISO(lockedDevStart);
-      const daysBack = calculateDaysBeforeIPhase(newPreset, overrides, customMilestones);
-      const newProjectStart = subDays(devStart, daysBack);
-      setProjectStart(format(newProjectStart, 'yyyy-MM-dd'));
-    }
-  }, [lockedDevStart, overrides, customMilestones]);
+  // Toggle lock on a milestone's date
+  const handleToggleLock = useCallback((milestoneId: string) => {
+    setLockedMilestones(prev => {
+      if (prev[milestoneId]) {
+        // Unlock this milestone
+        const { [milestoneId]: _, ...rest } = prev;
+        return rest;
+      } else {
+        // Lock this milestone at its current date
+        const milestone = milestones.find(m => m.id === milestoneId);
+        if (milestone) {
+          return { ...prev, [milestoneId]: milestone.start };
+        }
+        return prev;
+      }
+    });
+  }, [milestones]);
+
+  // Checklist dialog state
+  const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
+  const [checklistMilestoneId, setChecklistMilestoneId] = useState<string | null>(null);
+  const checklistMilestone = milestones.find(m => m.id === checklistMilestoneId);
+
+  const handleOpenChecklist = useCallback((milestoneId: string) => {
+    setChecklistMilestoneId(milestoneId);
+    setChecklistDialogOpen(true);
+  }, []);
+
+  const handleToggleChecklistItem = useCallback((milestoneId: string, itemId: string) => {
+    setMilestoneChecklists(prev => {
+      // Default: all items checked when no data exists yet
+      const current = prev[milestoneId] ?? [...getItemIdsForMilestone(milestoneId)];
+      const isChecked = current.includes(itemId);
+      return {
+        ...prev,
+        [milestoneId]: isChecked
+          ? current.filter(id => id !== itemId)
+          : [...current, itemId],
+      };
+    });
+  }, []);
+
   const exportData: TimelineExport = useMemo(() => ({
     featureName: featureName || undefined,
     projectStart,
@@ -301,13 +564,40 @@ const Index = () => {
     }))
   }), [featureName, projectStart, iPhaseStart, preset, totalDays, projectedEnd, milestones]);
   const handleDaysChange = useCallback((id: string, value: number | null) => {
-    setOverrides(prev => ({
-      ...prev,
-      [id]: value
-    }));
-  }, []);
+    const newOverrides = { ...overrides, [id]: value };
+    if (Object.keys(lockedMilestones).length > 0) {
+      // Enforce locked dates, but don't adjust the milestone the user just changed
+      const enforced = enforceLockedDates(lockedMilestones, activeMilestoneConfigs, newOverrides, projectStart, preset, presetConfigs, id);
+      skipNextEnforce.current = true;
+      setOverrides(enforced);
+    } else {
+      setOverrides(newOverrides);
+    }
+  }, [overrides, lockedMilestones, activeMilestoneConfigs, projectStart, preset, presetConfigs]);
+
+  // Handle direct date change from the milestone table
+  const handleDateChange = useCallback((milestoneId: string, newDate: string) => {
+    const milestoneIndex = milestones.findIndex(m => m.id === milestoneId);
+    if (milestoneIndex < 0) return;
+
+    const newDateParsed = parseISO(newDate);
+
+    if (milestoneIndex === 0) {
+      // First milestone — change the project start date
+      setProjectStart(newDate);
+    } else {
+      // For other milestones, adjust the duration of the previous milestone
+      const prevMilestone = milestones[milestoneIndex - 1];
+      const prevStart = parseISO(prevMilestone.start);
+      const newDuration = differenceInDays(newDateParsed, prevStart);
+      if (newDuration >= 0) {
+        handleDaysChange(prevMilestone.id, newDuration);
+      }
+    }
+  }, [milestones, handleDaysChange]);
+
   const handleRemoveMilestone = useCallback((id: string) => {
-    const milestone = DEFAULT_MILESTONES.find(m => m.id === id);
+    const milestone = milestoneDefaults.find(m => m.id === id);
     setHiddenMilestones(prev => new Set([...prev, id]));
     toast.success(`${milestone?.name || 'Milestone'} removed`, {
       action: {
@@ -321,7 +611,7 @@ const Index = () => {
         }
       }
     });
-  }, []);
+  }, [milestoneDefaults]);
   const handleRestoreMilestone = useCallback((id: string) => {
     setHiddenMilestones(prev => {
       const next = new Set(prev);
@@ -384,19 +674,22 @@ const Index = () => {
     }
   }, [exportData, currentProjectId]);
   const handleReset = useCallback(() => {
+    // Save current project before resetting
+    saveCurrentProjectNow();
     setFeatureName('');
     setIsFeatureNameSet(false);
     setProjectStart(getTodayISO());
     setPreset('Big');
     setShowDetailed(true);
     setOverrides({});
-    setCustomMilestones(DEFAULT_MILESTONES);
+    setCustomMilestones(milestoneDefaults);
     setHiddenMilestones(new Set());
     setMergedMilestones({});
-    setLockedDevStart(null);
+    setLockedMilestones({});
+    setMilestoneChecklists({});
     setIsTimelineViewOpen(false);
     toast.success('Timeline reset to defaults');
-  }, []);
+  }, [milestoneDefaults, saveCurrentProjectNow]);
 
   // Sprint management handlers
   const handleAddSprint = useCallback(() => {
@@ -407,7 +700,7 @@ const Index = () => {
     // Set default duration for the new sprint
     setOverrides(prev => ({
       ...prev,
-      [newSprint.id]: SPRINT_DURATION_DAYS
+      [newSprint.id]: getSprintDuration()
     }));
     toast.success(`Sprint ${nextSprintNumber} added`);
     if (currentProjectId) {
@@ -461,7 +754,7 @@ const Index = () => {
           projectStart={projectStart}
           onProjectStartChange={date => {
             setProjectStart(date);
-            setLockedDevStart(null);
+            // Locked dates are preserved by the enforce effect adjusting durations
           }}
           devStart={iPhaseStart ?? projectStart}
           onDevStartChange={handleDevStartChange}
@@ -479,6 +772,7 @@ const Index = () => {
           onShowTimeline={() => setIsTimelineViewOpen(true)}
           onShowCompare={() => setIsCompareViewOpen(true)}
           onExportMonday={() => setIsMondayModalOpen(true)}
+          readOnly={!isOwner}
         />
 
         {isFeatureNameSet && (
@@ -504,6 +798,12 @@ const Index = () => {
               allMilestones={customMilestones}
               onRestoreMilestone={handleRestoreMilestone}
               mergedMilestones={mergedMilestones}
+              readOnly={!isOwner}
+              lockedMilestones={lockedMilestones}
+              onToggleLock={handleToggleLock}
+              milestoneChecklists={milestoneChecklists}
+              onMilestoneNameClick={handleOpenChecklist}
+              onDateChange={handleDateChange}
               onUnmergeMilestone={(targetId: string, sourceName: string) => {
                 const sourceMilestone = customMilestones.find(m => m.name === sourceName);
                 if (sourceMilestone) {
@@ -529,6 +829,7 @@ const Index = () => {
               milestones={customMilestones}
               onAddSprint={handleAddSprint}
               onRemoveSprint={handleRemoveSprint}
+              readOnly={!isOwner}
             />
 
             <ProjectActivityLog 
@@ -551,6 +852,7 @@ const Index = () => {
         onClose={() => setIsTimelineViewOpen(false)}
         onDaysChange={handleDaysChange}
         onRemoveMilestone={handleRemoveMilestone}
+        readOnly={!isOwner}
       />
 
       {/* Project Compare View Modal */}
@@ -564,8 +866,20 @@ const Index = () => {
         overrides: p.overrides,
         hiddenMilestones: p.hidden_milestones,
         lockedDevStart: p.locked_dev_start,
-        savedAt: p.updated_at
+        milestoneChecklists: p.milestone_checklists || {},
+        savedAt: p.updated
       }))} />
+
+      {/* Milestone Checklist Dialog */}
+      <MilestoneChecklistDialog
+        open={checklistDialogOpen}
+        onOpenChange={setChecklistDialogOpen}
+        milestoneName={checklistMilestone?.name || ''}
+        milestoneId={checklistMilestoneId || ''}
+        checkedItems={checklistMilestoneId ? (milestoneChecklists[checklistMilestoneId] ?? getItemIdsForMilestone(checklistMilestoneId)) : []}
+        onToggleItem={handleToggleChecklistItem}
+        readOnly={!isOwner}
+      />
 
       {/* Monday Export Modal */}
       <MondayExportModal

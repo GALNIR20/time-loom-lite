@@ -1,5 +1,6 @@
-import { Calendar, RefreshCw, BarChart3, Save, Undo2, GitCompare, Upload } from 'lucide-react';
+import { Calendar, RefreshCw, BarChart3, Save, Undo2, GitCompare, Upload, Eye } from 'lucide-react';
 import { PresetType } from '@/types/timeline';
+import { getPresetDisplayNames, getCustomPresetConfigs } from '@/hooks/useMilestoneSettings';
 
 interface ControlsPanelProps {
   featureName: string;
@@ -25,13 +26,21 @@ interface ControlsPanelProps {
   onShowTimeline: () => void;
   onShowCompare: () => void;
   onExportMonday: () => void;
+  readOnly?: boolean;
 }
 
-const PRESET_OPTIONS: { value: PresetType; label: string; description: string }[] = [
-  { value: 'Big', label: 'Big PLC', description: '112 days' },
-  { value: 'Medium', label: 'Medium PLC', description: '73 days' },
-  { value: 'BLITZ', label: 'BLITZ', description: '46 days' },
-];
+function getPresetOptions(): { value: PresetType; label: string; description: string }[] {
+  const names = getPresetDisplayNames();
+  const configs = getCustomPresetConfigs();
+  return (['Big', 'Medium', 'BLITZ'] as PresetType[]).map((key) => {
+    const totalDays = Object.values(configs[key]).reduce((sum, d) => sum + d, 0);
+    return {
+      value: key,
+      label: names[key],
+      description: `${totalDays} days`,
+    };
+  });
+}
 
 export function ControlsPanel({
   featureName,
@@ -57,9 +66,16 @@ export function ControlsPanel({
   onShowTimeline,
   onShowCompare,
   onExportMonday,
+  readOnly = false,
 }: ControlsPanelProps) {
   return (
     <div className="card-elevated p-3 sm:p-5 overflow-hidden">
+      {readOnly && (
+        <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-muted/80 border border-border text-sm text-muted-foreground">
+          <Eye className="w-4 h-4 shrink-0" />
+          <span>View only — this project belongs to another user</span>
+        </div>
+      )}
       <h2 className="text-xs sm:text-sm font-semibold text-foreground mb-3 sm:mb-4">Configuration</h2>
       
       <div className="space-y-3 sm:space-y-4">
@@ -75,12 +91,14 @@ export function ControlsPanel({
                 <span className="text-sm font-medium text-foreground flex-1 truncate">
                   {featureName}
                 </span>
-                <button
-                  onClick={onEditFeatureName}
-                  className="btn-secondary text-xs py-1.5 px-3"
-                >
-                  Edit
-                </button>
+                {!readOnly && (
+                  <button
+                    onClick={onEditFeatureName}
+                    className="btn-secondary text-xs py-1.5 px-3"
+                  >
+                    Edit
+                  </button>
+                )}
               </div>
             ) : (
               <div className="flex gap-2">
@@ -91,10 +109,11 @@ export function ControlsPanel({
                   onChange={(e) => onFeatureNameChange(e.target.value)}
                   placeholder="Enter feature name..."
                   className="input-field flex-1 text-sm"
+                  disabled={readOnly}
                 />
                 <button
                   onClick={onSetFeatureName}
-                  disabled={!featureName.trim()}
+                  disabled={!featureName.trim() || readOnly}
                   className="btn-primary text-xs py-1.5 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Set
@@ -113,8 +132,9 @@ export function ControlsPanel({
               value={preset}
               onChange={(e) => onPresetChange(e.target.value as PresetType)}
               className="input-field w-full text-sm"
+              disabled={readOnly}
             >
-              {PRESET_OPTIONS.map((option) => (
+              {getPresetOptions().map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label} ({option.description})
                 </option>
@@ -131,14 +151,22 @@ export function ControlsPanel({
             <label htmlFor="dev-start" className="text-[10px] sm:text-xs font-medium text-muted-foreground">
               Development Start (I-Phase)
             </label>
-            <div className="relative">
+            <div
+              className="relative cursor-pointer"
+              onClick={() => {
+                const el = document.getElementById('dev-start') as HTMLInputElement;
+                if (el && !el.disabled) { el.focus(); try { el.showPicker(); } catch {} }
+              }}
+            >
               <Calendar className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 w-3.5 sm:w-4 h-3.5 sm:h-4 text-muted-foreground pointer-events-none" />
               <input
                 type="date"
                 id="dev-start"
                 value={devStart}
                 onChange={(e) => onDevStartChange(e.target.value)}
-                className="input-field w-full pl-8 sm:pl-9 text-sm min-w-0"
+                onClick={(e) => { try { (e.currentTarget as HTMLInputElement).showPicker(); } catch {} }}
+                className="input-field w-full pl-8 sm:pl-9 text-sm min-w-0 cursor-pointer"
+                disabled={readOnly}
               />
             </div>
           </div>
@@ -148,14 +176,22 @@ export function ControlsPanel({
             <label htmlFor="project-start" className="text-[10px] sm:text-xs font-medium text-muted-foreground">
               Project Start Date
             </label>
-            <div className="relative">
+            <div
+              className="relative cursor-pointer"
+              onClick={() => {
+                const el = document.getElementById('project-start') as HTMLInputElement;
+                if (el && !el.disabled) { el.focus(); try { el.showPicker(); } catch {} }
+              }}
+            >
               <Calendar className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 w-3.5 sm:w-4 h-3.5 sm:h-4 text-muted-foreground pointer-events-none" />
               <input
                 type="date"
                 id="project-start"
                 value={projectStart}
                 onChange={(e) => onProjectStartChange(e.target.value)}
-                className="input-field w-full pl-8 sm:pl-9 text-sm min-w-0"
+                onClick={(e) => { try { (e.currentTarget as HTMLInputElement).showPicker(); } catch {} }}
+                className="input-field w-full pl-8 sm:pl-9 text-sm min-w-0 cursor-pointer"
+                disabled={readOnly}
               />
             </div>
           </div>
@@ -199,24 +235,28 @@ export function ControlsPanel({
                 <BarChart3 className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
                 <span className="hidden xs:inline sm:inline">Timeline</span>
               </button>
-              <button onClick={onExportMonday} className="btn-secondary text-xs sm:text-sm py-2 px-2 sm:px-3">
-                <Upload className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
-                <span className="hidden xs:inline sm:inline">Monday</span>
-              </button>
-              <button onClick={onSave} className="btn-primary text-xs sm:text-sm py-2 px-2 sm:px-3">
-                <Save className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
-                <span className="hidden sm:inline">Save</span>
-              </button>
-              {hasUnsavedChanges && (
-                <button onClick={onRestore} className="btn-secondary text-xs sm:text-sm py-2 px-2 sm:px-3 border-warning text-warning hover:bg-warning/10">
-                  <Undo2 className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
-                  <span className="hidden sm:inline">Restore</span>
-                </button>
+              {!readOnly && (
+                <>
+                  <button onClick={onExportMonday} className="btn-secondary text-xs sm:text-sm py-2 px-2 sm:px-3">
+                    <Upload className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                    <span className="hidden xs:inline sm:inline">Monday</span>
+                  </button>
+                  <button onClick={onSave} className="btn-primary text-xs sm:text-sm py-2 px-2 sm:px-3">
+                    <Save className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                    <span className="hidden sm:inline">Save</span>
+                  </button>
+                  {hasUnsavedChanges && (
+                    <button onClick={onRestore} className="btn-secondary text-xs sm:text-sm py-2 px-2 sm:px-3 border-warning text-warning hover:bg-warning/10">
+                      <Undo2 className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                      <span className="hidden sm:inline">Restore</span>
+                    </button>
+                  )}
+                  <button onClick={onReset} className="btn-secondary text-xs sm:text-sm py-2 px-2 sm:px-3">
+                    <RefreshCw className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                    <span className="hidden sm:inline">Reset</span>
+                  </button>
+                </>
               )}
-              <button onClick={onReset} className="btn-secondary text-xs sm:text-sm py-2 px-2 sm:px-3">
-                <RefreshCw className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
-                <span className="hidden sm:inline">Reset</span>
-              </button>
             </div>
           </div>
         )}

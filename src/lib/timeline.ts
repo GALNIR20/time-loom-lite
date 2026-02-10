@@ -1,5 +1,6 @@
 import { MilestoneConfig, MilestoneState, PresetType } from '@/types/timeline';
 import { format, addDays, parseISO } from 'date-fns';
+import { getCustomMilestoneConfigs, getCustomPresetConfigs, getPhaseConfigs, getSprintDurationDays } from '@/hooks/useMilestoneSettings';
 
 export const PRESET_CONFIGS: Record<PresetType, Record<string, number>> = {
   Big: {
@@ -40,12 +41,25 @@ export const DEFAULT_MILESTONES: MilestoneConfig[] = [
   { id: 'i-phase', phase: 'Development', name: 'I-Phase' },
 ];
 
-export const SPRINT_DURATION_DAYS = 14;
+// Dynamic getters that read custom settings from localStorage
+export function getCustomizedPresetConfigs(): Record<PresetType, Record<string, number>> {
+  return getCustomPresetConfigs();
+}
+
+export function getCustomizedMilestones(): MilestoneConfig[] {
+  return getCustomMilestoneConfigs();
+}
+
+// Dynamic sprint duration based on game settings (defaults to 14 days / 2 weeks)
+export { getSprintDurationDays as getSprintDuration };
 
 export function createSprintMilestone(sprintNumber: number): MilestoneConfig {
+  // Use the last phase from settings (typically "Development") for sprints
+  const phases = getPhaseConfigs();
+  const devPhase = phases.find(p => p.id === 'development') || phases[phases.length - 1];
   return {
     id: `sprint-${sprintNumber}`,
-    phase: 'Development',
+    phase: devPhase?.name || 'Development',
     name: `Sprint ${sprintNumber}`,
   };
 }
@@ -53,31 +67,36 @@ export function createSprintMilestone(sprintNumber: number): MilestoneConfig {
 export function getPresetDuration(
   milestoneId: string,
   preset: PresetType,
-  overrideDays: number | null
+  overrideDays: number | null,
+  customPresetConfigs?: Record<PresetType, Record<string, number>>
 ): number {
   if (overrideDays !== null && overrideDays >= 0) {
     return overrideDays;
   }
-  return PRESET_CONFIGS[preset][milestoneId] ?? 0;
+  const configs = customPresetConfigs || PRESET_CONFIGS;
+  return configs[preset][milestoneId] ?? 0;
 }
 
 export function calculateTimeline(
   configs: MilestoneConfig[],
   overrides: Record<string, number | null>,
   projectStart: string,
-  preset: PresetType
+  preset: PresetType,
+  customPresetConfigs?: Record<PresetType, Record<string, number>>
 ): MilestoneState[] {
   const startDate = parseISO(projectStart);
   let currentDate = startDate;
+  const presetConfigs = customPresetConfigs || PRESET_CONFIGS;
 
   return configs.map((config) => {
     const overrideDays = overrides[config.id] ?? null;
-    const defaultDays = PRESET_CONFIGS[preset][config.id] ?? 0;
+    const defaultDays = presetConfigs[preset][config.id] ?? 0;
     
     const durationDays = getPresetDuration(
       config.id,
       preset,
-      overrideDays
+      overrideDays,
+      presetConfigs
     );
 
     const start = format(currentDate, 'yyyy-MM-dd');
